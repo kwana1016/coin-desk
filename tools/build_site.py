@@ -254,6 +254,9 @@ EXTRA_CSS = """
 .cat{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin-right:4px;color:var(--muted)}
 .impact{font-size:13px;margin-top:2px}.impact b{color:var(--accent);font-weight:600}
 .priced{font-size:12px;color:var(--muted)}
+.newchip{display:inline-block;font-size:11px;font-weight:700;color:var(--strong);background:var(--strong-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.since{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:6px 10px}.since b{color:var(--accent);font-weight:600;margin-right:4px}
+.cover{font-size:13px;color:var(--muted);margin:0}
 .more>summary{font-size:14px;padding:10px 0}
 @media (max-width:480px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
@@ -393,11 +396,15 @@ def card(p, base, wrap=True):
         scen += "</div>"
     k = coin_stars(p)
     pos = f'<span class="pos">{e(p["position"])}</span>' if p.get("position") else ""
+    if p.get("__new"):
+        pos += '<span class="newchip">새 코인</span>'
+    since = f'<div class="since"><b>지난 리포트 이후</b>{e(p["since_last"])}</div>' if p.get("since_last") else ""
     what = f'<div class="what">{e(p["what"])}</div>' if p.get("what") else ""
     return f"""<article class="card">
   <div class="card-top"><div><div class="coin"><a href="{base}coin/{e(p["sym"])}.html">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></a>{pos}</div>{what}
   <div class="price num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))} 24h</span></div></div>
   <div class="rbox"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>{star_html(k, f"별 {k}개 (5점 만점)")}</div></div>
+  {since}
   {f'<p class="comment">{e(p["comment"])}</p>' if p.get("comment") else ""}
   {metric_row(p)}
   {f'<ul class="plain small">{reasons}</ul>' if reasons else ""}
@@ -414,24 +421,31 @@ def folded_card(p, base):
     if len(line) > 70:
         line = line[:70] + "…"
     return (f'<details class="fold"><summary><span><span class="fname">{e(p.get("name") or p["sym"])}</span> '
-            f'<span class="num small muted">{e(p["sym"])}</span></span>'
+            f'<span class="num small muted">{e(p["sym"])}</span>'
+            + ('<span class="newchip">새 코인</span>' if p.get("__new") else "") + '</span>'
             f'<span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>'
             f'{star_html(k, "별 %d개" % k)}</span><span class="fline"><span class="num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))}</span></span> · {line}</span></summary>{card(p, base)}</details>')
 
 
-def report_page(r, site, archive, is_index):
+def report_page(r, site, archive, is_index, prev=None):
     m = r.get("market") or {}
     base = "" if is_index else "../"
+    prev_syms = {q["sym"] for q in (prev or {}).get("picks") or []} | {q["sym"] for q in (prev or {}).get("cautions") or []}
     picks = sorted(r.get("picks") or [], key=lambda p: ORDER.get(p.get("rating"), 9))
+    if prev:
+        picks = [dict(p, __new=p["sym"] not in prev_syms) for p in picks]
+    n_new = sum(1 for p in picks if p.get("__new"))
+    n_pos = len({p.get("position") for p in picks if p.get("position")})
+    cover = f'코인 {len(picks)}개' + (f' · 지난 리포트에 없던 코인 {n_new}개' if prev else "") + (f' · 분야 {n_pos}곳' if n_pos else "")
     stats = ""
     if m.get("btc"):
         stats += (f'<div class="stat"><b>비트코인</b><div class="v num">{won_short(m["btc"]["price"])}</div>'
                   f'<div class="small num {cls(m["btc"].get("chg"))}">{pct(m["btc"].get("chg"))} 24h</div></div>')
     if m.get("fng"):
         f = m["fng"]
-        prev = f" · 전일 {f['prev']}" if f.get("prev") is not None else ""
+        fprev = f" · 전일 {f['prev']}" if f.get("prev") is not None else ""
         stats += (f'<div class="stat"><b>공포탐욕</b><div class="v num">{e(f.get("value"))}</div>'
-                  f'<div class="small">{e(f.get("label", ""))}{prev}</div></div>')
+                  f'<div class="small">{e(f.get("label", ""))}{fprev}</div></div>')
     watch = "".join(f"<li>{e(w)}</li>" for w in m.get("watch") or [])
     strong = [p for p in picks if p.get("rating") in ("강력관심", "관심")]
     watch_picks = [p for p in picks if p.get("rating") not in ("강력관심", "관심")]
@@ -451,6 +465,8 @@ def report_page(r, site, archive, is_index):
         coins = ", ".join(n.get("coins") or []) or "시장 전체"
         tone = n.get("tone") or "중립"
         cat = f'<span class="cat">{e(n["category"])}</span>' if n.get("category") else ""
+        if n.get("new"):
+            cat = '<span class="newchip" style="margin:0 4px 0 0">새 소식</span>' + cat
         body = ""
         if n.get("summary"):
             body += f'<div class="small">{e(n["summary"])}</div>'
@@ -486,6 +502,7 @@ def report_page(r, site, archive, is_index):
 </header>
 {old_notice}
 {f'<section class="section"><div class="stats">{stats}</div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">{e(m.get("summary", ""))}</p>{f"<ul class=plain small>{watch}</ul>" if watch else ""}</div></section>' if (stats or m.get("summary")) else ""}
+<p class="cover">이번 리포트: {cover}</p>
 <section class="section"><h2>운용부 · 관심 코인 {len(strong)}개</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards">{cards}</div></section>
 {f'<section class="section"><h2>지켜볼 코인 {len(watch_picks)}개</h2><p class="legend">눌러서 펼치면 전체 분석을 볼 수 있어요.</p><div class="cards">{folded}</div></section>' if watch_picks else ""}
 {f'<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list">{cautions}</div></section>' if cautions else ""}
@@ -697,9 +714,11 @@ def main():
     newest = sorted(reports, key=lambda r: r["ts"], reverse=True)
     archive = [{"id": r["__id"], "ts": r["ts"]} for r in newest]
     out = os.path.join(ROOT, "public")
-    for r in newest:
-        write(os.path.join(out, "r", r["__id"] + ".html"), report_page(r, site, archive, is_index=False))
-    write(os.path.join(out, "index.html"), report_page(newest[0], site, archive, is_index=True))
+    for i, r in enumerate(newest):
+        prev = newest[i + 1] if i + 1 < len(newest) else None
+        write(os.path.join(out, "r", r["__id"] + ".html"), report_page(r, site, archive, is_index=False, prev=prev))
+    write(os.path.join(out, "index.html"),
+          report_page(newest[0], site, archive, is_index=True, prev=newest[1] if len(newest) > 1 else None))
     write(os.path.join(out, "track.html"), track_page(site, scored))
     write(os.path.join(out, "coin", "index.html"), coins_index(site, comments))
     for sym, entries in comments.items():

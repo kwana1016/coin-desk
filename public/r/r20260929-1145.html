@@ -130,6 +130,9 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
 .cat{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin-right:4px;color:var(--muted)}
 .impact{font-size:13px;margin-top:2px}.impact b{color:var(--accent);font-weight:600}
 .priced{font-size:12px;color:var(--muted)}
+.newchip{display:inline-block;font-size:11px;font-weight:700;color:var(--strong);background:var(--strong-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.since{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:6px 10px}.since b{color:var(--accent);font-weight:600;margin-right:4px}
+.cover{font-size:13px;color:var(--muted);margin:0}
 .more>summary{font-size:14px;padding:10px 0}
 @media (max-width:480px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
@@ -143,10 +146,12 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
 </header>
 <div class="notice">지난 리포트예요 (9/29(화) 11:53). <a href="../">최신 리포트 보기</a></div>
 <section class="section"><div class="stats"><div class="stat"><b>비트코인</b><div class="v num">1억 1,279만원</div><div class="small num down">-0.6% 24h</div></div><div class="stat"><b>공포탐욕</b><div class="v num">74</div><div class="small">Greed · 전일 70</div></div></div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">비트코인은 1억1,279만원(-0.6%)으로 5주째 1억1천만~1억1,760만원 박스 안에 있어요. 주간 ETF 유입은 2025년 10월 이후 최대였지만, 미 10년물 금리 5.23%와 유가 105달러가 위험자산을 누르고 있어요. 공포탐욕은 74(탐욕)인데 알트는 오늘 대부분 -4~5%라 체감은 더 약해요.</p><ul class=plain small><li>미 10년물 금리 5.25% 돌파 여부</li><li>비트겟 해커 자금 이동 (XRP·ETH 매도 압력)</li><li>비트코인 1억1,054만원(지난주 저점) 지지</li></ul></div></section>
+<p class="cover">이번 리포트: 코인 5개</p>
 <section class="section"><h2>운용부 · 관심 코인 2개</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards"><article class="card">
   <div class="card-top"><div><div class="coin"><a href="../coin/LINK.html">체인링크<small>LINK</small></a></div>
   <div class="price num">20,470원 <span class="down">-2.3% 24h</span></div></div>
   <div class="rbox"><span class="rating r-관심">관심</span><span class="stars" role="img" aria-label="별 4개 (5점 만점)">★★★★<span class="off">☆</span></span></div></div>
+  
   <p class="comment">스위프트와 손잡고 은행들의 &#x27;토큰화 예금 네트워크&#x27; 연결을 지원한다는 소식이 오늘 나왔어요. 기관 자산을 체인으로 잇는 인프라라는 스토리에 딱 맞는 재료예요. 이번 주 21,420원까지 올랐다가 20,470원으로 밀려 있어서, 뉴스가 가격에 크게 반영되진 않았어요.</p>
   
   <ul class="plain small"><li>최근 4주 중 3주 상승 (4주 +13.7%, 1주 +7.7%)</li><li>지지선: 지난주 종가 19,000원</li><li>52주 고점 33,850원 대비 -40% 구간</li></ul>
@@ -158,6 +163,7 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
   <div class="card-top"><div><div class="coin"><a href="../coin/SEI.html">세이<small>SEI</small></a></div>
   <div class="price num">101원 <span class="down">-4.7% 24h</span></div></div>
   <div class="rbox"><span class="rating r-관심">관심</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+  
   <p class="comment">메인넷 3년 만에 26억 건을 처리했고 20만 TPS 업그레이드를 추진한다는 소식이 두 매체에서 나왔어요. 가격은 4주 동안 +50% 오른 뒤 이번 주 고점 118원에서 101원까지 식었어요. 이번 주 저점 99.4원에 닿아 있어서, 상승 추세 안의 눌림 구간으로 볼 수 있어요.</p>
   
   <ul class="plain small"><li>4주 +49.9% 상승 후 첫 조정</li><li>손익비 2.8 (1차 목표 118원 = 이번 주 고점)</li><li>업그레이드 로드맵 뉴스 2곳 보도</li></ul>
@@ -170,6 +176,7 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
   <div class="card-top"><div><div class="coin"><a href="../coin/BTC.html">비트코인<small>BTC</small></a></div>
   <div class="price num">112,793,000원 <span class="down">-0.6% 24h</span></div></div>
   <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+  
   <p class="comment">주간 ETF 유입이 24억 달러로 2025년 10월 이후 가장 컸고, 스트래티지도 1,665개를 더 샀어요. 반면 미 10년물 금리가 5.23%로 2007년 이후 최고 근처이고 유가도 105달러라 위험자산에 부담이에요. 가격은 5주째 1억1천만~1억1,760만 원 박스 안이라 방향이 정해지지 않았어요.</p>
   
   <ul class="plain small"><li>주봉: 박스 1억1,054만 ~ 1억1,760만원</li><li>4주 +3.1%, 1주 -1.5%</li><li>공포탐욕 74(탐욕)인데 가격은 박스 중간</li></ul>
@@ -181,6 +188,7 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
   <div class="card-top"><div><div class="coin"><a href="../coin/NEAR.html">니어프로토콜<small>NEAR</small></a></div>
   <div class="price num">6,225원 <span class="down">-5.0% 24h</span></div></div>
   <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
+  
   <p class="comment">NEAR Intents가 비트겟 해커와 연결된 5천만 달러를 막았다는 소식은 신뢰도 측면에서 좋은 뉴스예요. 다만 4주 동안 +88% 급등한 뒤 이번 주 -15%로 첫 큰 조정이 나왔어요. 6,200원 지지를 확인하기 전까지는 기다리는 편이 나아요.</p>
   
   <ul class="plain small"><li>4주 +87.7% 급등 후 1주 -14.6%</li><li>이번 주 저점 6,200원 = 현재가 바로 아래</li><li>52주 고점(7,550원) 대비 -18%</li></ul>
@@ -192,6 +200,7 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
   <div class="card-top"><div><div class="coin"><a href="../coin/ONDO.html">온도파이낸스<small>ONDO</small></a></div>
   <div class="price num">673원 <span class="down">-4.9% 24h</span></div></div>
   <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
+  
   <p class="comment">바이비트의 프랭클린템플턴 토큰화 펀드 담보 채택, 씨티·코인베이스 스테이블코인 협업처럼 RWA 쪽 소식은 계속 나오고 있어요. 하지만 가격은 이번 주 824원에서 673원으로 -18% 밀렸고, 24시간 거래대금이 1,664억 원으로 커서 매도가 활발해요.</p>
   
   <ul class="plain small"><li>1주 -15.4% (4주로는 +27%)</li><li>이번 주 저점 669원 = 현재가 바로 아래</li><li>24h 거래대금 1,664억원 (업비트 상위)</li></ul>
