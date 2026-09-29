@@ -202,7 +202,132 @@ def ladder(lv, price):
             f'<div class="cur" style="left:{P(price)}"></div></div><div class="levels">{rows}</div>')
 
 
-def card(p):
+EXTRA_CSS = """
+.nav{display:flex;gap:6px;flex-wrap:wrap}
+.nav a{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--paper)}
+.nav a[aria-current]{color:var(--paper);background:var(--accent);border-color:var(--accent)}
+.coin a{color:inherit;text-decoration:none}.coin a:hover{text-decoration:underline}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.tile b{display:block;font-size:12px;font-weight:500;color:var(--muted)}.tile .v{font-size:18px;font-weight:700}
+.tile .s{font-size:12px;color:var(--muted)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:grid;grid-template-columns:86px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13px}
+.bar-track{height:10px;background:var(--neutral-soft);border-radius:0 4px 4px 0;position:relative}
+.bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:0 4px 4px 0}
+.bar-half{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--muted);opacity:.5}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .zero{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.chart .axis{fill:var(--muted);font-size:13px;font-family:var(--font-num)}
+.chart .line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .dot{fill:var(--accent);stroke:var(--paper);stroke-width:2}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .xh{stroke:var(--muted);stroke-width:1;opacity:0}
+.chart .hl{fill:var(--accent);stroke:var(--paper);stroke-width:2;opacity:0}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;line-height:1.4;padding:6px 8px;border-radius:8px;white-space:nowrap;opacity:0;transform:translate(-50%,-100%);transition:opacity .1s}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);font-size:14px}
+.coins-tbl a{color:var(--ink);font-weight:600;text-decoration:none}.coins-tbl a:hover{text-decoration:underline}
+.timeline{display:flex;flex-direction:column;gap:10px}
+.tl{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.tl-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.res{font-size:13px}
+@media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
+@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+"""
+
+CHART_JS = """
+<script>
+document.querySelectorAll('.chart[data-points]').forEach(function(box){
+  var pts=JSON.parse(box.getAttribute('data-points')); var svg=box.querySelector('svg'); var tip=box.querySelector('.tip');
+  var xh=svg.querySelector('.xh'), hl=svg.querySelector('.hl'); var vb=svg.viewBox.baseVal;
+  function show(i){ var p=pts[i]; var r=svg.getBoundingClientRect(); var sx=r.width/vb.width, sy=r.height/vb.height;
+    xh.setAttribute('x1',p.x);xh.setAttribute('x2',p.x);xh.style.opacity=1; hl.setAttribute('cx',p.x);hl.setAttribute('cy',p.y);hl.style.opacity=1;
+    tip.textContent=p.t; var bw=box.clientWidth, tw=tip.offsetWidth, left=p.x*sx;
+    left=Math.max(tw/2, Math.min(bw-tw/2, left)); tip.style.left=left+'px'; tip.style.top=(p.y*sy-10)+'px'; tip.style.opacity=1; }
+  function hide(){ xh.style.opacity=0; hl.style.opacity=0; tip.style.opacity=0; }
+  function near(ev){ var r=svg.getBoundingClientRect(); var cx=((ev.touches?ev.touches[0].clientX:ev.clientX)-r.left)/r.width*vb.width;
+    var b=0,d=1e9; pts.forEach(function(p,i){var k=Math.abs(p.x-cx); if(k<d){d=k;b=i;}}); return b; }
+  var hit=svg.querySelector('.hit'); hit.addEventListener('mousemove',function(e){show(near(e));}); hit.addEventListener('mouseleave',hide);
+  hit.addEventListener('touchstart',function(e){show(near(e));},{passive:true}); hit.addEventListener('touchmove',function(e){show(near(e));},{passive:true});
+});
+</script>
+"""
+
+
+def line_chart(points, fmt_y, zero=False, label=""):
+    """points: [(x_value(ms), y_value, tooltip)] 시간 순. 단일 계열 선 차트 (SVG + 호버 툴팁)."""
+    if len(points) < 2:
+        return ""
+    W, H, L, R, T, B = 420, 210, 62, 10, 14, 26
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    lo, hi = min(ys), max(ys)
+    if zero:
+        lo, hi = min(lo, 0), max(hi, 0)
+    pad = (hi - lo) * 0.08 or abs(hi) * 0.05 or 1
+    lo, hi = lo - pad, hi + pad
+    x0, x1 = min(xs), max(xs)
+
+    def X(v):
+        return L + (v - x0) / ((x1 - x0) or 1) * (W - L - R)
+
+    def Y(v):
+        return T + (hi - v) / ((hi - lo) or 1) * (H - T - B)
+
+    grid = ""
+    for i in range(4):
+        v = lo + (hi - lo) * i / 3
+        y = Y(v)
+        grid += f'<line class="grid" x1="{L}" x2="{W - R}" y1="{y:.1f}" y2="{y:.1f}"/><text class="axis" x="{L - 6}" y="{y + 4:.1f}" text-anchor="end">{e(fmt_y(v))}</text>'
+    if zero and lo < 0 < hi:
+        grid += f'<line class="zero" x1="{L}" x2="{W - R}" y1="{Y(0):.1f}" y2="{Y(0):.1f}"/>'
+    xl = (f'<text class="axis" x="{L}" y="{H - 6}" text-anchor="start">{e(kst_date(x0))}</text>'
+          f'<text class="axis" x="{W - R}" y="{H - 6}" text-anchor="end">{e(kst_date(x1))}</text>')
+    path = " ".join(f"{'M' if i == 0 else 'L'}{X(x):.1f},{Y(y):.1f}" for i, (x, y, _) in enumerate(points))
+    dots = "".join(f'<circle class="dot" cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4"/>' for x, y, _ in points) if len(points) <= 40 else ""
+    data = json.dumps([{"x": round(X(x), 1), "y": round(Y(y), 1), "t": t} for x, y, t in points], ensure_ascii=False)
+    return (f'<div class="chart" data-points="{e(data)}"><svg viewBox="0 0 {W} {H}" role="img" aria-label="{e(label)}">{grid}{xl}'
+            f'<path class="line" d="{path}"/>{dots}<line class="xh" x1="0" x2="0" y1="{T}" y2="{H - B}"/>'
+            f'<circle class="hl" cx="0" cy="0" r="5"/><rect class="hit" x="{L}" y="0" width="{W - L - R}" height="{H}"/></svg>'
+            f'<div class="tip"></div></div>')
+
+
+def kst_date(ms):
+    d = datetime.fromtimestamp(ms / 1000, KST)
+    return f"{d.month}/{d.day}"
+
+
+def shell(site, title, desc, body, depth, active, charts=False):
+    base = "../" * depth
+    name = site.get("title", "AI 코인 리서치센터")
+    nav = "".join(
+        f'<a href="{base}{href}"{" aria-current=page" if key == active else ""}>{label}</a>'
+        for key, href, label in (("latest", "", "최신 리포트"), ("track", "track.html", "성적표"), ("coins", "coin/", "코인별")))
+    disclosure = f"<div>{e(site['disclosure'])}</div>" if site.get("disclosure") else ""
+    full_title = name if title == name else f"{title} · {name}"
+    return f"""<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{e(full_title)}</title>
+<meta name="description" content="{e(desc)}">
+<meta property="og:title" content="{e(full_title)}">
+<meta property="og:description" content="{e(desc)}">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>{CSS}{EXTRA_CSS}</style></head>
+<body><div class="wrap">
+<nav class="nav" aria-label="사이트 메뉴">{nav}</nav>
+{body}
+<footer>
+  <div>AI가 공개 뉴스와 업비트 시세로 자동 작성한 참고용 코멘트예요. 투자 권유가 아니며, 매매 판단과 책임은 본인에게 있어요.</div>
+  {disclosure}
+</footer>
+</div>{CHART_JS if charts else ""}</body></html>"""
+
+
+def card(p, base):
     reasons = "".join(f"<li>{e(r)}</li>" for r in p.get("reasons") or [])
     counter = ""
     if p.get("counter"):
@@ -212,10 +337,11 @@ def card(p):
     if p.get("checklist"):
         check = "<details><summary>사기 전 체크리스트</summary><ul>" + "".join(
             f"<li>{e(x)}</li>" for x in p["checklist"]) + "</ul></details>"
+    k = coin_stars(p)
     return f"""<article class="card">
-  <div class="card-top"><div><div class="coin">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></div>
+  <div class="card-top"><div><div class="coin"><a href="{base}coin/{e(p["sym"])}.html">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></a></div>
   <div class="price num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))} 24h</span></div></div>
-  <div class="rbox"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>{star_html(coin_stars(p), f"별 {coin_stars(p)}개 (5점 만점)")}</div></div>
+  <div class="rbox"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>{star_html(k, f"별 {k}개 (5점 만점)")}</div></div>
   {f'<p class="comment">{e(p["comment"])}</p>' if p.get("comment") else ""}
   {f'<ul class="plain small">{reasons}</ul>' if reasons else ""}
   {ladder(p.get("levels"), p.get("price"))}
@@ -223,10 +349,9 @@ def card(p):
 </article>"""
 
 
-def page(r, site, archive, is_index):
+def report_page(r, site, archive, is_index):
     m = r.get("market") or {}
-    title = site.get("title", "AI 코인 리서치센터")
-    desc = m.get("headline") or "AI가 뉴스와 시세를 보고 쓰는 코인 코멘트"
+    base = "" if is_index else "../"
     picks = sorted(r.get("picks") or [], key=lambda p: ORDER.get(p.get("rating"), 9))
     stats = ""
     if m.get("btc"):
@@ -238,16 +363,16 @@ def page(r, site, archive, is_index):
         stats += (f'<div class="stat"><b>공포탐욕</b><div class="v num">{e(f.get("value"))}</div>'
                   f'<div class="small">{e(f.get("label", ""))}{prev}</div></div>')
     watch = "".join(f"<li>{e(w)}</li>" for w in m.get("watch") or [])
-    cards = "".join(card(p) for p in picks) or '<div class="panel small muted">이번 리포트에는 코멘트할 관심 코인이 없어요.</div>'
+    cards = "".join(card(p, base) for p in picks) or '<div class="panel small muted">이번 리포트에는 코멘트할 관심 코인이 없어요.</div>'
     cautions = ""
     for c in r.get("cautions") or []:
         pr = f' <span class="num small">{won(c.get("price"))}</span> <span class="num small {cls(c.get("chg24"))}">{pct(c.get("chg24"))}</span>' if c.get("price") is not None else ""
-        cautions += (f'<div class="item"><div class="nstar">{star_html(1, "주의, 별 1개")}<small>주의</small></div><div><div><b>{e(c.get("name") or c["sym"])}</b>{pr}</div>'
+        cautions += (f'<div class="item"><div class="nstar">{star_html(1, "주의, 별 1개")}<small>주의</small></div><div>'
+                     f'<div><b><a href="{base}coin/{e(c["sym"])}.html">{e(c.get("name") or c["sym"])}</a></b>{pr}</div>'
                      f'<div class="small">{e(c.get("reason"))}</div></div></div>')
     news = ""
     for n in r.get("news") or []:
         s = n.get("score")
-        sc = "hi" if (s or 0) >= 7 else ("mid" if (s or 0) >= 5 else "")
         url = n.get("url") or ""
         t = f'<a href="{e(url)}" target="_blank" rel="noopener">{e(n.get("title"))}</a>' if url.startswith("http") else e(n.get("title"))
         coins = ", ".join(n.get("coins") or []) or "시장 전체"
@@ -258,37 +383,17 @@ def page(r, site, archive, is_index):
                  f'<div class="meta"><span class="tone-{e(tone)}">{e(tone)}</span> · {e(coins)} · {e(n.get("source", ""))}'
                  f'{" · " + e(n["time"]) if n.get("time") else ""}</div>{note}</div></div>')
     tk = r.get("track") or {}
-    track_rows = "".join(
-        f'<tr><td>{e(x.get("sym"))}</td><td>{e(x.get("rating"))}</td><td>{e(x.get("from", "-"))}</td>'
-        f'<td class="num {cls(x.get("ret"))}">{pct(x.get("ret"))}</td><td class="num {cls(x.get("vs_btc"))}">{pct(x.get("vs_btc"))}</td>'
-        f'<td class="{"up" if x.get("hit") else "down"}">{"적중" if x.get("hit") else "빗나감"}</td></tr>'
-        for x in tk.get("items") or [])
-    lessons = "".join(f"<li>교훈: {e(x)}</li>" for x in r.get("lessons") or [])
     track = ""
-    if tk.get("summary") or track_rows:
-        table = (f'<div class="tbl"><table><thead><tr><th>코인</th><th>당시 등급</th><th>코멘트 시점</th><th>수익률</th>'
-                 f'<th>BTC 대비</th><th>결과</th></tr></thead><tbody>{track_rows}</tbody></table></div>') if track_rows else ""
-        track = (f'<section class="panel section"><h2>회고부 · 지난 코멘트 성적</h2><p class="small" style="margin:0">{e(tk.get("summary", ""))}</p>'
-                 f'{table}{f"<ul class=plain small>{lessons}</ul>" if lessons else ""}</section>')
-    base = "" if is_index else "../"
+    if tk.get("summary") or tk.get("items"):
+        track = (f'<section class="panel section"><h2>회고부 · 이번에 채점한 코멘트</h2><p class="small" style="margin:0">{e(tk.get("summary", ""))}</p>'
+                 f'{track_table(tk.get("items") or [], base)}<a class="small" href="{base}track.html">전체 성적표 보기</a></section>')
     arch = "".join(
         f'<a href="{base}r/{e(a["id"])}.html"{" aria-current=page" if a["id"] == r["__id"] else ""}>{e(kst(a["ts"]))}</a>'
         for a in archive[:30])
     old_notice = "" if is_index else f'<div class="notice">지난 리포트예요 ({e(kst(r["ts"]))}). <a href="../">최신 리포트 보기</a></div>'
-    disclosure = f"<div>{e(site['disclosure'])}</div>" if site.get("disclosure") else ""
     regime = f'<span class="chip regime-{e(m.get("regime"))}">{e(m.get("regime"))}</span>' if m.get("regime") else ""
-    return f"""<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(title)}</title>
-<meta name="description" content="{e(desc)}">
-<meta property="og:title" content="{e(title)} · {e(kst(r['ts']))}">
-<meta property="og:description" content="{e(desc)}">
-<meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<style>{CSS}</style></head>
-<body><div class="wrap">
-<header class="head">
+    title = site.get("title", "AI 코인 리서치센터")
+    body = f"""<header class="head">
   <div class="head-top"><div><div class="eyebrow">{e(title)} · 코인 코멘트</div><h1>{e(m.get("headline") or title)}</h1></div>{regime}</div>
   <div class="small muted">{e(kst(r["ts"]))} 작성{" · " + e(r["sources"]) if r.get("sources") else ""}</div>
 </header>
@@ -298,12 +403,189 @@ def page(r, site, archive, is_index):
 {f'<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list">{cautions}</div></section>' if cautions else ""}
 {f'<section class="panel section"><h2>뉴스부 · 중요도 순</h2><div class="list">{news}</div></section>' if news else ""}
 {track}
-{f'<section class="section"><h2>지난 리포트</h2><div class="archive">{arch}</div></section>' if len(archive) > 1 else ""}
-<footer>
-  <div>AI가 공개 뉴스와 업비트 시세로 자동 작성한 참고용 코멘트예요. 투자 권유가 아니며, 매매 판단과 책임은 본인에게 있어요.</div>
-  {disclosure}
-</footer>
-</div></body></html>"""
+{f'<section class="section"><h2>지난 리포트</h2><div class="archive">{arch}</div></section>' if len(archive) > 1 else ""}"""
+    desc = m.get("headline") or "AI가 뉴스와 시세를 보고 쓰는 코인 코멘트"
+    return shell(site, title if is_index else f"{kst(r['ts'])} 리포트", desc, body, 0 if is_index else 1,
+                 "latest" if is_index else "")
+
+
+def track_table(items, base):
+    if not items:
+        return ""
+    rows = ""
+    for x in items:
+        stars = star_html(x["stars"], "별 %d개" % x["stars"]) if x.get("stars") else "-"
+        result = '<td class="up">적중</td>' if x.get("hit") else '<td class="down">빗나감</td>'
+        rows += (f'<tr><td><a href="{base}coin/{e(x["sym"])}.html">{e(x["sym"])}</a></td><td>{e(x.get("rating"))}</td>'
+                 f'<td>{stars}</td><td>{e(x.get("from", "-"))}</td><td class="num {cls(x.get("ret"))}">{pct(x.get("ret"))}</td>'
+                 f'<td class="num {cls(x.get("vs_btc"))}">{pct(x.get("vs_btc"))}</td>{result}</tr>')
+    return (f'<div class="tbl coins-tbl"><table><thead><tr><th>코인</th><th>등급</th><th>별점</th><th>코멘트 시점</th><th>24h 수익률</th>'
+            f'<th>BTC 대비</th><th>결과</th></tr></thead><tbody>{rows}</tbody></table></div>')
+
+
+# ── 데이터 모으기 ─────────────────────────────────
+def collect(reports_asc):
+    """코인별 코멘트 기록과 채점 결과를 리포트들에서 모은다."""
+    by_id = {r["__id"]: r for r in reports_asc}
+    comments = {}  # sym → [entry]
+    for r in reports_asc:
+        for p in r.get("picks") or []:
+            comments.setdefault(p["sym"], []).append({
+                "id": r["__id"], "ts": r["ts"], "name": p.get("name") or p["sym"], "rating": p.get("rating"),
+                "stars": coin_stars(p), "price": p.get("price"), "chg24": p.get("chg24"), "comment": p.get("comment"),
+                "reasons": p.get("reasons") or [], "levels": p.get("levels"), "counter": p.get("counter")})
+        for c in r.get("cautions") or []:
+            comments.setdefault(c["sym"], []).append({
+                "id": r["__id"], "ts": r["ts"], "name": c.get("name") or c["sym"], "rating": "주의", "stars": 1,
+                "price": c.get("price"), "chg24": c.get("chg24"), "comment": c.get("reason"), "reasons": [],
+                "levels": None, "counter": None})
+    scored, seen = [], set()
+    for r in reports_asc:
+        for x in (r.get("track") or {}).get("items") or []:
+            if not x.get("sym") or x.get("ret") is None:
+                continue
+            key = (x["sym"], x.get("from_id") or x.get("from"))
+            if key in seen:
+                continue
+            seen.add(key)
+            item = dict(x)
+            item["scored_ts"] = r["ts"]
+            if not item.get("stars"):
+                src = by_id.get(x.get("from_id") or "")
+                hit = None
+                if src:
+                    for p in (src.get("picks") or []):
+                        if p["sym"] == x["sym"]:
+                            hit = coin_stars(p)
+                    if hit is None and any(c["sym"] == x["sym"] for c in src.get("cautions") or []):
+                        hit = 1
+                item["stars"] = hit or RSTAR.get(x.get("rating"), 3)
+            scored.append(item)
+            if item.get("from_id") and item["sym"] in comments:
+                for c in comments[item["sym"]]:
+                    if c["id"] == item["from_id"]:
+                        c["result"] = item
+    return comments, scored
+
+
+def agg(items):
+    n = len(items)
+    if not n:
+        return None
+    hits = sum(1 for x in items if x.get("hit"))
+    avg = sum(float(x.get("vs_btc") or 0) for x in items) / n
+    return {"n": n, "hits": hits, "rate": hits / n, "avg": avg}
+
+
+# ── 성적표 ───────────────────────────────────────
+def track_page(site, scored):
+    a = agg(scored)
+    if not a:
+        body = """<header class="head"><div class="eyebrow">회고부</div><h1>코멘트 성적표</h1>
+<div class="small muted">관심·주의 코멘트가 24시간 뒤 비트코인보다 잘했는지 채점해 모아요.</div></header>
+<div class="empty">아직 채점된 코멘트가 없어요.<br>코멘트를 쓰고 하루가 지나면 다음 실행 때 첫 결과가 올라와요.</div>"""
+        return shell(site, "코멘트 성적표", "AI 코인 코멘트의 적중률", body, 0, "track")
+    tiles = (f'<div class="tile"><b>채점한 코멘트</b><div class="v num">{a["n"]}건</div><div class="s">적중 {a["hits"]}건</div></div>'
+             f'<div class="tile"><b>적중률</b><div class="v num">{a["rate"] * 100:.0f}%</div><div class="s">50%가 동전 던지기 수준</div></div>'
+             f'<div class="tile"><b>BTC 대비 평균</b><div class="v num {cls(a["avg"])}">{pct(a["avg"])}</div><div class="s">24시간 기준</div></div>')
+    bars = ""
+    for k in (5, 4, 3, 2, 1):
+        g = agg([x for x in scored if x.get("stars") == k])
+        label = star_html(k, f"별 {k}개")
+        if not g:
+            bars += f'<div class="bar-row"><span>{label}</span><div class="bar-track"><span class="bar-half"></span></div><span class="muted small">표본 없음</span></div>'
+            continue
+        bars += (f'<div class="bar-row"><span>{label}</span><div class="bar-track" role="img" aria-label="적중률 {g["rate"] * 100:.0f}%">'
+                 f'<div class="bar-fill" style="width:{g["rate"] * 100:.1f}%"></div><span class="bar-half"></span></div>'
+                 f'<span class="num">{g["rate"] * 100:.0f}% <span class="muted">({g["hits"]}/{g["n"]})</span></span></div>')
+    batches = {}
+    for x in scored:
+        batches.setdefault(x["scored_ts"], []).append(x)
+    pts, cum = [], 0.0
+    for ts in sorted(batches):
+        grp = batches[ts]
+        add = sum(float(x.get("vs_btc") or 0) for x in grp)
+        cum += add
+        pts.append((ts, cum * 100, f'{kst(ts)} · {len(grp)}건 채점, 이번 {add * 100:+.1f}%p → 누적 {cum * 100:+.1f}%p'))
+    chart = line_chart(pts, lambda v: f"{v:+.0f}%p", zero=True, label="BTC 대비 초과수익 누적 추이") if len(pts) >= 2 else ""
+    recent = sorted(scored, key=lambda x: x["scored_ts"], reverse=True)[:30]
+    body = f"""<header class="head"><div class="eyebrow">회고부</div><h1>코멘트 성적표</h1>
+<div class="small muted">관심·주의 코멘트가 24시간 뒤 비트코인보다 잘했는지 채점해 모아요. 관심류는 BTC보다 더 오르면, 주의는 BTC보다 못하면 적중이에요.</div></header>
+<section class="tiles">{tiles}</section>
+<section class="panel section"><h2>별점별 적중률</h2><div class="bars">{bars}</div>
+<p class="legend">가운데 세로선이 50%예요. 별이 많을수록 적중률도 높아야 별점을 믿을 수 있어요. 표본이 적을 때는 참고만 하세요.</p></section>
+{f'<section class="panel section"><h2>BTC 대비 초과수익 누적</h2>{chart}<p class="legend">채점된 코멘트의 BTC 대비 수익률(%p)을 순서대로 더한 값이에요. 오른쪽 위로 갈수록 코멘트가 시장보다 잘한 거예요.</p></section>' if chart else ""}
+<section class="panel section"><h2>최근 채점 {len(recent)}건</h2>{track_table(recent, "")}</section>"""
+    desc = f"채점 {a['n']}건 · 적중률 {a['rate'] * 100:.0f}% · BTC 대비 평균 {pct(a['avg'])}"
+    return shell(site, "코멘트 성적표", desc, body, 0, "track", charts=bool(chart))
+
+
+# ── 코인별 ───────────────────────────────────────
+def coin_page(site, sym, entries):
+    entries = sorted(entries, key=lambda c: c["ts"])
+    last = entries[-1]
+    name = last["name"]
+    done = [c["result"] for c in entries if c.get("result")]
+    a = agg(done)
+    pts = [(c["ts"], float(c["price"]), f'{kst(c["ts"])} · {won(c["price"])} · {c["rating"]} ★{c["stars"]}')
+           for c in entries if c.get("price") is not None]
+    chart = line_chart(pts, lambda v: won(v).replace("원", ""), label=f"{name} 코멘트 시점 가격") if len(pts) >= 2 else ""
+    tl = ""
+    for c in reversed(entries):
+        res = ""
+        if c.get("result"):
+            x = c["result"]
+            verdict = '<b class="up">적중</b>' if x.get("hit") else '<b class="down">빗나감</b>'
+            res = (f'<div class="res">24시간 뒤: <span class="num {cls(x.get("ret"))}">{pct(x.get("ret"))}</span> · BTC 대비 '
+                   f'<span class="num {cls(x.get("vs_btc"))}">{pct(x.get("vs_btc"))}</span> · {verdict}</div>')
+        comment = f'<p class="comment">{e(c["comment"])}</p>' if c.get("comment") else ""
+        reasons = "".join(f"<li>{e(r)}</li>" for r in c.get("reasons") or [])
+        reasons = f'<ul class="plain small">{reasons}</ul>' if reasons else ""
+        stars = star_html(c["stars"], "별 %d개" % c["stars"])
+        tl += (f'<div class="tl"><div class="tl-top"><a class="small" href="../r/{e(c["id"])}.html">{e(kst(c["ts"]))}</a>'
+               f'<span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-{e(c["rating"])}">{e(c["rating"])}</span>{stars}</span></div>'
+               f'<div class="num small">{won(c.get("price"))} <span class="{cls(c.get("chg24"))}">{pct(c.get("chg24"))} 24h</span></div>'
+               f'{comment}{reasons}{res}</div>')
+    rate = "%.0f%%" % (a["rate"] * 100) if a else "-"
+    rate_sub = "%d/%d 적중" % (a["hits"], a["n"]) if a else "아직 채점 전"
+    last_stars = star_html(last["stars"], "별 %d개" % last["stars"])
+    tiles = (f'<div class="tile"><b>최근 별점</b><div class="v">{last_stars}</div><div class="s">{e(last["rating"])} · {e(kst(last["ts"]))}</div></div>'
+             f'<div class="tile"><b>코멘트 횟수</b><div class="v num">{len(entries)}번</div><div class="s">처음 {e(kst(entries[0]["ts"]))}</div></div>'
+             f'<div class="tile"><b>채점 결과</b><div class="v num">{rate}</div><div class="s">{rate_sub}</div></div>')
+    body = f"""<header class="head"><div class="eyebrow">코인별 기록</div><h1>{e(name)} <span class="muted num" style="font-size:15px">{e(sym)}</span></h1>
+<div class="small muted">이 코인이 받은 코멘트와 별점, 24시간 뒤 결과를 시간순으로 모았어요.</div></header>
+<section class="tiles">{tiles}</section>
+{f'<section class="panel section"><h2>코멘트 시점 가격</h2>{chart}<p class="legend">점 하나가 코멘트 하나예요. 눌러서 그때의 등급과 별점을 볼 수 있어요.</p></section>' if chart else ""}
+<section class="section"><h2>코멘트 기록</h2><div class="timeline">{tl}</div></section>"""
+    desc = f"{name} 최근 코멘트: {last['rating']} ★{last['stars']} ({kst(last['ts'])})"
+    return shell(site, f"{name}({sym})", desc, body, 1, "coins", charts=bool(chart))
+
+
+def coins_index(site, comments):
+    rows = []
+    for sym, entries in comments.items():
+        last = max(entries, key=lambda c: c["ts"])
+        a = agg([c["result"] for c in entries if c.get("result")])
+        rows.append((last["ts"], sym, last, len(entries), a))
+    rows.sort(key=lambda t: (-t[0], -t[2]["stars"]))
+    trs = ""
+    for ts, sym, last, n, a in rows:
+        hit = "%.0f%% (%d/%d)" % (a["rate"] * 100, a["hits"], a["n"]) if a else "-"
+        stars = star_html(last["stars"], "별 %d개" % last["stars"])
+        trs += (f'<tr><td><a href="{e(sym)}.html">{e(last["name"])}</a> <span class="muted num">{e(sym)}</span></td>'
+                f'<td>{stars}</td><td>{e(last["rating"])}</td><td class="num">{n}번</td><td class="num">{hit}</td>'
+                f'<td class="num">{e(kst(ts))}</td></tr>')
+    body = f"""<header class="head"><div class="eyebrow">코인별 기록</div><h1>코멘트한 코인 {len(rows)}개</h1>
+<div class="small muted">코인 이름을 누르면 그 코인의 코멘트 기록과 결과를 볼 수 있어요. 최근 코멘트 순이에요.</div></header>
+<section class="panel"><div class="tbl coins-tbl"><table><thead><tr><th>코인</th><th>최근 별점</th><th>등급</th><th>코멘트</th><th>적중</th><th>최근</th></tr></thead>
+<tbody>{trs}</tbody></table></div></section>"""
+    return shell(site, "코인별 기록", "AI 코인 코멘트를 받은 코인 목록과 기록", body, 1, "coins")
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
 
 
 def main():
@@ -319,22 +601,27 @@ def main():
         r["__id"] = os.path.splitext(os.path.basename(path))[0]
         if isinstance(r.get("ts"), (int, float)):
             reports.append(r)
-    reports.sort(key=lambda r: r["ts"], reverse=True)
     if not reports:
         print("리포트 없음")
         return
-    archive = [{"id": r["__id"], "ts": r["ts"]} for r in reports]
+    reports.sort(key=lambda r: r["ts"])
+    comments, scored = collect(reports)
+    newest = sorted(reports, key=lambda r: r["ts"], reverse=True)
+    archive = [{"id": r["__id"], "ts": r["ts"]} for r in newest]
     out = os.path.join(ROOT, "public")
-    os.makedirs(os.path.join(out, "r"), exist_ok=True)
-    for r in reports:
-        with open(os.path.join(out, "r", r["__id"] + ".html"), "w", encoding="utf-8") as f:
-            f.write(page(r, site, archive, is_index=False))
-    with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
-        f.write(page(reports[0], site, archive, is_index=True))
-    latest = {k: v for k, v in reports[0].items() if k != "__id"}
+    for r in newest:
+        write(os.path.join(out, "r", r["__id"] + ".html"), report_page(r, site, archive, is_index=False))
+    write(os.path.join(out, "index.html"), report_page(newest[0], site, archive, is_index=True))
+    write(os.path.join(out, "track.html"), track_page(site, scored))
+    write(os.path.join(out, "coin", "index.html"), coins_index(site, comments))
+    for sym, entries in comments.items():
+        write(os.path.join(out, "coin", sym + ".html"), coin_page(site, sym, entries))
+    latest = {k: v for k, v in newest[0].items() if k != "__id"}
+    a = agg(scored)
     with open(os.path.join(out, "feed.json"), "w", encoding="utf-8") as f:
-        json.dump({"latest_id": reports[0]["__id"], "latest": latest, "archive": archive[:60]}, f, ensure_ascii=False)
-    print(f"완료: 리포트 {len(reports)}개 → public/")
+        json.dump({"latest_id": newest[0]["__id"], "latest": latest, "archive": archive[:60],
+                   "track": a, "coins": sorted(comments)}, f, ensure_ascii=False)
+    print(f"완료: 리포트 {len(reports)}개, 코인 {len(comments)}개, 채점 {len(scored)}건 → public/")
 
 
 if __name__ == "__main__":
