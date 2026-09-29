@@ -128,27 +128,6 @@ async function watchUpbit(env) {
   await env.DB.batch(stmts);
 }
 
-// 처음 한 번: public/seed 의 기존 리포트를 D1로 옮긴다 (JSON은 D1이 검사·압축, Worker는 문자열만 넘김)
-async function seedOnce(env) {
-  const done = await env.DB.prepare("SELECT v FROM kv WHERE k = 'seeded_v1'").first();
-  if (done) return;
-  const a = p => env.ASSETS.fetch(new Request("https://assets.local/seed/" + p));
-  const r = await a("index.json");
-  if (!r.ok) return;
-  const idx = await r.json();
-  const stmts = [];
-  for (const [table, ids] of [["reports", idx.reports || []], ["weekly", idx.weekly || []]]) {
-    for (const id of ids) {
-      if (!/^[\w-]+$/.test(id)) continue;
-      const f = await a(id + ".json");
-      if (!f.ok) continue;
-      const txt = await f.text();
-      stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO ${table} (id, ts, json) VALUES (?1, json_extract(?2, '$.ts'), json(?2))`).bind(id, txt));
-    }
-  }
-  stmts.push(env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('seeded_v1', ?1, ?2)").bind(String(stmts.length), Date.now()));
-  await env.DB.batch(stmts);
-}
 
 export default {
   async fetch(request, env) {
@@ -164,6 +143,6 @@ export default {
     return new Response(r.body, { status: ok ? 200 : 404, headers: h });
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(seedOnce(env).catch(e => console.error("seed", e)).then(() => watchUpbit(env)).catch(e => console.error("upbit", e)));
+    ctx.waitUntil(watchUpbit(env).catch(e => console.error("upbit", e)));
   },
 };

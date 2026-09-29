@@ -12,7 +12,7 @@ RATINGS = {"강력관심", "관심", "중립", "주의"}
 CATS = {"규제·정책", "상장·상폐", "해킹·보안", "제휴·채택", "기관·ETF", "기술·업그레이드", "토큰·공급", "거시", "시황"}
 PICK_FIELDS = ["sym", "name", "rating", "stars", "position", "what", "price", "chg24", "comment", "reasons",
                "metrics", "bull", "bear", "levels", "counter", "invalidation", "checklist"]
-NEWS_FIELDS = ["title", "url", "source", "time", "score", "tone", "category", "coins", "summary", "impact"]
+NEWS_FIELDS = ["title", "url", "source", "time", "pub_ts", "score", "tone", "category", "coins", "summary", "impact"]
 
 
 def main():
@@ -100,6 +100,12 @@ def main():
             E(f"뉴스 '{str(n.get('title'))[:20]}': 빠진 필드 {miss}")
         if n.get("category") not in CATS:
             E(f"뉴스 '{str(n.get('title'))[:20]}': 분류 '{n.get('category')}' 이상함")
+        pt = n.get("pub_ts")
+        if isinstance(pt, int) and isinstance(r.get("ts"), int):
+            if pt > r["ts"] + 600000:
+                E(f"뉴스 '{str(n.get('title'))[:20]}': pub_ts가 미래예요")
+            if r["ts"] - pt > 36 * 3600000 and not str(n.get("summary", "")).startswith("후속"):
+                E(f"뉴스 '{str(n.get('title'))[:20]}': 발행 36시간 넘은 기사예요")
         if not isinstance(n.get("new"), bool):
             W(f"뉴스 '{str(n.get('title'))[:20]}': new(true/false)가 없어요")
         cats.append(n.get("category"))
