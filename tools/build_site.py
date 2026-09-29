@@ -8,6 +8,7 @@
 import glob
 import html
 import json
+import math
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -61,12 +62,12 @@ def kst(ms):
 
 CSS = """
 :root{--bg:#eef1f4;--paper:#fff;--ink:#18202b;--muted:#5d6877;--line:#d9dee5;--accent:#23408e;--accent-soft:#e3e9f7;
---strong:#0e7a4f;--buy:#2459c8;--neutral:#6b7380;--warn:#b42318;--strong-soft:#e2f3eb;--buy-soft:#e4ecfb;--neutral-soft:#eceef1;--warn-soft:#fbe8e6;
+--strong:#0e7a4f;--buy:#2459c8;--neutral:#6b7380;--warn:#b42318;--strong-soft:#e2f3eb;--buy-soft:#e4ecfb;--neutral-soft:#eceef1;--warn-soft:#fbe8e6;--star:#c47f00;--star-off:#d5dae1;
 --font-body:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
 --font-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#12161c;--paper:#1a2029;--ink:#e7ebf0;--muted:#98a2b0;--line:#2b3340;--accent:#8fa9f0;
 --accent-soft:#222c40;--strong:#3fc38b;--buy:#79a2ff;--neutral:#9aa3af;--warn:#ff8a7e;--strong-soft:#173327;--buy-soft:#1c2842;
---neutral-soft:#232932;--warn-soft:#3a1f1d;color-scheme:dark}}
+--neutral-soft:#232932;--warn-soft:#3a1f1d;--star:#f2b640;--star-off:#3a4350;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6}
 .wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:flex;flex-direction:column;gap:18px}
@@ -115,6 +116,11 @@ details{font-size:14px}summary{cursor:pointer;color:var(--accent);font-weight:50
 .score.hi{background:var(--warn-soft);color:var(--warn)}.score.mid{background:var(--accent-soft);color:var(--accent)}
 .item a{color:var(--ink);text-decoration:none;font-weight:500}.item a:hover{text-decoration:underline}
 .meta{font-size:12px;color:var(--muted)}
+.stars{color:var(--star);font-size:15px;letter-spacing:1px;white-space:nowrap;line-height:1}.stars .off{color:var(--star-off)}
+.rbox{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.nstar{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}.nstar .stars{font-size:13px}
+.nstar small{font-family:var(--font-num);font-size:11px;color:var(--muted)}
+.legend{font-size:12px;color:var(--muted);margin:0}
 .tone-호재{color:var(--strong);font-weight:600}.tone-악재{color:var(--warn);font-weight:600}.tone-중립{color:var(--muted);font-weight:600}
 .tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-weight:500}
@@ -126,6 +132,37 @@ th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-
 footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:4px}
 a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 """
+
+
+RSTAR = {"강력관심": 5, "관심": 4, "중립": 3, "주의": 1}
+
+
+def coin_stars(p):
+    try:
+        n = round(float(p.get("stars")))
+        if 1 <= n <= 5:
+            return n
+    except (TypeError, ValueError):
+        pass
+    return RSTAR.get(p.get("rating"), 3)
+
+
+def news_stars(n):
+    try:
+        k = round(float(n.get("stars")))
+        if 1 <= k <= 5:
+            return k
+    except (TypeError, ValueError):
+        pass
+    try:
+        return max(1, min(5, math.ceil(float(n.get("score")) / 2)))
+    except (TypeError, ValueError):
+        return 1
+
+
+def star_html(k, label):
+    off = f'<span class="off">{"★" * (5 - k)}</span>' if k < 5 else ""
+    return f'<span class="stars" role="img" aria-label="{e(label)}">{"★" * k}{off}</span>'
 
 
 def ladder(lv, price):
@@ -178,7 +215,7 @@ def card(p):
     return f"""<article class="card">
   <div class="card-top"><div><div class="coin">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></div>
   <div class="price num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))} 24h</span></div></div>
-  <span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span></div>
+  <div class="rbox"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>{star_html(coin_stars(p), f"별 {coin_stars(p)}개 (5점 만점)")}</div></div>
   {f'<p class="comment">{e(p["comment"])}</p>' if p.get("comment") else ""}
   {f'<ul class="plain small">{reasons}</ul>' if reasons else ""}
   {ladder(p.get("levels"), p.get("price"))}
@@ -205,7 +242,7 @@ def page(r, site, archive, is_index):
     cautions = ""
     for c in r.get("cautions") or []:
         pr = f' <span class="num small">{won(c.get("price"))}</span> <span class="num small {cls(c.get("chg24"))}">{pct(c.get("chg24"))}</span>' if c.get("price") is not None else ""
-        cautions += (f'<div class="item"><span class="score hi">주의</span><div><div><b>{e(c.get("name") or c["sym"])}</b>{pr}</div>'
+        cautions += (f'<div class="item"><div class="nstar">{star_html(1, "주의, 별 1개")}<small>주의</small></div><div><div><b>{e(c.get("name") or c["sym"])}</b>{pr}</div>'
                      f'<div class="small">{e(c.get("reason"))}</div></div></div>')
     news = ""
     for n in r.get("news") or []:
@@ -216,7 +253,8 @@ def page(r, site, archive, is_index):
         coins = ", ".join(n.get("coins") or []) or "시장 전체"
         tone = n.get("tone") or "중립"
         note = f'<div class="small">{e(n["note"])}</div>' if n.get("note") else ""
-        news += (f'<div class="item"><span class="score {sc}">{e(s if s is not None else "-")}</span><div>{t}'
+        k = news_stars(n)
+        news += (f'<div class="item"><div class="nstar">{star_html(k, f"중요도 {s}점, 별 {k}개")}<small>{e(s) + "/10" if s is not None else ""}</small></div><div>{t}'
                  f'<div class="meta"><span class="tone-{e(tone)}">{e(tone)}</span> · {e(coins)} · {e(n.get("source", ""))}'
                  f'{" · " + e(n["time"]) if n.get("time") else ""}</div>{note}</div></div>')
     tk = r.get("track") or {}
@@ -256,7 +294,7 @@ def page(r, site, archive, is_index):
 </header>
 {old_notice}
 {f'<section class="section"><div class="stats">{stats}</div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">{e(m.get("summary", ""))}</p>{f"<ul class=plain small>{watch}</ul>" if watch else ""}</div></section>' if (stats or m.get("summary")) else ""}
-<section class="section"><h2>운용부 · 코인별 코멘트</h2><div class="cards">{cards}</div></section>
+<section class="section"><h2>운용부 · 코인별 코멘트</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards">{cards}</div></section>
 {f'<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list">{cautions}</div></section>' if cautions else ""}
 {f'<section class="panel section"><h2>뉴스부 · 중요도 순</h2><div class="list">{news}</div></section>' if news else ""}
 {track}
