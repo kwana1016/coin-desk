@@ -12,6 +12,6 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "coin_desk", "database_id": "86f2c700-5f7c-48ac-b73a-e968b6274394" }
   ],
-  "triggers": { "crons": ["*/5 * * * *"] },
+  "triggers": { "crons": ["* * * * *"] },
   "observability": { "enabled": true }
 }

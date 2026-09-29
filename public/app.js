@@ -139,10 +139,48 @@
       <div class="lvl" id="news-sort" role="group" aria-label="뉴스 정렬"><button type="button" data-m="score" aria-pressed="true">중요도순</button><button type="button" data-m="time" aria-pressed="false">최신순</button></div>
       <div id="news-body" class="section">${view("score")}</div></section>`;
   }
+  function alertTag(a) {
+    const k = a.kind;
+    if (k === "auto_news") return a.checked === true ? "자동 감지 · AI 확인됨" : `자동 감지 · ${a.source || "여러 매체"} 보도 · AI 확인 전`;
+    if (k === "price") return "자동 감지 · 업비트 시세";
+    if (k === "listing" || k === "warning" || k === "delist") return "자동 감지 · 업비트 목록";
+    return a.auto ? "자동 감지" : "AI 판단";
+  }
   function alertsHtml(list) {
     if (!list.length) return "";
     return `<section class="alert" role="alert"><b>★5 긴급 소식</b>${list.slice(0, 4).map(a => { const u = safeUrl(a.url); const t = u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(a.title)}</a>` : esc(a.title);
-      return `<div>${t}<div class="small muted">${a.ts ? kst(a.ts) + " · " : ""}${a.auto ? "자동 감지 · " : ""}${esc(a.summary || a.impact || "")}</div></div>`; }).join("")}</section>`;
+      const ag = ago(a.ts);
+      return `<div>${t}<div class="small muted">${ag ? `<span class="age age-${ag.c}" data-ts="${a.ts}">${ag.t}</span> ` : ""}${esc(alertTag(a))}${a.summary || a.impact ? " · " + esc(a.impact || a.summary) : ""}</div></div>`; }).join("")}</section>`;
+  }
+  function mergeAlerts(apiRows, reportAlerts) {
+    const out = [], seen = new Set();
+    [...apiRows.map(x => Object.assign({ ts: x.ts, kind: x.kind, __id: x.id }, x.a)), ...(reportAlerts || [])].forEach(a => {
+      const k = a.__id || (a.url + "|" + a.title); if (seen.has(k) || seen.has(a.url + "|" + a.title)) return; seen.add(k); seen.add(a.url + "|" + a.title);
+      if (!a.ts || Date.now() - a.ts < 24 * 3600e3) out.push(a); });
+    return out.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }
+  // 최신 리포트 화면: 1분마다 긴급 소식을 다시 읽어 바로 보여준다 (+ 브라우저 알림)
+  let alertTimer = null;
+  function watchAlerts(reportAlerts, first) {
+    if (alertTimer) clearInterval(alertTimer);
+    const known = new Set(first.map(a => a.__id || a.url));
+    const canNotify = "Notification" in window;
+    const btn = $("notify-btn");
+    const on = () => { try { return canNotify && Notification.permission === "granted" && localStorage.getItem("notify") === "1"; } catch (e) { return false; } };
+    const paint = () => { if (!btn) return; btn.hidden = !canNotify || Notification.permission === "denied"; btn.textContent = on() ? "긴급 알림 켜짐 (이 창이 열려 있을 때)" : "긴급 소식 브라우저 알림 받기"; btn.setAttribute("aria-pressed", String(on())); };
+    if (btn) { paint(); btn.onclick = async () => {
+      try { if (on()) { localStorage.setItem("notify", "0"); } else { const r = await Notification.requestPermission(); localStorage.setItem("notify", r === "granted" ? "1" : "0"); } } catch (e) {}
+      paint(); }; }
+    alertTimer = setInterval(async () => {
+      try {
+        const rows = await get("/api/alerts?t=" + Math.floor(Date.now() / 60000));
+        const list = mergeAlerts(rows, reportAlerts);
+        const box = $("alerts-box"); if (!box) { clearInterval(alertTimer); return; }
+        box.innerHTML = alertsHtml(list);
+        for (const a of list) { const k = a.__id || a.url; if (known.has(k)) continue; known.add(k);
+          if (on()) { try { new Notification("★5 긴급 소식", { body: a.title, tag: k }); } catch (e) {} } }
+      } catch (e) {}
+    }, 60000);
   }
   function briefHtml(r) {
     const pts = ((r.brief || {}).points || []).filter(Boolean).slice(0, 3); if (!pts.length) return "";
@@ -206,15 +244,13 @@
     const cz = (r.cautions || []).map(c => Object.assign({}, c, { __new: !!prev && !prevSyms.has(c.sym) }));
     const nNew = picks.filter(p => p.__new).length, nPos = new Set(picks.map(p => p.position).filter(Boolean)).size;
     const strong = picks.filter(p => p.rating === "강력관심" || p.rating === "관심"), rest = picks.filter(p => !(p.rating === "강력관심" || p.rating === "관심"));
-    const al = [];
-    const seen = new Set();
-    [...alerts.map(x => Object.assign({ ts: x.ts }, x.a)), ...(r.alerts || [])].forEach(a => { const k = a.url + "|" + a.title; if (seen.has(k)) return; seen.add(k); if (!a.ts || Date.now() - a.ts < 24 * 3600e3) al.push(a); });
+    const al = mergeAlerts(alerts, r.alerts);
     const tk = r.track || {};
     setTitle(id ? `${kst(r.ts)} 리포트` : "", m.headline);
     main().innerHTML = `<header class="head"><div class="head-top"><div class="eyebrow">${esc(SITE.title || "AI 코인 리서치센터")} · 코인 코멘트</div>${m.regime ? `<span class="chip regime-${esc(m.regime)}">${esc(m.regime)}</span>` : ""}</div>
       <h1>${esc(m.headline || "코인 코멘트")}</h1><div class="stamp">${kst(r.ts)} 작성 · 코인 ${picks.length}개${prev ? ` · 새 코인 ${nNew}개` : ""}${nPos ? ` · 분야 ${nPos}곳` : ""}</div></header>
       ${id && archive[0] && archive[0].id !== rid ? `<div class="notice">지난 리포트예요. <a href="/">최신 리포트 보기</a></div>` : ""}
-      ${alertsHtml(al)}${briefHtml(r)}
+      ${id ? alertsHtml(al) : `<div id="alerts-box">${alertsHtml(al)}</div><div class="row"><button type="button" class="btn sm" id="notify-btn" hidden></button></div>`}${briefHtml(r)}
       <section class="section" id="glance"><div class="sec-head"><h2>한눈에 보기</h2><span class="sub">누르면 해당 코인으로 이동</span></div>${glance(picks, cz)}
       <p class="legend">별점 ★5 강력관심 · ★4 관심 · ★3 관심(약)·중립(좋은 편) · ★2 중립 · ★1 주의. 등락 색은 업비트처럼 상승 빨강, 하락 파랑이에요.</p></section>
       ${marketHtml(m)}
@@ -224,6 +260,7 @@
       ${newsHtml(r.news || [], r.ts)}
       ${(tk.summary || (tk.items && tk.items.length)) ? `<section class="section"><div class="sec-head"><h2>이번에 채점한 코멘트</h2><a class="small" href="/track">전체 성적표</a></div><p class="small" style="margin:0">${esc(tk.summary || "")}</p>${tk.items && tk.items.length ? `<div class="panel">${trackTable(tk.items)}</div>` : ""}</section>` : ""}
       ${archive.length > 1 ? `<section class="section"><h2>지난 리포트</h2><div class="archive">${archive.slice(0, 30).map(a => `<a href="/r/${esc(a.id)}"${a.id === rid ? ' aria-current="page"' : ""}>${kst(a.ts)}</a>`).join("")}</div></section>` : ""}`;
+    if (!id) watchAlerts(r.alerts, al); else if (alertTimer) clearInterval(alertTimer);
     openHash();
   }
 

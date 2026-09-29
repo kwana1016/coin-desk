@@ -2,7 +2,9 @@
 // 정적 파일(public/)은 Cloudflare가 먼저 내보내고, 나머지 요청은 여기서 처리한다.
 // /api/* : D1에 저장된 리포트·주간 요약·긴급 소식을 JSON으로 돌려준다 (예약 실행이 D1에 직접 저장).
 // 그 밖의 페이지 경로 : app.html 한 장을 돌려주고, 브라우저의 app.js가 API를 읽어 그린다.
-// 5분마다(cron) 업비트 원화마켓 신규 상장·유의 종목 지정을 확인해 긴급 소식으로 저장한다.
+// 1분마다(cron): 업비트 원화마켓 목록(5분마다)·가격 급변(5분마다)·뉴스 RSS(2곳씩 돌아가며)를 확인해 ★5 긴급 소식을 바로 저장한다.
+
+import { watchNews, watchPrices } from "./newswatch.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" };
 const PAGES = [/^\/$/, /^\/index\.html$/, /^\/r\/[\w-]+(\.html)?$/, /^\/track(\.html)?$/, /^\/coin\/?$/, /^\/coin\/[\w-]+(\.html)?$/,
@@ -71,13 +73,14 @@ async function api(url, env) {
   }
   if (p === "/api/alerts") {
     const since = Date.now() - 48 * 3600e3;
-    const { results } = await db.prepare("SELECT id, ts, kind, json FROM alerts WHERE ts > ?1 ORDER BY ts DESC LIMIT 12").bind(since).all();
+    const { results } = await db.prepare("SELECT id, ts, kind, json FROM alerts WHERE ts > ?1 AND kind NOT IN ('rejected', 'cand') ORDER BY ts DESC LIMIT 12").bind(since).all();
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
   if (p === "/api/health") {
     const r = await db.prepare(`SELECT (SELECT count(*) FROM reports) AS reports, (SELECT max(ts) FROM reports) AS last_report,
-      (SELECT count(*) FROM weekly) AS weekly, (SELECT count(*) FROM alerts) AS alerts, (SELECT ts FROM kv WHERE k = 'upbit_krw') AS upbit_checked`).first();
-    return json(JSON.stringify(r));
+      (SELECT count(*) FROM weekly) AS weekly, (SELECT count(*) FROM alerts) AS alerts, (SELECT ts FROM kv WHERE k = 'upbit_krw') AS upbit_checked, (SELECT ts FROM kv WHERE k = 'px') AS price_checked,
+      (SELECT v FROM kv WHERE k = 'rss_status') AS rss`).first();
+    return json(`{"reports":${Number(r.reports)},"last_report":${r.last_report ?? "null"},"weekly":${Number(r.weekly)},"alerts":${Number(r.alerts)},"upbit_checked":${r.upbit_checked ?? "null"},"price_checked":${r.price_checked ?? "null"},"rss":${r.rss || "{}"}}`);
   }
   return json('{"error":"not_found"}', 404);
 }
@@ -97,17 +100,20 @@ async function watchUpbit(env) {
   }
   const prevRow = await env.DB.prepare("SELECT v FROM kv WHERE k = 'upbit_krw'").first();
   const now = Date.now();
+  // 뉴스로 먼저 올라간 같은 코인 상장·유의·폐지 소식이 있으면 다시 올리지 않는다
+  const { results: recent } = await env.DB.prepare("SELECT id FROM alerts WHERE kind = 'auto_news' AND ts > ?1").bind(now - 24 * 3600e3).all();
+  const already = (type, sym) => (recent || []).some(r => r.id.startsWith(`n-${type}-업비트:${sym}-`));
   const stmts = [];
   if (prevRow) {
     const prev = JSON.parse(prevRow.v);
     for (const [mkt, v] of Object.entries(cur)) {
       const sym = mkt.slice(4);
-      if (!prev[mkt]) {
+      if (!prev[mkt] && !already("listing", sym)) {
         const a = { title: `업비트 원화마켓 신규 상장: ${v.n}(${sym})`, url: "https://upbit.com/service_center/notice", source: "업비트 마켓 목록(자동 감지)",
           score: 9, coins: [sym], summary: `업비트 원화마켓 목록에 ${v.n}(${sym})이 새로 생겼어요. 상장 직후에는 가격 변동이 매우 커요.`,
           impact: `${sym} 단기 급등락 가능. 추격 매수 주의.`, auto: true, ts: now };
         stmts.push(env.DB.prepare("INSERT OR IGNORE INTO alerts (id, ts, kind, json) VALUES (?1, ?2, 'listing', ?3)").bind(`u-list-${sym}-${now}`, now, JSON.stringify(a)));
-      } else if (v.w && !prev[mkt].w) {
+      } else if (prev[mkt] && v.w && !prev[mkt].w && !already("warning", sym)) {
         const a = { title: `업비트 유의 종목 지정: ${v.n}(${sym})`, url: "https://upbit.com/service_center/notice", source: "업비트 마켓 목록(자동 감지)",
           score: 9, coins: [sym], summary: `업비트가 ${v.n}(${sym})을 유의 종목(투자 주의)으로 지정했어요. 상장폐지 심사로 이어질 수 있어요.`,
           impact: `${sym} 급락·거래 지원 종료 위험.`, auto: true, ts: now };
@@ -115,7 +121,7 @@ async function watchUpbit(env) {
       }
     }
     for (const mkt of Object.keys(prev)) {
-      if (!cur[mkt]) {
+      if (!cur[mkt] && !already("delist", mkt.slice(4))) {
         const sym = mkt.slice(4);
         const a = { title: `업비트 원화마켓에서 사라짐: ${prev[mkt].n}(${sym})`, url: "https://upbit.com/service_center/notice", source: "업비트 마켓 목록(자동 감지)",
           score: 9, coins: [sym], summary: `업비트 원화마켓 목록에서 ${prev[mkt].n}(${sym})이 빠졌어요. 거래 지원 종료일 수 있어요.`,
@@ -142,7 +148,10 @@ export default {
     const h = new Headers(r.headers); h.set("cache-control", "public, max-age=60");
     return new Response(r.body, { status: ok ? 200 : 404, headers: h });
   },
+  // 한 번에 한 가지 일만 해서 무료 요금제 CPU 한도(10ms) 안에 들어가게 한다
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(watchUpbit(env).catch(e => console.error("upbit", e)));
+    const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
+    const job = min % 5 === 0 ? watchUpbit(env) : min % 5 === 2 ? watchPrices(env) : watchNews(env, min);
+    ctx.waitUntil(job.catch(e => console.error("cron", min, e)));
   },
 };
