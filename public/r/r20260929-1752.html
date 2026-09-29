@@ -1,268 +1,467 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>9/29(화) 17:52 리포트 · AI 코인 리서치센터</title>
 <meta name="description" content="디파이만 달리고, 한 달 급등 알트는 숨 고르기">
 <meta property="og:title" content="9/29(화) 17:52 리포트 · AI 코인 리서치센터">
 <meta property="og:description" content="디파이만 달리고, 한 달 급등 알트는 숨 고르기">
 <meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<style>
-:root{--bg:#eef1f4;--paper:#fff;--ink:#18202b;--muted:#5d6877;--line:#d9dee5;--accent:#23408e;--accent-soft:#e3e9f7;
---strong:#0e7a4f;--buy:#2459c8;--neutral:#6b7380;--warn:#b42318;--strong-soft:#e2f3eb;--buy-soft:#e4ecfb;--neutral-soft:#eceef1;--warn-soft:#fbe8e6;--star:#c47f00;--star-off:#d5dae1;
---font-body:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
---font-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#12161c;--paper:#1a2029;--ink:#e7ebf0;--muted:#98a2b0;--line:#2b3340;--accent:#8fa9f0;
---accent-soft:#222c40;--strong:#3fc38b;--buy:#79a2ff;--neutral:#9aa3af;--warn:#ff8a7e;--strong-soft:#173327;--buy-soft:#1c2842;
---neutral-soft:#232932;--warn-soft:#3a1f1d;--star:#f2b640;--star-off:#3a4350;color-scheme:dark}}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>/* Layout: 리서치 데스크 브리핑 보드 — 60초 브리핑 → 한눈에 보기 → 시장 → 코인 카드 → 뉴스 → 성적. 상승=빨강, 하락=파랑 (업비트 관례). */
+:root{
+  --bg:#f2f3f6; --paper:#ffffff; --sunk:#f6f7fa; --ink:#131923; --muted:#5a6373; --line:#e1e4ea; --line-strong:#c9ced8;
+  --accent:#3a3db0; --accent-soft:#ebebfa; --on-accent:#ffffff;
+  --rise:#d4252e; --rise-soft:#fdeced; --fall:#1d5ccf; --fall-soft:#e8effb;
+  --warn:#a65a00; --warn-soft:#fdf0df; --neutral:#667082; --neutral-soft:#eceef2;
+  --star:#dc9a00; --star-off:#d3d8e0;
+  --font-display:"Hahmlet","IBM Plex Sans KR",serif;
+  --font-body:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --font-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1117; --paper:#161a22; --sunk:#1b2029; --ink:#e7eaf0; --muted:#9aa2b1; --line:#262c37; --line-strong:#39414f;
+  --accent:#a3a6f7; --accent-soft:#23254a; --on-accent:#10122a;
+  --rise:#ff6f73; --rise-soft:#3a1b1e; --fall:#72a5ff; --fall-soft:#16243d;
+  --warn:#f2a950; --warn-soft:#382813; --neutral:#a0a8b6; --neutral-soft:#232833;
+  --star:#f5c24c; --star-off:#3a4250; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1117; --paper:#161a22; --sunk:#1b2029; --ink:#e7eaf0; --muted:#9aa2b1; --line:#262c37; --line-strong:#39414f;
+  --accent:#a3a6f7; --accent-soft:#23254a; --on-accent:#10122a;
+  --rise:#ff6f73; --rise-soft:#3a1b1e; --fall:#72a5ff; --fall-soft:#16243d;
+  --warn:#f2a950; --warn-soft:#382813; --neutral:#a0a8b6; --neutral-soft:#232833;
+  --star:#f5c24c; --star-off:#3a4250; color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6}
-.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:flex;flex-direction:column;gap:18px}
-.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-h1{font-size:22px;line-height:1.3;margin:0;font-weight:700;text-wrap:balance}
-h2{font-size:13px;margin:0;font-weight:600;letter-spacing:.06em;color:var(--muted)}
-.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500}
-.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}
-.section{display:flex;flex-direction:column;gap:10px}
-.small{font-size:13px}.muted{color:var(--muted)}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:14px 64px;display:flex;flex-direction:column;gap:22px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+h1{font-family:var(--font-display);font-size:25px;line-height:1.28;margin:0;font-weight:700;text-wrap:balance;letter-spacing:-.01em}
+h2{font-family:var(--font-display);font-size:18px;line-height:1.35;margin:0;font-weight:700;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)} .small{font-size:13px} .tiny{font-size:12px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px}
+.section{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sec-head .sub{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;color:inherit}
+.rise,.up{color:var(--rise)} .fall,.down{color:var(--fall)}
+.legend{font-size:12px;color:var(--muted);margin:0}
+
+/* nav */
+.nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px;padding-block:2px}
+.nav::-webkit-scrollbar{display:none}
+.nav a{flex:none;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 13px;background:var(--paper)}
+.nav a[aria-current]{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+
+/* header */
 .head{display:flex;flex-direction:column;gap:8px}
 .head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;background:var(--accent-soft);color:var(--accent)}
-.regime-상승장{background:var(--strong-soft);color:var(--strong)}.regime-하락장{background:var(--warn-soft);color:var(--warn)}.regime-횡보장{background:var(--neutral-soft);color:var(--neutral)}
-.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
-.stat b{display:block;font-size:12px;font-weight:500;color:var(--muted)}.stat .v{font-size:16px;font-weight:600}
-.up{color:var(--strong)}.down{color:var(--warn)}
-ul.plain{margin:0;padding-left:18px}
-.cards{display:flex;flex-direction:column;gap:12px}
-.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.coin{font-size:17px;font-weight:700;line-height:1.3}.coin small{font-family:var(--font-num);font-weight:500;color:var(--muted);font-size:13px;margin-left:4px}
-.price{font-size:14px;margin-top:2px}
-.rating{font-size:13px;font-weight:700;padding:4px 11px;border-radius:999px;white-space:nowrap}
-.r-강력관심{background:var(--strong-soft);color:var(--strong)}.r-관심{background:var(--buy-soft);color:var(--buy)}
-.r-중립{background:var(--neutral-soft);color:var(--neutral)}.r-주의{background:var(--warn-soft);color:var(--warn)}
-.comment{margin:0}
-.track{position:relative;height:34px;margin:0 8px}
-.rail{position:absolute;left:0;right:0;top:15px;height:4px;border-radius:2px;background:var(--line)}
-.zone{position:absolute;top:11px;height:12px;border-radius:3px;background:var(--buy-soft);border:1px solid var(--buy)}
-.tick{position:absolute;top:8px;width:2px;height:18px;border-radius:1px;transform:translateX(-1px)}
-.tick.stop{background:var(--warn)}.tick.tgt{background:var(--strong)}
-.cur{position:absolute;top:11px;width:12px;height:12px;border-radius:50%;background:var(--ink);border:2px solid var(--paper);transform:translateX(-6px)}
-.levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:13px}
-.levels div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding-bottom:3px;min-width:0}
-.levels span:first-child{color:var(--muted);white-space:nowrap}
-@media (max-width:480px){.levels{grid-template-columns:minmax(0,1fr)}}
-.lv-stop{color:var(--warn)}.lv-tgt{color:var(--strong)}
-.counter{background:var(--warn-soft);border-radius:10px;padding:10px 12px;font-size:14px}.counter b{color:var(--warn);font-weight:600}
-details{font-size:14px}summary{cursor:pointer;color:var(--accent);font-weight:500}details ul{margin:6px 0 0;padding-left:18px}
-.list{display:flex;flex-direction:column}
-.item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
-.item:last-child{border-bottom:0}
-.score{font-family:var(--font-num);font-weight:600;font-size:14px;min-width:34px;text-align:center;border-radius:8px;padding:2px 0;background:var(--neutral-soft);height:fit-content}
-.score.hi{background:var(--warn-soft);color:var(--warn)}.score.mid{background:var(--accent-soft);color:var(--accent)}
-.item a{color:var(--ink);text-decoration:none;font-weight:500}.item a:hover{text-decoration:underline}
-.meta{font-size:12px;color:var(--muted)}
-.stars{color:var(--star);font-size:15px;letter-spacing:1px;white-space:nowrap;line-height:1}.stars .off{color:var(--star-off)}
-.rbox{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-.nstar{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}.nstar .stars{font-size:13px}
-.nstar small{font-family:var(--font-num);font-size:11px;color:var(--muted)}
-.legend{font-size:12px;color:var(--muted);margin:0}
-.tone-호재{color:var(--strong);font-weight:600}.tone-악재{color:var(--warn);font-weight:600}.tone-중립{color:var(--muted);font-weight:600}
-.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-weight:500}
-.archive{display:flex;flex-wrap:wrap;gap:6px}
-.archive a{font-family:var(--font-num);font-size:13px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--paper)}
-.archive a[aria-current]{background:var(--accent);color:var(--paper);border-color:var(--accent)}
-.notice{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:8px 12px;font-size:13px}
-.notice a{color:inherit}
-footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:4px}
-a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stamp{font-size:13px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;background:var(--neutral-soft);color:var(--neutral);white-space:nowrap}
+.regime-상승장{background:var(--rise-soft);color:var(--rise)} .regime-하락장{background:var(--fall-soft);color:var(--fall)} .regime-횡보장{background:var(--neutral-soft);color:var(--neutral)}
+.notice{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:9px 13px;font-size:13px}
+.notice a{color:inherit;font-weight:600}
 
-.nav{display:flex;gap:6px;flex-wrap:wrap}
-.nav a{font-size:13px;font-weight:500;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--paper)}
-.nav a[aria-current]{color:var(--paper);background:var(--accent);border-color:var(--accent)}
-.coin a{color:inherit;text-decoration:none}.coin a:hover{text-decoration:underline}
+/* pills */
+.chg{display:inline-block;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;padding:1px 8px;border-radius:7px;background:var(--neutral-soft);color:var(--neutral);white-space:nowrap}
+.chg.rise{background:var(--rise-soft);color:var(--rise)} .chg.fall{background:var(--fall-soft);color:var(--fall)}
+.rt{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;background:var(--neutral-soft);color:var(--neutral)}
+.rt-강력관심{background:var(--accent);color:var(--on-accent)} .rt-관심{background:var(--accent-soft);color:var(--accent)}
+.rt-중립{background:var(--neutral-soft);color:var(--neutral)} .rt-주의{background:var(--warn-soft);color:var(--warn)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:var(--sunk);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.tag.new{background:var(--rise-soft);color:var(--rise);border-color:transparent}
+.tag.mine{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.tag.cat{background:transparent}
+.stars{color:var(--star);letter-spacing:1px;white-space:nowrap;line-height:1;font-size:14px}
+.stars .off{color:var(--star-off)}
+
+/* alert banner */
+.alert{display:flex;flex-direction:column;gap:4px;background:var(--warn-soft);border:1px solid var(--warn);border-radius:14px;padding:12px 14px}
+.alert b{color:var(--warn)} .alert a{color:var(--ink);font-weight:600}
+
+/* 60초 브리핑 */
+.brief{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.brief ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;counter-reset:b}
+.brief li{counter-increment:b;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;font-size:15px;line-height:1.55}
+.brief li::before{content:counter(b);font-family:var(--font-display);font-weight:700;font-size:15px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent)}
+.script{background:var(--sunk);border-radius:12px;padding:12px 14px;font-size:14px;white-space:pre-wrap}
+.brief-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* 한눈에 보기 */
+.glance{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.g-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;padding:11px 14px;border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.g-row:first-child{border-top:0}
+a.g-row:hover{background:var(--sunk)}
+.g-name{display:flex;align-items:baseline;gap:6px;min-width:0;flex-wrap:wrap}
+.g-name b{font-size:15px}
+.g-name .sym{font-family:var(--font-num);font-size:12px;color:var(--muted)}
+.g-sub{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);min-width:0}
+.g-price{text-align:right;font-size:13px;white-space:nowrap}
+.g-price .chg{margin-left:4px}
+.g-group{padding:7px 14px;font-size:12px;font-weight:700;color:var(--muted);background:var(--sunk);border-top:1px solid var(--line);letter-spacing:.04em}
+.g-group:first-child{border-top:0}
+
+/* market */
+.mkt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:10px}
+@media (max-width:520px){.mkt{grid-template-columns:minmax(0,1fr)}}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.stat b{font-size:12px;font-weight:600;color:var(--muted)}
+.stat .v{font-size:19px;font-weight:600}
+.fng{display:flex;flex-direction:column;gap:6px}
+.fng-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fng-bar{position:relative;height:10px;border-radius:5px;display:grid;grid-template-columns:25fr 20fr 10fr 20fr 25fr;overflow:visible}
+.fng-bar i{display:block}
+.fng-bar i:nth-child(1){background:var(--fall);border-radius:5px 0 0 5px}
+.fng-bar i:nth-child(2){background:var(--fall-soft)}
+.fng-bar i:nth-child(3){background:var(--neutral-soft)}
+.fng-bar i:nth-child(4){background:var(--rise-soft)}
+.fng-bar i:nth-child(5){background:var(--rise);border-radius:0 5px 5px 0}
+.fng-mark{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:var(--ink);transform:translateX(-2px);box-shadow:0 0 0 2px var(--paper)}
+.fng-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.mkt-note{display:flex;flex-direction:column;gap:8px}
+.mkt-note p{margin:0}
+.watch{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:14px}
+.watch li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:6px}
+.watch li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:9px}
+
+/* coin card */
+.cards{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0;scroll-margin-top:16px}
+.c-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.c-id{display:flex;flex-direction:column;gap:5px;min-width:0}
+.c-name{font-size:19px;font-weight:700;line-height:1.25;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.c-name a{color:inherit;text-decoration:none}
+.c-name .sym{font-family:var(--font-num);font-size:13px;font-weight:500;color:var(--muted)}
+.c-tags{display:flex;gap:5px;flex-wrap:wrap}
+.c-verdict{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.c-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.c-price .p{font-size:20px;font-weight:600}
+.c-what{margin:0;font-size:13px;color:var(--muted)}
+.c-comment{margin:0;font-size:16px;line-height:1.65}
+.since{font-size:14px;background:var(--accent-soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.since b{color:var(--accent);font-size:12px;letter-spacing:.04em}
+.mgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:480px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.m{background:var(--sunk);border-radius:10px;padding:7px 9px;min-width:0}
+.m b{display:block;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m span{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
+.reasons{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.reasons li{display:grid;grid-template-columns:16px minmax(0,1fr);gap:6px}
+.reasons li::before{content:"✓";color:var(--accent);font-weight:700}
+
+/* price ladder */
+.ladder{display:flex;flex-direction:column;gap:8px;background:var(--sunk);border-radius:12px;padding:12px}
+.ladder-title{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
+.lrail{position:relative;height:30px;margin-inline:6px}
+.lrail .seg{position:absolute;top:13px;height:8px}
+.lrail .s-loss{background:var(--fall-soft);border-radius:4px 0 0 4px}
+.lrail .s-zone{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent);border-radius:3px}
+.lrail .s-gain{background:var(--rise-soft)}
+.lrail .s-gain2{background:var(--rise-soft);opacity:.55;border-radius:0 4px 4px 0}
+.lrail .tk{position:absolute;top:9px;width:3px;height:16px;border-radius:2px;transform:translateX(-1.5px)}
+.lrail .tk.stop{background:var(--fall)} .lrail .tk.tgt{background:var(--rise)}
+.lrail .now{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:1px}
+.lrail .now span{font-size:10px;font-weight:700;color:var(--ink);line-height:1}
+.lrail .now i{width:12px;height:12px;border-radius:50%;background:var(--ink);border:2px solid var(--paper)}
+.lvals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lv{background:var(--paper);border-radius:9px;padding:6px 8px;min-width:0;display:flex;flex-direction:column}
+.lv b{font-size:11px;font-weight:700}
+.lv .num{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.lv small{font-size:11px;color:var(--muted);font-family:var(--font-num)}
+.lv.l-stop b{color:var(--fall)} .lv.l-zone b{color:var(--accent)} .lv.l-tgt b{color:var(--rise)}
+.lfoot{font-size:12px;color:var(--muted)}
+
+/* scenarios */
+.scen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.scen{grid-template-columns:minmax(0,1fr)}}
+.scen>div{border-radius:12px;padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.scen b{font-size:12px;letter-spacing:.04em}
+.scen .bull{background:var(--rise-soft)} .scen .bull b{color:var(--rise)}
+.scen .bear{background:var(--fall-soft)} .scen .bear b{color:var(--fall)}
+.counter{font-size:14px;border:1px dashed var(--line-strong);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.counter b{font-size:12px;color:var(--warn);letter-spacing:.04em}
+details.more{font-size:14px;border-top:1px solid var(--line);padding-top:10px}
+details.more>summary{cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:" ▾"}
+details.more[open]>summary::after{content:" ▴"}
+.more-body{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.more-body ul{margin:0;padding-left:18px}
+.related{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.related div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline}
+.related .stars{font-size:11px}
+.mini-h{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+
+/* folded card */
+.fold{background:var(--paper);border:1px solid var(--line);border-radius:16px;scroll-margin-top:16px}
+.fold>summary{list-style:none;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;cursor:pointer}
+.fold>summary::-webkit-details-marker{display:none}
+.fold .f-name{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}
+.fold .f-name b{font-size:16px}
+.fold .f-right{display:flex;gap:8px;align-items:center}
+.fold .f-line{grid-column:1/-1;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:baseline;min-width:0}
+.fold .f-line .num{white-space:nowrap}
+.fold .f-line span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fold[open]>summary{border-bottom:1px solid var(--line)}
+.fold>.card{border:0;border-radius:0 0 16px 16px}
+
+/* cautions */
+.cz{display:flex;flex-direction:column;gap:8px}
+.cz-item{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.cz-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.cz-top a{color:var(--ink);font-weight:700;text-decoration:none}
+.cz p{margin:0;font-size:14px}
+
+/* news */
+.news{display:flex;flex-direction:column;gap:10px}
+.ntop{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px}
+.nscore{display:flex;flex-direction:column;align-items:center;gap:4px}
+.nscore .n{font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1}
+.nscore .stars{font-size:9px;letter-spacing:0}
+.nscore small{font-size:10px;color:var(--muted)}
+.nbody{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ntitle{font-size:16px;font-weight:700;line-height:1.45;color:var(--ink);text-decoration:none}
+a.ntitle:hover{text-decoration:underline}
+.nmeta{display:flex;gap:5px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tone{font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px}
+.tone-호재{background:var(--rise-soft);color:var(--rise)} .tone-악재{background:var(--fall-soft);color:var(--fall)} .tone-중립{background:var(--neutral-soft);color:var(--neutral)}
+.nsum{margin:0;font-size:14px}
+.nimpact{font-size:14px;background:var(--sunk);border-radius:10px;padding:8px 10px}
+.nimpact b{color:var(--accent);font-size:12px;margin-right:4px}
+.priced{font-size:12px;color:var(--muted)}
+.nlist{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.nrow{border-top:1px solid var(--line)}
+.nrow:first-child{border-top:0}
+.nrow>summary{list-style:none;cursor:pointer;padding:11px 14px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:start}
+.nrow>summary::-webkit-details-marker{display:none}
+.nrow>summary .stars{font-size:11px;margin-top:5px}
+.nrow .t{font-size:14px;font-weight:600;line-height:1.45}
+.nrow .nmeta{grid-column:2}
+.nrow-body{padding:0 14px 12px;display:flex;flex-direction:column;gap:6px}
+.nrow[open]>summary .t{color:var(--accent)}
+
+/* tables, tiles, charts */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td a{color:var(--ink);font-weight:600;text-decoration:none}
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.tile{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
-.tile b{display:block;font-size:12px;font-weight:500;color:var(--muted)}.tile .v{font-size:18px;font-weight:700}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:11px 13px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tile b{font-size:12px;font-weight:600;color:var(--muted)}
+.tile .v{font-size:20px;font-weight:700}
 .tile .s{font-size:12px;color:var(--muted)}
-.bars{display:flex;flex-direction:column;gap:8px}
-.bar-row{display:grid;grid-template-columns:86px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13px}
-.bar-track{height:10px;background:var(--neutral-soft);border-radius:0 4px 4px 0;position:relative}
-.bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:0 4px 4px 0}
+@media (max-width:480px){.tile{padding:9px 10px}.tile .v{font-size:17px}}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:78px minmax(0,1fr) 96px;gap:10px;align-items:center;font-size:13px}
+.bar-track{height:10px;background:var(--neutral-soft);border-radius:0 5px 5px 0;position:relative}
+.bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:0 5px 5px 0}
 .bar-half{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--muted);opacity:.5}
 .chart{position:relative}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .chart .grid{stroke:var(--line);stroke-width:1}
 .chart .zero{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
 .chart .axis{fill:var(--muted);font-size:13px;font-family:var(--font-num)}
+.chart .area{fill:var(--accent);opacity:.08}
 .chart .line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .chart .dot{fill:var(--accent);stroke:var(--paper);stroke-width:2}
 .chart .hit{fill:transparent;cursor:crosshair}
 .chart .xh{stroke:var(--muted);stroke-width:1;opacity:0}
 .chart .hl{fill:var(--accent);stroke:var(--paper);stroke-width:2;opacity:0}
 .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;line-height:1.4;padding:6px 8px;border-radius:8px;white-space:nowrap;opacity:0;transform:translate(-50%,-100%);transition:opacity .1s}
-.empty{border:1px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);font-size:14px}
-.coins-tbl a{color:var(--ink);font-weight:600;text-decoration:none}.coins-tbl a:hover{text-decoration:underline}
+.empty{border:1px dashed var(--line-strong);border-radius:14px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+.archive{display:flex;flex-wrap:wrap;gap:6px}
+.archive a{font-family:var(--font-num);font-size:12px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--paper)}
+.archive a[aria-current]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .timeline{display:flex;flex-direction:column;gap:10px}
-.tl{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.tl{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .tl-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
-.res{font-size:13px}
-.pos{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:2px}
-.what{font-size:13px;color:var(--muted);margin-top:2px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.metric{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
-.metric b{display:block;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
-.metric span{font-family:var(--font-num);font-size:13px;font-weight:600}
-.scen{display:grid;gap:6px;font-size:14px}
-.scen div{border-left:3px solid var(--line);padding:2px 0 2px 10px}
-.scen .bull{border-color:var(--strong)}.scen .bear{border-color:var(--warn)}
-.scen b{font-weight:600;margin-right:4px}.scen .bull b{color:var(--strong)}.scen .bear b{color:var(--warn)}
-.related{font-size:13px;display:flex;flex-direction:column;gap:4px}
-.related div{display:flex;gap:8px;align-items:baseline}.related .stars{font-size:11px}
-.fold{background:var(--paper);border:1px solid var(--line);border-radius:14px}
-.fold>summary{list-style:none;padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;color:var(--ink);font-weight:400}
-.fold>summary::-webkit-details-marker{display:none}
-.fold>summary .fname{font-weight:700}.fold>summary .fline{grid-column:1/-1;font-size:13px;color:var(--muted)}
-.fold[open]>summary{border-bottom:1px solid var(--line)}
-.fold>.card{border:0;border-radius:0 0 14px 14px}
-.cat{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin-right:4px;color:var(--muted)}
-.impact{font-size:13px;margin-top:2px}.impact b{color:var(--accent);font-weight:600}
-.priced{font-size:12px;color:var(--muted)}
-.newchip{display:inline-block;font-size:11px;font-weight:700;color:var(--strong);background:var(--strong-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
-.since{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:6px 10px}.since b{color:var(--accent);font-weight:600;margin-right:4px}
-.cover{font-size:13px;color:var(--muted);margin:0}
-.more>summary{font-size:14px;padding:10px 0}
-@media (max-width:480px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
-@media (prefers-reduced-motion:reduce){.tip{transition:none}}
+.tl p{margin:0}
+.res{font-size:13px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hz{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:0 6px;background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+
+/* weekly */
+.wk-top{display:flex;flex-direction:column;gap:8px}
+.rank{display:flex;flex-direction:column}
+.rank-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rank-row:first-child{border-top:0}
+.rank-row .no{font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--accent);text-align:center}
+.rank-row .nm{display:flex;flex-direction:column;min-width:0}
+.rank-row .nm span{font-size:13px;color:var(--muted)}
+.story{border-radius:14px;padding:12px 14px;background:var(--accent-soft);display:flex;flex-direction:column;gap:4px}
+.story b{color:var(--accent)}
+.cal{display:flex;flex-direction:column}
+.cal-row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.cal-row:first-child{border-top:0}
+.cal-row .d{font-family:var(--font-num);font-weight:600;color:var(--accent)}
+
+/* ecosystem map */
+.lvl{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper);width:fit-content;max-width:100%}
+.lvl button{border:0;background:transparent;padding:8px 16px;font-weight:600;cursor:pointer;color:var(--muted)}
+.lvl button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.layer{border-radius:16px;padding:14px;background:var(--paper);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.layer-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.layer-head .w2{font-size:13px;color:var(--muted)}
+.layer-desc{margin:0;font-size:14px}
+.sectors{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.sector{background:var(--sunk);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.sector h3{font-size:14px}
+.sector .w2{font-size:12px;color:var(--muted)}
+.leaders{display:flex;flex-direction:column;gap:5px}
+.leader{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline;font-size:13px}
+.leader .rk{font-family:var(--font-num);font-size:11px;font-weight:700;color:var(--accent)}
+.leader a{color:var(--ink);font-weight:700;text-decoration:none}
+.leader .why{grid-column:2;font-size:12px;color:var(--muted)}
+.leader .rt{font-size:10px;padding:1px 6px;margin-left:4px}
+.flows{display:flex;flex-direction:column;gap:6px}
+.flow{display:grid;grid-template-columns:auto auto auto minmax(0,1fr);gap:6px;align-items:baseline;font-size:13px;background:var(--sunk);border-radius:10px;padding:8px 10px}
+.flow .arrow{color:var(--accent);font-weight:700}
+.flow .fx{grid-column:1/-1;color:var(--muted);font-size:12px}
+.map.lv-1 .need-2,.map.lv-1 .need-3,.map.lv-2 .need-3{display:none}
+.map:not(.lv-1) .only-1{display:none}
+.drivers{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.drivers b{color:var(--ink);font-weight:600}
+.chips1{display:flex;gap:6px;flex-wrap:wrap}
+.chips1 a,.chips1 span{font-size:13px;font-weight:700;color:var(--ink);text-decoration:none;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:2px 8px}
+
+/* controls (artifact) */
+.btn{white-space:nowrap;flex:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn[disabled]{opacity:.5;cursor:default}
+.btn.sm{padding:4px 10px;font-size:13px}
+footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:4px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style></head>
 <body><div class="wrap">
-<nav class="nav" aria-label="사이트 메뉴"><a href="../">최신 리포트</a><a href="../track.html">성적표</a><a href="../coin/">코인별</a></nav>
+<nav class="nav" aria-label="사이트 메뉴"><a href="../">최신 리포트</a><a href="../weekly/">주간 요약</a><a href="../track.html">성적표</a><a href="../coin/">코인별</a><a href="../map.html">생태계 지도</a></nav>
 <header class="head">
-  <div class="head-top"><div><div class="eyebrow">AI 코인 리서치센터 · 코인 코멘트</div><h1>디파이만 달리고, 한 달 급등 알트는 숨 고르기</h1></div><span class="chip regime-횡보장">횡보장</span></div>
-  <div class="small muted">9/29(화) 17:52 작성 · 업비트 시세 · 토큰포스트·블록미디어·CoinDesk·Cointelegraph·The Block·Decrypt · Coinpedia·Blockchain.News · alternative.me</div>
+<div class="head-top"><div class="eyebrow">AI 코인 리서치센터 · 코인 코멘트</div><span class="chip regime-횡보장">횡보장</span></div>
+<h1>디파이만 달리고, 한 달 급등 알트는 숨 고르기</h1>
+<div class="stamp">9/29(화) 17:52 작성 · 코인 9개 · 새 코인 7개 · 분야 9곳</div>
 </header>
 <div class="notice">지난 리포트예요 (9/29(화) 17:52). <a href="../">최신 리포트 보기</a></div>
-<section class="section"><div class="stats"><div class="stat"><b>비트코인</b><div class="v num">1억 1,371만원</div><div class="small num up">+0.2% 24h</div></div><div class="stat"><b>공포탐욕</b><div class="v num">74</div><div class="small">Greed · 전일 70</div></div></div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원 안에서 움직이지 않고 있어요. 17:45 리포트와 비교해 달라진 건 섹터 온도예요: 에이브(+11.3%)·유니스왑(+2.6%) 등 DeFi는 강한데, 지난달 크게 오른 수이·에테나·더그래프·피스는 이번 주 -4~-15% 되돌리는 중이에요. 알트코인 시즌 지수는 60으로 내려왔고 도미넌스는 58.7%라 &#x27;재료 있는 코인만&#x27; 오르는 장이에요. 미국 GDP 2.2% 유지에 이어 이번 주 고용지표가 다음 방향을 정할 변수예요.</p><ul class=plain small><li>에이브 소각안(Aavenomics 3.0) 거버넌스 진행</li><li>이번 주 미국 고용지표</li><li>비트코인 1억1,202만원(이번 주 저점) 지지</li><li>10월 8일 더그래프 스테이징 종료·쿼리 이전</li></ul></div></section>
-<p class="cover">이번 리포트: 코인 9개 · 지난 리포트에 없던 코인 7개 · 분야 9곳</p>
-<section class="section"><h2>운용부 · 관심 코인 2개</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards"><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/LINK.html">체인링크<small>LINK</small></a><span class="pos">오라클·크로스체인(CCIP)</span></div><div class="what">블록체인 밖의 가격·데이터를 체인 안으로 넣어주고(오라클), 여러 체인과 은행 시스템을 잇는(CCIP) 인프라 코인이에요.</div>
-  <div class="price num">20,710원 <span class="down">-1.1% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-관심">관심</span><span class="stars" role="img" aria-label="별 4개 (5점 만점)">★★★★<span class="off">☆</span></span></div></div>
-  <div class="since"><b>지난 리포트 이후</b>17:45 리포트 때 20,620원 → 지금 20,710원(+0.4%)으로 거의 그대로예요. 그 사이 체인링크 직접 뉴스는 없었고, 대신 프랭클린템플턴이 토큰화 펀드를 바이비트 담보로 넣는 등 &#x27;기관 자산을 온체인 담보로 쓰는&#x27; 흐름이 한 번 더 확인됐어요.</div>
-  <p class="comment">스위프트 연동 발표 뒤에도 가격은 20,710원(-1.1%)으로 이번 주 고점 21,420원보다 3% 아래에 머물러 있어요. 이번 주 저점 18,340원에서 반등한 상태라 지지선 19,000원(지난주 종가)과 거리가 약 9%예요. 재료 대비 가격 반영이 느린 편이라는 판단은 그대로지만, 새 뉴스가 없으니 &#x27;더 강해졌다&#x27;고 보진 않아요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="up">+9.0%</span></div><div class="metric"><b>4주</b><span class="up">+15.1%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-38.8%</span></div><div class="metric"><b>주간 변동폭</b><span class="">18%</span></div></div>
-  <ul class="plain small"><li>스토리 유지: 프랭클린템플턴 토큰화 담보의 바이비트 도입 등 기관 자산 온체인화가 계속돼 &#x27;기관 자산과 체인을 잇는 표준&#x27; 수요 배경은 그대로예요</li><li>1주 +9.0%, 4주 +15.1%로 주간 추세는 위쪽이에요</li><li>손익비 2.0(진입 19,000~20,710원, 손절 18,050원, 1차 23,460원)</li><li>52주 고점 33,850원 대비 -38.8%로 아직 한참 아래예요</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>21,420원(이번 주 고점)을 넘기면 1차 23,460원, 은행 연동 후속 발표가 나오면 2차 26,160원까지 열려 있어요.</div><div class="bear"><b>내리는 경우</b>19,000원을 잃으면 스위프트 재료가 소진됐다는 신호로 보고, 손절선 18,050원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 18,050원, 진입 19,000원~20,710원, 현재 20,710원, 목표 23,460원"><div class="rail"></div><div class="zone" style="left:13.22%;width:20.00%"></div><div class="tick stop" style="left:2.11%"></div><div class="tick tgt" style="left:65.37%"></div><div class="tick tgt" style="left:96.94%"></div><div class="cur" style="left:33.21%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">19,000원~20,710원</span></div><div><span>손절</span><span class="num lv-stop">18,050원 (-9.1%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">23,460원 (+18.1%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">26,160원 (+31.8%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 11%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>Crypto-friendly institution Franklin Templeton brings its tokenized collateral service to Bybit</span></div></div>
-  <div class="counter"><b>반대 의견</b> 스위프트 연동은 &#x27;만들겠다&#x27;는 단계라 실제 은행 사용과 수수료 수익이 나오기까지 시간이 걸려요. 그동안 가격은 시장 전체(비트코인 박스)에 끌려다닐 수 있어요.<br><span class="small">틀리는 조건: 주봉 종가가 19,000원 아래로 닫히거나, 스위프트·은행 쪽에서 연동 지연·축소 소식이 나오면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>스위프트 연동의 실제 가동 일정 발표 여부</li><li>21,420원 돌파 시 거래대금이 같이 느는지</li><li>비트코인이 1억1,202만원 지지를 지키는지</li><li>CCIP 새 버전 도입 앱 발표</li></ul></details>
-</article><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/UNI.html">유니스왑<small>UNI</small></a><span class="pos">DeFi 거래소(DEX)</span><span class="newchip">새 코인</span></div><div class="what">중개자 없이 코인끼리 바로 바꿔주는 가장 큰 탈중앙 거래소의 거버넌스 코인이에요.</div>
-  <div class="price num">12,270원 <span class="up">+2.6% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-관심">관심</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
-  
-  <p class="comment">CME가 UNI 선물(일반 1만 UNI·마이크로 1천 UNI)을 10월 19일에 내놓겠다고 9월 22일 발표했고(규제 검토 조건), 거래 수수료를 모아 태우는 소각 구조도 돌아가고 있어요. 가격은 1만2,270원(+2.6%)으로 지난주 고점 1만4,680원에서 밀린 뒤 지지선 1만1,970원 위에 있어요. 선물 출시까지 3주가 남아 재료가 아직 살아 있고 손익비(2.38)도 괜찮아 관심으로 봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-6.5%</span></div><div class="metric"><b>4주</b><span class="up">+23.4%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-19.3%</span></div><div class="metric"><b>주간 변동폭</b><span class="">30%</span></div></div>
-  <ul class="plain small"><li>CME UNI 선물 10월 19일 출시 예정(규제 검토 조건)</li><li>4주 +23.4%, 52주 고점 대비 -19.3%로 관찰 목록 중 고점에 가까운 편</li><li>1주 -6.5% 조정으로 지지선 1만1,970원과 거리 2.5%</li><li>손익비 2.38(손절 1만1,040원, 1차 1만4,680원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>선물 출시 기대가 붙어 1만3,240원(이번 주 고점)을 넘기면 1차 1만4,680원, 2차 52주 고점 1만5,210원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1만1,970원이 깨지면 이번 주 저점 1만1,480원을 거쳐 손절선 1만1,040원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 11,040원, 진입 11,970원~12,270원, 현재 12,270원, 목표 14,680원"><div class="rail"></div><div class="zone" style="left:23.47%;width:6.77%"></div><div class="tick stop" style="left:2.49%"></div><div class="tick tgt" style="left:84.61%"></div><div class="tick tgt" style="left:96.57%"></div><div class="cur" style="left:30.24%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">11,970원~12,270원</span></div><div><span>손절</span><span class="num lv-stop">11,040원 (-8.9%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">14,680원 (+21.1%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">15,210원 (+25.5%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 11%</span></div><div><span>손익비</span><span class="num ">2.4</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>UNI Price Prediction: CME Futures, Fee Burns, and a $10.99 Ceiling — Which Way Does UNI Break?</span></div></div>
-  <div class="counter"><b>반대 의견</b> CME 선물 발표는 1주일 전 소식이라 일부는 이미 반영됐고, 출시 당일 &#x27;소문에 사고 뉴스에 파는&#x27; 흐름이 나올 수 있어요. 주간 변동폭도 30%로 커요.<br><span class="small">틀리는 조건: 규제 검토로 선물 출시가 미뤄지거나 주봉이 1만1,480원 아래로 닫히면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>CME 선물 출시 일정 확정 여부</li><li>수수료 소각량 추이</li><li>1만3,240원 돌파 시 거래대금</li><li>DeFi 섹터(에이브 등) 동반 강세 지속 여부</li></ul></details>
+
+
+<section class="section" id="glance"><div class="sec-head"><h2>한눈에 보기</h2><span class="sub">누르면 해당 코인으로 이동</span></div><div class="glance"><div class="g-group">관심</div><a class="g-row" href="#c-LINK"><span class="g-name"><b>체인링크</b><span class="sym">LINK</span></span><span class="g-price"><span class="num">20,710원</span><span class="chg fall">-1.1%</span></span><span class="rt rt-관심">관심</span><span class="g-sub"><span class="stars" role="img" aria-label="별 4개">★★★★<span class="off">☆</span></span> 오라클·크로스체인(CCIP) · 1주 <span class="num rise">+9.0%</span></span></a><a class="g-row" href="#c-UNI"><span class="g-name"><b>유니스왑</b><span class="sym">UNI</span></span><span class="g-price"><span class="num">12,270원</span><span class="chg rise">+2.6%</span></span><span class="rt rt-관심">관심</span><span class="g-sub"><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span> DeFi 거래소(DEX) · <span class="tag new">새 코인</span> · 1주 <span class="num fall">-6.5%</span></span></a><div class="g-group">지켜볼 코인</div><a class="g-row" href="#c-BTC"><span class="g-name"><b>비트코인</b><span class="sym">BTC</span></span><span class="g-price"><span class="num">1억 1,371만원</span><span class="chg rise">+0.2%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span> 디지털 금 · 1주 <span class="num fall">-0.6%</span></span></a><a class="g-row" href="#c-AAVE"><span class="g-name"><b>에이브</b><span class="sym">AAVE</span></span><span class="g-price"><span class="num">226,100원</span><span class="chg rise">+11.3%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span> DeFi 대출 · <span class="tag new">새 코인</span> · 1주 <span class="num rise">+7.8%</span></span></a><a class="g-row" href="#c-GRT"><span class="g-name"><b>더그래프</b><span class="sym">GRT</span></span><span class="g-price"><span class="num">41.90원</span><span class="chg rise">+0.5%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span> 데이터 인덱싱 · <span class="tag new">새 코인</span> · 1주 <span class="num fall">-13.8%</span></span></a><a class="g-row" href="#c-XLM"><span class="g-name"><b>스텔라루멘</b><span class="sym">XLM</span></span><span class="g-price"><span class="num">311원</span><span class="chg fall">-1.3%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span> 결제·송금·RWA · <span class="tag new">새 코인</span> · 1주 <span class="num rise">+6.5%</span></span></a><a class="g-row" href="#c-TAO"><span class="g-name"><b>비트텐서</b><span class="sym">TAO</span></span><span class="g-price"><span class="num">424,800원</span><span class="chg rise">+1.7%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span> AI·탈중앙 학습망 · <span class="tag new">새 코인</span> · 1주 <span class="num fall">-1.9%</span></span></a><a class="g-row" href="#c-SUI"><span class="g-name"><b>수이</b><span class="sym">SUI</span></span><span class="g-price"><span class="num">1,548원</span><span class="chg fall">-2.5%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span> L1 고속 스마트컨트랙트 · <span class="tag new">새 코인</span> · 1주 <span class="num fall">-9.5%</span></span></a><a class="g-row" href="#c-DOGE"><span class="g-name"><b>도지코인</b><span class="sym">DOGE</span></span><span class="g-price"><span class="num">129원</span><span class="chg rise">+1.6%</span></span><span class="rt rt-중립">중립</span><span class="g-sub"><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span> 밈 · <span class="tag new">새 코인</span> · 1주 <span class="num fall">-1.5%</span></span></a><div class="g-group">주의</div><a class="g-row" href="#c-ENA"><span class="g-name"><b>에테나</b><span class="sym">ENA</span></span><span class="g-price"><span class="num">341원</span><span class="chg fall">-2.3%</span></span><span class="rt rt-주의">주의</span><span class="g-sub"><span class="stars" role="img" aria-label="별 1개">★<span class="off">☆☆☆☆</span></span> <span class="tag new">새 코인</span> · 4주 동안 185원→370원으로 두 배 오른 뒤, 지난주 고점 399원에서 341원…</span></a><a class="g-row" href="#c-PYTH"><span class="g-name"><b>피스네트워크</b><span class="sym">PYTH</span></span><span class="g-price"><span class="num">108원</span><span class="chg fall">-2.7%</span></span><span class="rt rt-주의">주의</span><span class="g-sub"><span class="stars" role="img" aria-label="별 1개">★<span class="off">☆☆☆☆</span></span> <span class="tag new">새 코인</span> · 지난주 +34% 급등(84.6→113원) 뒤 이번 주 -4%, 오늘 -2.7%예요.…</span></a><a class="g-row" href="#c-WLD"><span class="g-name"><b>월드코인</b><span class="sym">WLD</span></span><span class="g-price"><span class="num">676원</span><span class="chg rise">+1.2%</span></span><span class="rt rt-주의">주의</span><span class="g-sub"><span class="stars" role="img" aria-label="별 1개">★<span class="off">☆☆☆☆</span></span> <span class="tag new">새 코인</span> · 지난주 798원 고점을 찍고 이번 주 634원까지 밀렸다가 676원이에요(이번 주 …</span></a></div>
+<p class="legend">별점 ★5 강력관심 · ★4 관심 · ★3 관심(약)·중립(좋은 편) · ★2 중립 · ★1 주의. 등락 색은 업비트처럼 상승 빨강, 하락 파랑이에요.</p></section>
+<section class="section" id="market"><div class="mkt"><div class="stat"><b>비트코인</b><div class="v num">1억 1,371만원</div><div><span class="chg rise">+0.2% 24h</span></div></div><div class="stat fng"><div class="fng-top"><b>공포탐욕 지수</b><span class="small muted">Greed · 전일 70</span></div><div class="v num">74</div><div class="fng-bar" role="img" aria-label="공포탐욕 74 / 100"><i></i><i></i><i></i><i></i><i></i><span class="fng-mark" style="left:74%"></span></div><div class="fng-scale"><span>극단적 공포</span><span>중립</span><span>극단적 탐욕</span></div></div></div><div class="panel mkt-note"><h3>시장 요약</h3><p>비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원 안에서 움직이지 않고 있어요. 17:45 리포트와 비교해 달라진 건 섹터 온도예요: 에이브(+11.3%)·유니스왑(+2.6%) 등 DeFi는 강한데, 지난달 크게 오른 수이·에테나·더그래프·피스는 이번 주 -4~-15% 되돌리는 중이에요. 알트코인 시즌 지수는 60으로 내려왔고 도미넌스는 58.7%라 &#x27;재료 있는 코인만&#x27; 오르는 장이에요. 미국 GDP 2.2% 유지에 이어 이번 주 고용지표가 다음 방향을 정할 변수예요.</p><div class="mini-h">이번에 지켜볼 것</div><ul class="watch"><li>에이브 소각안(Aavenomics 3.0) 거버넌스 진행</li><li>이번 주 미국 고용지표</li><li>비트코인 1억1,202만원(이번 주 저점) 지지</li><li>10월 8일 더그래프 스테이징 종료·쿼리 이전</li></ul></div></section>
+<section class="section" id="picks"><div class="sec-head"><h2>관심 코인 2개</h2><span class="sub">운용부</span></div><div class="cards"><article class="card" id="c-LINK">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/LINK.html">체인링크</a><span class="sym">LINK</span></div><div class="c-tags"><span class="tag">오라클·크로스체인(CCIP)</span></div></div>
+<div class="c-verdict"><span class="rt rt-관심">관심</span><span class="stars" role="img" aria-label="별 4개 (5점 만점)">★★★★<span class="off">☆</span></span></div></div>
+<div class="c-price"><span class="p num">20,710원</span><span class="chg fall">-1.1% 24h</span></div>
+<p class="c-what">블록체인 밖의 가격·데이터를 체인 안으로 넣어주고(오라클), 여러 체인과 은행 시스템을 잇는(CCIP) 인프라 코인이에요.</p>
+<div class="since"><b>지난 리포트 이후</b>17:45 리포트 때 20,620원 → 지금 20,710원(+0.4%)으로 거의 그대로예요. 그 사이 체인링크 직접 뉴스는 없었고, 대신 프랭클린템플턴이 토큰화 펀드를 바이비트 담보로 넣는 등 &#x27;기관 자산을 온체인 담보로 쓰는&#x27; 흐름이 한 번 더 확인됐어요.</div>
+<p class="c-comment">스위프트 연동 발표 뒤에도 가격은 20,710원(-1.1%)으로 이번 주 고점 21,420원보다 3% 아래에 머물러 있어요. 이번 주 저점 18,340원에서 반등한 상태라 지지선 19,000원(지난주 종가)과 거리가 약 9%예요. 재료 대비 가격 반영이 느린 편이라는 판단은 그대로지만, 새 뉴스가 없으니 &#x27;더 강해졌다&#x27;고 보진 않아요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="rise">+9.0%</span></div><div class="m"><b>4주</b><span class="rise">+15.1%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-38.8%</span></div><div class="m"><b>주간 변동폭</b><span class="">18%</span></div></div>
+<ul class="reasons"><li>스토리 유지: 프랭클린템플턴 토큰화 담보의 바이비트 도입 등 기관 자산 온체인화가 계속돼 &#x27;기관 자산과 체인을 잇는 표준&#x27; 수요 배경은 그대로예요</li><li>1주 +9.0%, 4주 +15.1%로 주간 추세는 위쪽이에요</li><li>손익비 2.0(진입 19,000~20,710원, 손절 18,050원, 1차 23,460원)</li><li>52주 고점 33,850원 대비 -38.8%로 아직 한참 아래예요</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 18,050원, 진입 19,000원~20,710원, 현재 20,710원, 1차 목표 23,460원"><div class="seg s-loss" style="left:0;width:13.22%"></div><div class="seg s-gain" style="left:33.21%;width:32.16%"></div><div class="seg s-gain2" style="left:65.37%;width:31.57%"></div><div class="seg s-zone" style="left:13.22%;width:20.00%"></div><div class="tk stop" style="left:2.11%"></div><div class="tk tgt" style="left:65.37%"></div><div class="tk tgt" style="left:96.94%"></div><div class="now" style="left:33.21%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">18,050원</span><small>-9.1%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">19,000원~</span><small>20,710원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">23,460원 · 26,160원</span><small>+18.1% · +31.8%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 11%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>21,420원(이번 주 고점)을 넘기면 1차 23,460원, 은행 연동 후속 발표가 나오면 2차 26,160원까지 열려 있어요.</div><div class="bear"><b>내리는 경우</b>19,000원을 잃으면 스위프트 재료가 소진됐다는 신호로 보고, 손절선 18,050원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>스위프트 연동은 &#x27;만들겠다&#x27;는 단계라 실제 은행 사용과 수수료 수익이 나오기까지 시간이 걸려요. 그동안 가격은 시장 전체(비트코인 박스)에 끌려다닐 수 있어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>주봉 종가가 19,000원 아래로 닫히거나, 스위프트·은행 쪽에서 연동 지연·축소 소식이 나오면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>스위프트 연동의 실제 가동 일정 발표 여부</li><li>21,420원 돌파 시 거래대금이 같이 느는지</li><li>비트코인이 1억1,202만원 지지를 지키는지</li><li>CCIP 새 버전 도입 앱 발표</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>Crypto-friendly institution Franklin Templeton brings its tokenized collateral service to Bybit</span></div></div></div></details>
+</article><article class="card" id="c-UNI">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/UNI.html">유니스왑</a><span class="sym">UNI</span></div><div class="c-tags"><span class="tag">DeFi 거래소(DEX)</span><span class="tag new">새 코인</span></div></div>
+<div class="c-verdict"><span class="rt rt-관심">관심</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">12,270원</span><span class="chg rise">+2.6% 24h</span></div>
+<p class="c-what">중개자 없이 코인끼리 바로 바꿔주는 가장 큰 탈중앙 거래소의 거버넌스 코인이에요.</p>
+
+<p class="c-comment">CME가 UNI 선물(일반 1만 UNI·마이크로 1천 UNI)을 10월 19일에 내놓겠다고 9월 22일 발표했고(규제 검토 조건), 거래 수수료를 모아 태우는 소각 구조도 돌아가고 있어요. 가격은 1만2,270원(+2.6%)으로 지난주 고점 1만4,680원에서 밀린 뒤 지지선 1만1,970원 위에 있어요. 선물 출시까지 3주가 남아 재료가 아직 살아 있고 손익비(2.38)도 괜찮아 관심으로 봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-6.5%</span></div><div class="m"><b>4주</b><span class="rise">+23.4%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-19.3%</span></div><div class="m"><b>주간 변동폭</b><span class="">30%</span></div></div>
+<ul class="reasons"><li>CME UNI 선물 10월 19일 출시 예정(규제 검토 조건)</li><li>4주 +23.4%, 52주 고점 대비 -19.3%로 관찰 목록 중 고점에 가까운 편</li><li>1주 -6.5% 조정으로 지지선 1만1,970원과 거리 2.5%</li><li>손익비 2.38(손절 1만1,040원, 1차 1만4,680원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 11,040원, 진입 11,970원~12,270원, 현재 12,270원, 1차 목표 14,680원"><div class="seg s-loss" style="left:0;width:23.47%"></div><div class="seg s-gain" style="left:30.24%;width:54.37%"></div><div class="seg s-gain2" style="left:84.61%;width:11.96%"></div><div class="seg s-zone" style="left:23.47%;width:6.77%"></div><div class="tk stop" style="left:2.49%"></div><div class="tk tgt" style="left:84.61%"></div><div class="tk tgt" style="left:96.57%"></div><div class="now" style="left:30.24%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">11,040원</span><small>-8.9%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">11,970원~</span><small>12,270원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">14,680원 · 15,210원</span><small>+21.1% · +25.5%</small></div></div><div class="lfoot">손익비 2.4 · 비중 상한 계좌의 11%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>선물 출시 기대가 붙어 1만3,240원(이번 주 고점)을 넘기면 1차 1만4,680원, 2차 52주 고점 1만5,210원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1만1,970원이 깨지면 이번 주 저점 1만1,480원을 거쳐 손절선 1만1,040원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>CME 선물 발표는 1주일 전 소식이라 일부는 이미 반영됐고, 출시 당일 &#x27;소문에 사고 뉴스에 파는&#x27; 흐름이 나올 수 있어요. 주간 변동폭도 30%로 커요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>규제 검토로 선물 출시가 미뤄지거나 주봉이 1만1,480원 아래로 닫히면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>CME 선물 출시 일정 확정 여부</li><li>수수료 소각량 추이</li><li>1만3,240원 돌파 시 거래대금</li><li>DeFi 섹터(에이브 등) 동반 강세 지속 여부</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>UNI Price Prediction: CME Futures, Fee Burns, and a $10.99 Ceiling — Which Way Does UNI Break?</span></div></div></div></details>
 </article></div></section>
-<section class="section"><h2>지켜볼 코인 7개</h2><p class="legend">눌러서 펼치면 전체 분석을 볼 수 있어요.</p><div class="cards"><details class="fold"><summary><span><span class="fname">비트코인</span> <span class="num small muted">BTC</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="fline"><span class="num">113,714,000원 <span class="up">+0.2%</span></span> · 비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원의 좁은 범위에 있어요. 알트코인 시즌 …</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/BTC.html">비트코인<small>BTC</small></a><span class="pos">디지털 금</span></div><div class="what">가장 오래되고 큰 암호화폐로, 발행량이 2,100만 개로 정해진 &#x27;디지털 금&#x27;이에요.</div>
-  <div class="price num">113,714,000원 <span class="up">+0.2% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
-  <div class="since"><b>지난 리포트 이후</b>17:45 리포트 때 1억1,380만원 → 지금 1억1,371만원(-0.1%)으로 변화가 없어요. 새로 나온 건 갤럭시 디지털 노보그라츠의 &#x27;연말 10만달러도 놀랍지 않다&#x27;는 발언과 미국 GDP 성장률 2.2% 유지 소식이에요.</div>
-  <p class="comment">비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원의 좁은 범위에 있어요. 알트코인 시즌 지수는 60으로 내려왔지만 비트코인 도미넌스는 58.7%를 지켜, 돈이 알트보다 비트코인 쪽에 머무는 모습이에요. 미국 고용지표가 나오는 이번 주까지는 방향을 기다리는 게 맞아 보여요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-0.6%</span></div><div class="metric"><b>4주</b><span class="up">+3.9%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-36.8%</span></div><div class="metric"><b>주간 변동폭</b><span class="">7%</span></div></div>
-  <ul class="plain small"><li>이번 주 범위 1억1,202만~1억1,516만원, 주간 -0.6%</li><li>4주 +3.9%로 완만한 오름세, 52주 고점 대비 -36.8%</li><li>알트코인 시즌 지수 60 하락 속 도미넌스 58.7% 유지</li><li>손익비 2.0(손절 1억835만원, 1차 1억2,190만원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>고용지표가 무난하게 나와 지난주 고점 1억1,760만원을 넘기면 1차 1억2,190만원, 2차 1억2,867만원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1억1,202만원(이번 주 저점)을 잃으면 박스 하단을 다시 시험하고, 손절선 1억835만원까지 열려요.</div></div>
-  <div class="track" role="img" aria-label="손절 108,352,000원, 진입 112,019,000원~113,714,000원, 현재 113,714,000원, 목표 121,896,000원"><div class="rail"></div><div class="zone" style="left:20.94%;width:7.47%"></div><div class="tick stop" style="left:4.78%"></div><div class="tick tgt" style="left:64.48%"></div><div class="tick tgt" style="left:94.33%"></div><div class="cur" style="left:28.41%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">112,019,000원~113,714,000원</span></div><div><span>손절</span><span class="num lv-stop">108,352,000원 (-4.0%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">121,896,000원 (+8.0%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">128,668,000원 (+14.0%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 25%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>갤럭시 디지털 CEO &quot;비트코인, 연말 10만달러 가도 안 놀라&quot;…강세 전망 유지</span></div><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</span></div></div>
-  <div class="counter"><b>반대 의견</b> 미 10년물 금리가 5.2%대로 2007년 이후 최고 수준이라, ETF 유입이 이어져도 위험자산 전체의 위쪽이 막힐 수 있어요.<br><span class="small">틀리는 조건: 주봉 종가가 1억1,054만원(지난주 저점) 아래로 닫히면 박스가 아래로 깨진 것으로 봐요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>이번 주 미국 고용지표 결과</li><li>현물 ETF 일별 유입이 이어지는지</li><li>미 10년물 금리 5.25% 돌파 여부</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">에이브</span> <span class="num small muted">AAVE</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="fline"><span class="num">226,100원 <span class="up">+11.3%</span></span> · 에이브 V4가 베이스 체인에서 애플·엔비디아 등 미국 주식 7종의 토큰을 USDC 대출 담보로 받기 시작했고, 창업자 스타니 …</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/AAVE.html">에이브<small>AAVE</small></a><span class="pos">DeFi 대출</span><span class="newchip">새 코인</span></div><div class="what">코인을 맡기고 이자를 받거나, 담보를 잡고 코인을 빌리는 가장 큰 탈중앙 대출 서비스예요.</div>
-  <div class="price num">226,100원 <span class="up">+11.3% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
-  
-  <p class="comment">에이브 V4가 베이스 체인에서 애플·엔비디아 등 미국 주식 7종의 토큰을 USDC 대출 담보로 받기 시작했고, 창업자 스타니 쿨레초프가 기존 바이백에 소각을 더하는 &#x27;Aavenomics 3.0&#x27;을 제안했어요. 가격은 22만6,100원(+11.3%)으로 이번 주 고점 22만7,800원 바로 아래까지 올랐어요. 재료는 좋지만 소각은 아직 제안 단계이고 오늘 이미 크게 반영돼, 쫓기보다 눌림을 기다리는 쪽으로 봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="up">+7.8%</span></div><div class="metric"><b>4주</b><span class="up">+21.3%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-47.1%</span></div><div class="metric"><b>주간 변동폭</b><span class="">16%</span></div></div>
-  <ul class="plain small"><li>24h +11.3%로 관찰 목록 중 가장 강함 (해외 보도 기준 +16%, 약 166달러)</li><li>토큰화 주식 7종 담보 허용(9/25 가동) + 소각 제안(9/29)</li><li>1주 +7.8%, 4주 +21.3%로 주간 추세 위쪽</li><li>손익비 2.0(진입 20만9,800~22만6,100원, 손절 20만900원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>소각안이 거버넌스에서 힘을 얻고 22만7,800원을 넘기면 1차 25만2,100원, 2차 27만7,700원까지 열려요.</div><div class="bear"><b>내리는 경우</b>오늘 급등분이 되돌려져 20만9,800원(지난주 종가)을 잃으면 손절선 20만900원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 200,900원, 진입 209,800원~226,100원, 현재 226,100원, 목표 252,100원"><div class="rail"></div><div class="zone" style="left:13.37%;width:19.98%"></div><div class="tick stop" style="left:2.46%"></div><div class="tick tgt" style="left:65.22%"></div><div class="tick tgt" style="left:96.60%"></div><div class="cur" style="left:33.35%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">209,800원~226,100원</span></div><div><span>손절</span><span class="num lv-stop">200,900원 (-7.8%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">252,100원 (+15.7%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">277,700원 (+27.4%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 13%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 4개">★★★★<span class="off">☆</span></span><span>에이브 16% 급등, 토큰화 주식 담보 도입·소각안(Aavenomics 3.0) 제안</span></div></div>
-  <div class="counter"><b>반대 의견</b> 하루 11% 오른 뒤라 단기 차익 매물이 나오기 쉽고, 소각안은 제안일 뿐 규모·시기가 정해지지 않았어요. 전날엔 -5.3% 하락도 있었어요.<br><span class="small">틀리는 조건: 소각안이 반대에 부딪히거나 20만900원 아래로 밀리면 이번 상승은 일회성으로 봐요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>Aavenomics 3.0 거버넌스 투표 일정과 소각 규모</li><li>토큰화 주식 담보 예치액 추이</li><li>22만7,800원 돌파 때 거래대금</li><li>하루 급등 뒤 되돌림 폭</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">더그래프</span> <span class="num small muted">GRT</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="fline"><span class="num">41.90원 <span class="up">+0.5%</span></span> · 더그래프 재단이 서브그래프 스튜디오의 쿼리를 BNB체인·폴리곤부터 탈중앙 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다…</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/GRT.html">더그래프<small>GRT</small></a><span class="pos">데이터 인덱싱</span><span class="newchip">새 코인</span></div><div class="what">블록체인 데이터를 앱이 빠르게 찾아 쓰도록 정리·검색해주는 &#x27;블록체인의 구글&#x27; 역할 네트워크예요.</div>
-  <div class="price num">41.90원 <span class="up">+0.5% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
-  
-  <p class="comment">더그래프 재단이 서브그래프 스튜디오의 쿼리를 BNB체인·폴리곤부터 탈중앙 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다고 밝히면서, 하루 25.6% 오르고 현물 거래량이 530% 늘었어요. 업비트에선 지난주에 +60% 오른 뒤 이번 주 41.9원으로 -14% 식는 중이에요. 네트워크 사용량이 늘 재료는 맞지만 급등분이 크게 반영돼 중립으로 봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-13.8%</span></div><div class="metric"><b>4주</b><span class="up">+56.3%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-66.8%</span></div><div class="metric"><b>주간 변동폭</b><span class="">27%</span></div></div>
-  <ul class="plain small"><li>쿼리 이전 → 네트워크 수수료 수요 증가 기대, 10월 8일 스테이징 종료</li><li>4주 +56.3%, 1주 -13.8%</li><li>52주 고점 대비 -66.8%</li><li>손익비 2.3(진입 40.4~41.9원, 손절 37.6원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>10월 8일 이전 뒤 쿼리 수가 늘어난 게 확인되고 49.4원(이번 주 고점)을 넘기면 2차 54.8원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>이번 주 저점 40.4원이 깨지면 손절선 37.6원, 더 약하면 지지난주 종가 30.4원 쪽까지 되돌릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 37.60원, 진입 40.40원~41.90원, 현재 41.90원, 목표 49.40원"><div class="rail"></div><div class="zone" style="left:17.52%;width:8.28%"></div><div class="tick stop" style="left:2.07%"></div><div class="tick tgt" style="left:67.18%"></div><div class="tick tgt" style="left:96.98%"></div><div class="cur" style="left:25.80%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">40.40원~41.90원</span></div><div><span>손절</span><span class="num lv-stop">37.60원 (-8.7%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">49.40원 (+20.1%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">54.80원 (+33.1%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 12%</span></div><div><span>손익비</span><span class="num ">2.3</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>그래프(GRT) 25.58% 상승…AMBCrypto, 0.027달러 지지 여부 주목</span></div></div>
-  <div class="counter"><b>반대 의견</b> 거래량 급증이 파생상품(+893%) 쪽에 몰려 있어 단기 투기 자금이 빠지면 빠르게 되돌릴 수 있어요.<br><span class="small">틀리는 조건: 40.4원 아래로 주봉이 닫히면 재료 소진으로 봐요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>10월 8일 이전 이후 네트워크 쿼리 수</li><li>파생 미결제약정 감소 여부</li><li>40.4원 지지 여부</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">스텔라루멘</span> <span class="num small muted">XLM</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="fline"><span class="num">311원 <span class="down">-1.3%</span></span> · 오늘은 311원(-1.3%)이지만 이번 주 +6.5%로 관찰한 결제 코인 중 주간 흐름이 가장 좋고, 24시간 거래대금도 1,…</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/XLM.html">스텔라루멘<small>XLM</small></a><span class="pos">결제·송금·RWA</span><span class="newchip">새 코인</span></div><div class="what">국경 간 송금과 스테이블코인·토큰화 자산 발행에 쓰이는 결제용 블록체인이에요.</div>
-  <div class="price num">311원 <span class="down">-1.3% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
-  
-  <p class="comment">오늘은 311원(-1.3%)이지만 이번 주 +6.5%로 관찰한 결제 코인 중 주간 흐름이 가장 좋고, 24시간 거래대금도 1,136억원으로 큰 편이에요. 최근 24~48시간 안의 직접 뉴스는 확인하지 못했어요. 추세는 좋지만 재료가 확인되지 않아 중립으로 두고 지켜봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="up">+6.5%</span></div><div class="metric"><b>4주</b><span class="up">+22.0%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-47.0%</span></div><div class="metric"><b>주간 변동폭</b><span class="">13%</span></div></div>
-  <ul class="plain small"><li>1주 +6.5%, 4주 +22.0%</li><li>24h 거래대금 약 1,136억원</li><li>이번 주 고점 319원, 지지 292원(지난주 종가)</li><li>손익비 2.0(손절 282원, 1차 341원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>319원(이번 주 고점)을 거래대금과 함께 넘기면 1차 341원, 2차 371원까지 열려요.</div><div class="bear"><b>내리는 경우</b>292원(지난주 종가)을 잃으면 주간 상승이 무효가 되고 손절선 282원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 282원, 진입 292원~311원, 현재 311원, 목표 341원"><div class="rail"></div><div class="zone" style="left:13.42%;width:19.89%"></div><div class="tick stop" style="left:2.95%"></div><div class="tick tgt" style="left:64.71%"></div><div class="tick tgt" style="left:96.12%"></div><div class="cur" style="left:33.31%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">292원~311원</span></div><div><span>손절</span><span class="num lv-stop">282원 (-6.6%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">341원 (+13.2%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">371원 (+23.1%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 15%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  
-  <div class="counter"><b>반대 의견</b> 오른 이유가 확인되지 않은 상승은 재료 없이 쉽게 꺼져요. 거래대금이 커도 방향이 한쪽이라는 보장은 없어요.<br><span class="small">틀리는 조건: 292원 아래 주봉 마감이면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>상승 이유가 되는 뉴스(제휴·RWA 발행) 확인</li><li>319원 돌파 여부</li><li>거래대금 유지 여부</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">비트텐서</span> <span class="num small muted">TAO</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="fline"><span class="num">424,800원 <span class="up">+1.7%</span></span> · 42만4,800원(+1.7%)으로 지난주 +21% 오른 뒤 이번 주 -1.9%로 쉬고 있어요. 최근 24~48시간 안에 확인된…</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/TAO.html">비트텐서<small>TAO</small></a><span class="pos">AI·탈중앙 학습망</span><span class="newchip">새 코인</span></div><div class="what">여러 참여자가 AI 모델을 함께 학습·제공하고 성과에 따라 보상받는 탈중앙 AI 네트워크예요.</div>
-  <div class="price num">424,800원 <span class="up">+1.7% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
-  
-  <p class="comment">42만4,800원(+1.7%)으로 지난주 +21% 오른 뒤 이번 주 -1.9%로 쉬고 있어요. 최근 24~48시간 안에 확인된 직접 뉴스는 없어요. AI 분야 대표로 흐름만 점검하고 중립으로 둬요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-1.9%</span></div><div class="metric"><b>4주</b><span class="up">+17.4%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-25.3%</span></div><div class="metric"><b>주간 변동폭</b><span class="">22%</span></div></div>
-  <ul class="plain small"><li>4주 +17.5%, 1주 -1.9%</li><li>52주 고점 56만8,500원 대비 -25.3%</li><li>주간 변동폭 22%로 큰 편</li><li>손익비 2.0(진입 40만1,600~42만4,800원, 손절 37만8,150원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>지난주 고점 46만2,200원을 넘기면 1차 48만3,350원, 강하면 52주 고점 56만8,500원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>이번 주 저점 40만1,600원이 깨지면 손절선 37만8,150원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 378,150원, 진입 401,600원~424,800원, 현재 424,800원, 목표 483,350원"><div class="rail"></div><div class="zone" style="left:13.63%;width:11.61%"></div><div class="tick stop" style="left:1.89%"></div><div class="tick tgt" style="left:54.54%"></div><div class="tick tgt" style="left:97.15%"></div><div class="cur" style="left:25.24%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">401,600원~424,800원</span></div><div><span>손절</span><span class="num lv-stop">378,150원 (-8.5%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">483,350원 (+17.0%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">568,500원 (+37.6%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 12%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  
-  <div class="counter"><b>반대 의견</b> 뉴스 없이 섹터 흐름만으로 움직이는 구간이라, AI 테마가 식으면 받쳐줄 재료가 없어요.<br><span class="small">틀리는 조건: 40만1,600원 아래 주봉 마감이면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>서브넷·반감기 등 네트워크 소식</li><li>AI 코인(월드코인·버추얼) 동반 흐름</li><li>40만1,600원 지지</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">수이</span> <span class="num small muted">SUI</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="fline"><span class="num">1,548원 <span class="down">-2.5%</span></span> · 1,548원(-2.5%)으로 지난주 +39% 급등 뒤 이번 주 -9.5% 되밀리는 중이에요. 아비트럼 개발 커밋 집계에서 수이…</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/SUI.html">수이<small>SUI</small></a><span class="pos">L1 고속 스마트컨트랙트</span><span class="newchip">새 코인</span></div><div class="what">빠른 처리 속도를 내세운 레이어1 블록체인으로, 게임·DeFi 앱이 많이 올라가 있어요.</div>
-  <div class="price num">1,548원 <span class="down">-2.5% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
-  
-  <p class="comment">1,548원(-2.5%)으로 지난주 +39% 급등 뒤 이번 주 -9.5% 되밀리는 중이에요. 아비트럼 개발 커밋 집계에서 수이가 비교 대상으로 뒤처졌다는 보도 외에 직접 뉴스는 확인되지 않았어요. 손익비가 1.96으로 애매하고 방향이 아래라 중립(약)으로 봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-9.5%</span></div><div class="metric"><b>4주</b><span class="up">+40.2%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-70.6%</span></div><div class="metric"><b>주간 변동폭</b><span class="">23%</span></div></div>
-  <ul class="plain small"><li>4주 +40.2%, 1주 -9.5%</li><li>24h -2.5%, 거래대금 약 514억원</li><li>이번 주 저점 1,492원이 바로 아래 지지</li><li>손익비 1.96</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>1,492원을 지키고 지난주 고점 1,749원을 다시 넘기면 2차 1,929원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1,492원이 깨지면 손절선 1,403원, 더 약하면 지지난주 종가 1,228원 쪽까지 열려요.</div></div>
-  <div class="track" role="img" aria-label="손절 1,403원, 진입 1,492원~1,548원, 현재 1,548원, 목표 1,749원"><div class="rail"></div><div class="zone" style="left:18.42%;width:10.01%"></div><div class="tick stop" style="left:2.51%"></div><div class="tick tgt" style="left:64.37%"></div><div class="tick tgt" style="left:96.55%"></div><div class="cur" style="left:28.43%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">1,492원~1,548원</span></div><div><span>손절</span><span class="num lv-stop">1,403원 (-7.7%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">1,749원 (+15.1%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">1,929원 (+26.9%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 13%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
-  
-  <div class="counter"><b>반대 의견</b> 한 달 급등 뒤 되돌림이 진행 중이라, 지지선 하나에 기대 사는 건 떨어지는 칼날을 잡는 셈일 수 있어요.<br><span class="small">틀리는 조건: 1,492원 아래로 일봉·주봉이 닫히면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>1,492원 지지 여부</li><li>토큰 언락 일정</li><li>L1 알트(세이·헤데라) 동반 약세 여부</li></ul></details>
-</article></details><details class="fold"><summary><span><span class="fname">도지코인</span> <span class="num small muted">DOGE</span><span class="newchip">새 코인</span></span><span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="fline"><span class="num">129원 <span class="up">+1.6%</span></span> · 캘리포니아 뉴섬 주지사가 공직자의 밈코인 발행을 금지하는 법(AB 2409)에 서명했고, 밈코인 전체 시총은 352억 달러로 …</span></summary><article class="card">
-  <div class="card-top"><div><div class="coin"><a href="../coin/DOGE.html">도지코인<small>DOGE</small></a><span class="pos">밈</span><span class="newchip">새 코인</span></div><div class="what">장난으로 시작해 가장 큰 밈코인이 된 결제용 코인이에요.</div>
-  <div class="price num">129원 <span class="up">+1.6% 24h</span></div></div>
-  <div class="rbox"><span class="rating r-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
-  
-  <p class="comment">캘리포니아 뉴섬 주지사가 공직자의 밈코인 발행을 금지하는 법(AB 2409)에 서명했고, 밈코인 전체 시총은 352억 달러로 하루 새 3.3% 줄었어요. 자금은 도지보다 펌프펀·새 토큰 쪽으로 흩어지는 중이에요. 가격은 129원(+1.6%)으로 이번 주 125~133원 박스라 중립으로 봐요.</p>
-  <div class="metrics"><div class="metric"><b>1주</b><span class="down">-1.5%</span></div><div class="metric"><b>4주</b><span class="up">+4.0%</span></div><div class="metric"><b>52주 고점 대비</b><span class="down">-66.4%</span></div><div class="metric"><b>주간 변동폭</b><span class="">15%</span></div></div>
-  <ul class="plain small"><li>밈 시총 352억 달러(-3.3%), 도지 시총 146.5억 달러</li><li>1주 -1.5%, 4주 +4.0%로 주간 흐름 약함</li><li>52주 고점 대비 -66.4%</li><li>손익비 2.29(손절 120원, 1차 143원)</li></ul>
-  <div class="scen"><div class="bull"><b>오르는 경우</b>밈 섹터로 자금이 돌아와 133원(이번 주 고점)을 넘기면 1차 143원, 2차 153원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>125원(이번 주 저점)을 잃으면 손절선 120원까지 밀릴 수 있어요.</div></div>
-  <div class="track" role="img" aria-label="손절 120원, 진입 125원~129원, 현재 129원, 목표 143원"><div class="rail"></div><div class="zone" style="left:17.35%;width:11.20%"></div><div class="tick stop" style="left:3.36%"></div><div class="tick tgt" style="left:67.73%"></div><div class="tick tgt" style="left:95.72%"></div><div class="cur" style="left:28.55%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">125원~129원</span></div><div><span>손절</span><span class="num lv-stop">120원 (-5.5%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">143원 (+12.6%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">153원 (+20.9%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 18%</span></div><div><span>손익비</span><span class="num ">2.3</span></div></div>
-  <div class="related"><b class="small muted">관련 뉴스</b><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>California Gov. Gavin Newsom bans public officials from launching memecoins, takes aim at Trump</span></div><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>밈코인 시총 352억달러, 펌프펀·신규 토큰으로 자금 분산</span></div></div>
-  <div class="counter"><b>반대 의견</b> 밈 자금이 새 토큰으로 흩어지는 중이라 도지 자체로 들어올 동력이 약해요.<br><span class="small">틀리는 조건: 125원 아래 주봉 마감이면 판단을 거둬요.</span></div><details><summary>사기 전 체크리스트</summary><ul><li>밈코인 전체 시총 반등 여부</li><li>도지 ETF 유입</li><li>125원 지지</li></ul></details>
+<section class="section"><div class="sec-head"><h2>지켜볼 코인 7개</h2><span class="sub">눌러서 펼치기</span></div><div class="cards"><details class="fold" id="c-BTC"><summary><span class="f-name"><b>비트코인</b><span class="num tiny muted">BTC</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="f-line"><span class="num">113,714,000원</span><span class="chg rise">+0.2%</span><span>비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원의 좁은 범위에 있어요. 알트코인 시즌 지수는 60으로 내려왔지만 비트코인 도미넌스는 58.7%를 지켜, 돈이 알트보다 비트코인 쪽에 머무는 모습이에요. 미국 고용지표가 나오는 이번 주까지는 방향을 기다리는 게 맞아 보여요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/BTC.html">비트코인</a><span class="sym">BTC</span></div><div class="c-tags"><span class="tag">디지털 금</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">113,714,000원</span><span class="chg rise">+0.2% 24h</span></div>
+<p class="c-what">가장 오래되고 큰 암호화폐로, 발행량이 2,100만 개로 정해진 &#x27;디지털 금&#x27;이에요.</p>
+<div class="since"><b>지난 리포트 이후</b>17:45 리포트 때 1억1,380만원 → 지금 1억1,371만원(-0.1%)으로 변화가 없어요. 새로 나온 건 갤럭시 디지털 노보그라츠의 &#x27;연말 10만달러도 놀랍지 않다&#x27;는 발언과 미국 GDP 성장률 2.2% 유지 소식이에요.</div>
+<p class="c-comment">비트코인은 1억1,371만원(+0.2%)으로 이번 주 1억1,202만~1억1,516만원의 좁은 범위에 있어요. 알트코인 시즌 지수는 60으로 내려왔지만 비트코인 도미넌스는 58.7%를 지켜, 돈이 알트보다 비트코인 쪽에 머무는 모습이에요. 미국 고용지표가 나오는 이번 주까지는 방향을 기다리는 게 맞아 보여요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-0.6%</span></div><div class="m"><b>4주</b><span class="rise">+3.9%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-36.8%</span></div><div class="m"><b>주간 변동폭</b><span class="">7%</span></div></div>
+<ul class="reasons"><li>이번 주 범위 1억1,202만~1억1,516만원, 주간 -0.6%</li><li>4주 +3.9%로 완만한 오름세, 52주 고점 대비 -36.8%</li><li>알트코인 시즌 지수 60 하락 속 도미넌스 58.7% 유지</li><li>손익비 2.0(손절 1억835만원, 1차 1억2,190만원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 108,352,000원, 진입 112,019,000원~113,714,000원, 현재 113,714,000원, 1차 목표 121,896,000원"><div class="seg s-loss" style="left:0;width:20.94%"></div><div class="seg s-gain" style="left:28.41%;width:36.07%"></div><div class="seg s-gain2" style="left:64.48%;width:29.85%"></div><div class="seg s-zone" style="left:20.94%;width:7.47%"></div><div class="tk stop" style="left:4.78%"></div><div class="tk tgt" style="left:64.48%"></div><div class="tk tgt" style="left:94.33%"></div><div class="now" style="left:28.41%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">108,352,000원</span><small>-4.0%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">112,019,000원~</span><small>113,714,000원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">121,896,000원 · 128,668,000원</span><small>+8.0% · +14.0%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 25%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>고용지표가 무난하게 나와 지난주 고점 1억1,760만원을 넘기면 1차 1억2,190만원, 2차 1억2,867만원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1억1,202만원(이번 주 저점)을 잃으면 박스 하단을 다시 시험하고, 손절선 1억835만원까지 열려요.</div></div><div class="counter"><b>반대 의견</b>미 10년물 금리가 5.2%대로 2007년 이후 최고 수준이라, ETF 유입이 이어져도 위험자산 전체의 위쪽이 막힐 수 있어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>주봉 종가가 1억1,054만원(지난주 저점) 아래로 닫히면 박스가 아래로 깨진 것으로 봐요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>이번 주 미국 고용지표 결과</li><li>현물 ETF 일별 유입이 이어지는지</li><li>미 10년물 금리 5.25% 돌파 여부</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>갤럭시 디지털 CEO &quot;비트코인, 연말 10만달러 가도 안 놀라&quot;…강세 전망 유지</span></div><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</span></div></div></div></details>
+</article></details><details class="fold" id="c-AAVE"><summary><span class="f-name"><b>에이브</b><span class="num tiny muted">AAVE</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="f-line"><span class="num">226,100원</span><span class="chg rise">+11.3%</span><span>에이브 V4가 베이스 체인에서 애플·엔비디아 등 미국 주식 7종의 토큰을 USDC 대출 담보로 받기 시작했고, 창업자 스타니 쿨레초프가 기존 바이백에 소각을 더하는 &#x27;Aavenomics 3.0&#x27;을 제안했어요. 가격은 22만6,100원(+11.3%)으로 이번 주 고점 22만7,800원 바로 아래까지 올랐어요. 재료는 좋지만 소각은 아직 제안 단계이고 오늘 이미 크게 반영돼, 쫓기보다 눌림을 기다리는 쪽으로 봐요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/AAVE.html">에이브</a><span class="sym">AAVE</span></div><div class="c-tags"><span class="tag">DeFi 대출</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">226,100원</span><span class="chg rise">+11.3% 24h</span></div>
+<p class="c-what">코인을 맡기고 이자를 받거나, 담보를 잡고 코인을 빌리는 가장 큰 탈중앙 대출 서비스예요.</p>
+
+<p class="c-comment">에이브 V4가 베이스 체인에서 애플·엔비디아 등 미국 주식 7종의 토큰을 USDC 대출 담보로 받기 시작했고, 창업자 스타니 쿨레초프가 기존 바이백에 소각을 더하는 &#x27;Aavenomics 3.0&#x27;을 제안했어요. 가격은 22만6,100원(+11.3%)으로 이번 주 고점 22만7,800원 바로 아래까지 올랐어요. 재료는 좋지만 소각은 아직 제안 단계이고 오늘 이미 크게 반영돼, 쫓기보다 눌림을 기다리는 쪽으로 봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="rise">+7.8%</span></div><div class="m"><b>4주</b><span class="rise">+21.3%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-47.1%</span></div><div class="m"><b>주간 변동폭</b><span class="">16%</span></div></div>
+<ul class="reasons"><li>24h +11.3%로 관찰 목록 중 가장 강함 (해외 보도 기준 +16%, 약 166달러)</li><li>토큰화 주식 7종 담보 허용(9/25 가동) + 소각 제안(9/29)</li><li>1주 +7.8%, 4주 +21.3%로 주간 추세 위쪽</li><li>손익비 2.0(진입 20만9,800~22만6,100원, 손절 20만900원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 200,900원, 진입 209,800원~226,100원, 현재 226,100원, 1차 목표 252,100원"><div class="seg s-loss" style="left:0;width:13.37%"></div><div class="seg s-gain" style="left:33.35%;width:31.87%"></div><div class="seg s-gain2" style="left:65.22%;width:31.38%"></div><div class="seg s-zone" style="left:13.37%;width:19.98%"></div><div class="tk stop" style="left:2.46%"></div><div class="tk tgt" style="left:65.22%"></div><div class="tk tgt" style="left:96.60%"></div><div class="now" style="left:33.35%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">200,900원</span><small>-7.8%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">209,800원~</span><small>226,100원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">252,100원 · 277,700원</span><small>+15.7% · +27.4%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 13%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>소각안이 거버넌스에서 힘을 얻고 22만7,800원을 넘기면 1차 25만2,100원, 2차 27만7,700원까지 열려요.</div><div class="bear"><b>내리는 경우</b>오늘 급등분이 되돌려져 20만9,800원(지난주 종가)을 잃으면 손절선 20만900원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>하루 11% 오른 뒤라 단기 차익 매물이 나오기 쉽고, 소각안은 제안일 뿐 규모·시기가 정해지지 않았어요. 전날엔 -5.3% 하락도 있었어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>소각안이 반대에 부딪히거나 20만900원 아래로 밀리면 이번 상승은 일회성으로 봐요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>Aavenomics 3.0 거버넌스 투표 일정과 소각 규모</li><li>토큰화 주식 담보 예치액 추이</li><li>22만7,800원 돌파 때 거래대금</li><li>하루 급등 뒤 되돌림 폭</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 4개">★★★★<span class="off">☆</span></span><span>에이브 16% 급등, 토큰화 주식 담보 도입·소각안(Aavenomics 3.0) 제안</span></div></div></div></details>
+</article></details><details class="fold" id="c-GRT"><summary><span class="f-name"><b>더그래프</b><span class="num tiny muted">GRT</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="f-line"><span class="num">41.90원</span><span class="chg rise">+0.5%</span><span>더그래프 재단이 서브그래프 스튜디오의 쿼리를 BNB체인·폴리곤부터 탈중앙 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다고 밝히면서, 하루 25.6% 오르고 현물 거래량이 530% 늘었어요. 업비트에선 지난주에 +60% 오른 뒤 이번 주 41.9원으로 -14% 식는 중이에요. 네트워크 사용량이 늘 재료는 맞지만 급등분이 크게 반영돼 중립으로 봐요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/GRT.html">더그래프</a><span class="sym">GRT</span></div><div class="c-tags"><span class="tag">데이터 인덱싱</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">41.90원</span><span class="chg rise">+0.5% 24h</span></div>
+<p class="c-what">블록체인 데이터를 앱이 빠르게 찾아 쓰도록 정리·검색해주는 &#x27;블록체인의 구글&#x27; 역할 네트워크예요.</p>
+
+<p class="c-comment">더그래프 재단이 서브그래프 스튜디오의 쿼리를 BNB체인·폴리곤부터 탈중앙 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다고 밝히면서, 하루 25.6% 오르고 현물 거래량이 530% 늘었어요. 업비트에선 지난주에 +60% 오른 뒤 이번 주 41.9원으로 -14% 식는 중이에요. 네트워크 사용량이 늘 재료는 맞지만 급등분이 크게 반영돼 중립으로 봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-13.8%</span></div><div class="m"><b>4주</b><span class="rise">+56.3%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-66.8%</span></div><div class="m"><b>주간 변동폭</b><span class="">27%</span></div></div>
+<ul class="reasons"><li>쿼리 이전 → 네트워크 수수료 수요 증가 기대, 10월 8일 스테이징 종료</li><li>4주 +56.3%, 1주 -13.8%</li><li>52주 고점 대비 -66.8%</li><li>손익비 2.3(진입 40.4~41.9원, 손절 37.6원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 37.60원, 진입 40.40원~41.90원, 현재 41.90원, 1차 목표 49.40원"><div class="seg s-loss" style="left:0;width:17.52%"></div><div class="seg s-gain" style="left:25.80%;width:41.38%"></div><div class="seg s-gain2" style="left:67.18%;width:29.79%"></div><div class="seg s-zone" style="left:17.52%;width:8.28%"></div><div class="tk stop" style="left:2.07%"></div><div class="tk tgt" style="left:67.18%"></div><div class="tk tgt" style="left:96.98%"></div><div class="now" style="left:25.80%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">37.60원</span><small>-8.7%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">40.40원~</span><small>41.90원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">49.40원 · 54.80원</span><small>+20.1% · +33.1%</small></div></div><div class="lfoot">손익비 2.3 · 비중 상한 계좌의 12%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>10월 8일 이전 뒤 쿼리 수가 늘어난 게 확인되고 49.4원(이번 주 고점)을 넘기면 2차 54.8원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>이번 주 저점 40.4원이 깨지면 손절선 37.6원, 더 약하면 지지난주 종가 30.4원 쪽까지 되돌릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>거래량 급증이 파생상품(+893%) 쪽에 몰려 있어 단기 투기 자금이 빠지면 빠르게 되돌릴 수 있어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>40.4원 아래로 주봉이 닫히면 재료 소진으로 봐요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>10월 8일 이전 이후 네트워크 쿼리 수</li><li>파생 미결제약정 감소 여부</li><li>40.4원 지지 여부</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>그래프(GRT) 25.58% 상승…AMBCrypto, 0.027달러 지지 여부 주목</span></div></div></div></details>
+</article></details><details class="fold" id="c-XLM"><summary><span class="f-name"><b>스텔라루멘</b><span class="num tiny muted">XLM</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개">★★★<span class="off">☆☆</span></span></span><span class="f-line"><span class="num">311원</span><span class="chg fall">-1.3%</span><span>오늘은 311원(-1.3%)이지만 이번 주 +6.5%로 관찰한 결제 코인 중 주간 흐름이 가장 좋고, 24시간 거래대금도 1,136억원으로 큰 편이에요. 최근 24~48시간 안의 직접 뉴스는 확인하지 못했어요. 추세는 좋지만 재료가 확인되지 않아 중립으로 두고 지켜봐요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/XLM.html">스텔라루멘</a><span class="sym">XLM</span></div><div class="c-tags"><span class="tag">결제·송금·RWA</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 3개 (5점 만점)">★★★<span class="off">☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">311원</span><span class="chg fall">-1.3% 24h</span></div>
+<p class="c-what">국경 간 송금과 스테이블코인·토큰화 자산 발행에 쓰이는 결제용 블록체인이에요.</p>
+
+<p class="c-comment">오늘은 311원(-1.3%)이지만 이번 주 +6.5%로 관찰한 결제 코인 중 주간 흐름이 가장 좋고, 24시간 거래대금도 1,136억원으로 큰 편이에요. 최근 24~48시간 안의 직접 뉴스는 확인하지 못했어요. 추세는 좋지만 재료가 확인되지 않아 중립으로 두고 지켜봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="rise">+6.5%</span></div><div class="m"><b>4주</b><span class="rise">+22.0%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-47.0%</span></div><div class="m"><b>주간 변동폭</b><span class="">13%</span></div></div>
+<ul class="reasons"><li>1주 +6.5%, 4주 +22.0%</li><li>24h 거래대금 약 1,136억원</li><li>이번 주 고점 319원, 지지 292원(지난주 종가)</li><li>손익비 2.0(손절 282원, 1차 341원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 282원, 진입 292원~311원, 현재 311원, 1차 목표 341원"><div class="seg s-loss" style="left:0;width:13.42%"></div><div class="seg s-gain" style="left:33.31%;width:31.40%"></div><div class="seg s-gain2" style="left:64.71%;width:31.40%"></div><div class="seg s-zone" style="left:13.42%;width:19.89%"></div><div class="tk stop" style="left:2.95%"></div><div class="tk tgt" style="left:64.71%"></div><div class="tk tgt" style="left:96.12%"></div><div class="now" style="left:33.31%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">282원</span><small>-6.6%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">292원~</span><small>311원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">341원 · 371원</span><small>+13.2% · +23.1%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 15%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>319원(이번 주 고점)을 거래대금과 함께 넘기면 1차 341원, 2차 371원까지 열려요.</div><div class="bear"><b>내리는 경우</b>292원(지난주 종가)을 잃으면 주간 상승이 무효가 되고 손절선 282원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>오른 이유가 확인되지 않은 상승은 재료 없이 쉽게 꺼져요. 거래대금이 커도 방향이 한쪽이라는 보장은 없어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>292원 아래 주봉 마감이면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>상승 이유가 되는 뉴스(제휴·RWA 발행) 확인</li><li>319원 돌파 여부</li><li>거래대금 유지 여부</li></ul></div></div></details>
+</article></details><details class="fold" id="c-TAO"><summary><span class="f-name"><b>비트텐서</b><span class="num tiny muted">TAO</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="f-line"><span class="num">424,800원</span><span class="chg rise">+1.7%</span><span>42만4,800원(+1.7%)으로 지난주 +21% 오른 뒤 이번 주 -1.9%로 쉬고 있어요. 최근 24~48시간 안에 확인된 직접 뉴스는 없어요. AI 분야 대표로 흐름만 점검하고 중립으로 둬요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/TAO.html">비트텐서</a><span class="sym">TAO</span></div><div class="c-tags"><span class="tag">AI·탈중앙 학습망</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">424,800원</span><span class="chg rise">+1.7% 24h</span></div>
+<p class="c-what">여러 참여자가 AI 모델을 함께 학습·제공하고 성과에 따라 보상받는 탈중앙 AI 네트워크예요.</p>
+
+<p class="c-comment">42만4,800원(+1.7%)으로 지난주 +21% 오른 뒤 이번 주 -1.9%로 쉬고 있어요. 최근 24~48시간 안에 확인된 직접 뉴스는 없어요. AI 분야 대표로 흐름만 점검하고 중립으로 둬요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-1.9%</span></div><div class="m"><b>4주</b><span class="rise">+17.4%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-25.3%</span></div><div class="m"><b>주간 변동폭</b><span class="">22%</span></div></div>
+<ul class="reasons"><li>4주 +17.5%, 1주 -1.9%</li><li>52주 고점 56만8,500원 대비 -25.3%</li><li>주간 변동폭 22%로 큰 편</li><li>손익비 2.0(진입 40만1,600~42만4,800원, 손절 37만8,150원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 378,150원, 진입 401,600원~424,800원, 현재 424,800원, 1차 목표 483,350원"><div class="seg s-loss" style="left:0;width:13.63%"></div><div class="seg s-gain" style="left:25.24%;width:29.30%"></div><div class="seg s-gain2" style="left:54.54%;width:42.61%"></div><div class="seg s-zone" style="left:13.63%;width:11.61%"></div><div class="tk stop" style="left:1.89%"></div><div class="tk tgt" style="left:54.54%"></div><div class="tk tgt" style="left:97.15%"></div><div class="now" style="left:25.24%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">378,150원</span><small>-8.5%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">401,600원~</span><small>424,800원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">483,350원 · 568,500원</span><small>+17.0% · +37.6%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 12%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>지난주 고점 46만2,200원을 넘기면 1차 48만3,350원, 강하면 52주 고점 56만8,500원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>이번 주 저점 40만1,600원이 깨지면 손절선 37만8,150원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>뉴스 없이 섹터 흐름만으로 움직이는 구간이라, AI 테마가 식으면 받쳐줄 재료가 없어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>40만1,600원 아래 주봉 마감이면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>서브넷·반감기 등 네트워크 소식</li><li>AI 코인(월드코인·버추얼) 동반 흐름</li><li>40만1,600원 지지</li></ul></div></div></details>
+</article></details><details class="fold" id="c-SUI"><summary><span class="f-name"><b>수이</b><span class="num tiny muted">SUI</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="f-line"><span class="num">1,548원</span><span class="chg fall">-2.5%</span><span>1,548원(-2.5%)으로 지난주 +39% 급등 뒤 이번 주 -9.5% 되밀리는 중이에요. 아비트럼 개발 커밋 집계에서 수이가 비교 대상으로 뒤처졌다는 보도 외에 직접 뉴스는 확인되지 않았어요. 손익비가 1.96으로 애매하고 방향이 아래라 중립(약)으로 봐요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/SUI.html">수이</a><span class="sym">SUI</span></div><div class="c-tags"><span class="tag">L1 고속 스마트컨트랙트</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">1,548원</span><span class="chg fall">-2.5% 24h</span></div>
+<p class="c-what">빠른 처리 속도를 내세운 레이어1 블록체인으로, 게임·DeFi 앱이 많이 올라가 있어요.</p>
+
+<p class="c-comment">1,548원(-2.5%)으로 지난주 +39% 급등 뒤 이번 주 -9.5% 되밀리는 중이에요. 아비트럼 개발 커밋 집계에서 수이가 비교 대상으로 뒤처졌다는 보도 외에 직접 뉴스는 확인되지 않았어요. 손익비가 1.96으로 애매하고 방향이 아래라 중립(약)으로 봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-9.5%</span></div><div class="m"><b>4주</b><span class="rise">+40.2%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-70.6%</span></div><div class="m"><b>주간 변동폭</b><span class="">23%</span></div></div>
+<ul class="reasons"><li>4주 +40.2%, 1주 -9.5%</li><li>24h -2.5%, 거래대금 약 514억원</li><li>이번 주 저점 1,492원이 바로 아래 지지</li><li>손익비 1.96</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 1,403원, 진입 1,492원~1,548원, 현재 1,548원, 1차 목표 1,749원"><div class="seg s-loss" style="left:0;width:18.42%"></div><div class="seg s-gain" style="left:28.43%;width:35.94%"></div><div class="seg s-gain2" style="left:64.37%;width:32.18%"></div><div class="seg s-zone" style="left:18.42%;width:10.01%"></div><div class="tk stop" style="left:2.51%"></div><div class="tk tgt" style="left:64.37%"></div><div class="tk tgt" style="left:96.55%"></div><div class="now" style="left:28.43%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">1,403원</span><small>-7.7%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">1,492원~</span><small>1,548원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">1,749원 · 1,929원</span><small>+15.1% · +26.9%</small></div></div><div class="lfoot">손익비 2.0 · 비중 상한 계좌의 13%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>1,492원을 지키고 지난주 고점 1,749원을 다시 넘기면 2차 1,929원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>1,492원이 깨지면 손절선 1,403원, 더 약하면 지지난주 종가 1,228원 쪽까지 열려요.</div></div><div class="counter"><b>반대 의견</b>한 달 급등 뒤 되돌림이 진행 중이라, 지지선 하나에 기대 사는 건 떨어지는 칼날을 잡는 셈일 수 있어요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>1,492원 아래로 일봉·주봉이 닫히면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>1,492원 지지 여부</li><li>토큰 언락 일정</li><li>L1 알트(세이·헤데라) 동반 약세 여부</li></ul></div></div></details>
+</article></details><details class="fold" id="c-DOGE"><summary><span class="f-name"><b>도지코인</b><span class="num tiny muted">DOGE</span><span class="tag new">새 코인</span></span><span class="f-right"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개">★★<span class="off">☆☆☆</span></span></span><span class="f-line"><span class="num">129원</span><span class="chg rise">+1.6%</span><span>캘리포니아 뉴섬 주지사가 공직자의 밈코인 발행을 금지하는 법(AB 2409)에 서명했고, 밈코인 전체 시총은 352억 달러로 하루 새 3.3% 줄었어요. 자금은 도지보다 펌프펀·새 토큰 쪽으로 흩어지는 중이에요. 가격은 129원(+1.6%)으로 이번 주 125~133원 박스라 중립으로 봐요.</span></span></summary><article class="card">
+<div class="c-head"><div class="c-id"><div class="c-name"><a href="../coin/DOGE.html">도지코인</a><span class="sym">DOGE</span></div><div class="c-tags"><span class="tag">밈</span></div></div>
+<div class="c-verdict"><span class="rt rt-중립">중립</span><span class="stars" role="img" aria-label="별 2개 (5점 만점)">★★<span class="off">☆☆☆</span></span></div></div>
+<div class="c-price"><span class="p num">129원</span><span class="chg rise">+1.6% 24h</span></div>
+<p class="c-what">장난으로 시작해 가장 큰 밈코인이 된 결제용 코인이에요.</p>
+
+<p class="c-comment">캘리포니아 뉴섬 주지사가 공직자의 밈코인 발행을 금지하는 법(AB 2409)에 서명했고, 밈코인 전체 시총은 352억 달러로 하루 새 3.3% 줄었어요. 자금은 도지보다 펌프펀·새 토큰 쪽으로 흩어지는 중이에요. 가격은 129원(+1.6%)으로 이번 주 125~133원 박스라 중립으로 봐요.</p>
+<div class="mgrid"><div class="m"><b>1주</b><span class="fall">-1.5%</span></div><div class="m"><b>4주</b><span class="rise">+4.0%</span></div><div class="m"><b>52주 고점 대비</b><span class="fall">-66.4%</span></div><div class="m"><b>주간 변동폭</b><span class="">15%</span></div></div>
+<ul class="reasons"><li>밈 시총 352억 달러(-3.3%), 도지 시총 146.5억 달러</li><li>1주 -1.5%, 4주 +4.0%로 주간 흐름 약함</li><li>52주 고점 대비 -66.4%</li><li>손익비 2.29(손절 120원, 1차 143원)</li></ul>
+<div class="ladder"><div class="ladder-title"><span>가격 구간</span><span>왼쪽 손절 · 가운데 진입 · 오른쪽 목표</span></div><div class="lrail" role="img" aria-label="손절 120원, 진입 125원~129원, 현재 129원, 1차 목표 143원"><div class="seg s-loss" style="left:0;width:17.35%"></div><div class="seg s-gain" style="left:28.55%;width:39.18%"></div><div class="seg s-gain2" style="left:67.73%;width:27.99%"></div><div class="seg s-zone" style="left:17.35%;width:11.20%"></div><div class="tk stop" style="left:3.36%"></div><div class="tk tgt" style="left:67.73%"></div><div class="tk tgt" style="left:95.72%"></div><div class="now" style="left:28.55%"><span>지금</span><i></i></div></div><div class="lvals"><div class="lv l-stop"><b>손절</b><span class="num">120원</span><small>-5.5%</small></div><div class="lv l-zone"><b>진입 구간</b><span class="num">125원~</span><small>129원</small></div><div class="lv l-tgt"><b>목표 1·2</b><span class="num">143원 · 153원</span><small>+12.6% · +20.9%</small></div></div><div class="lfoot">손익비 2.3 · 비중 상한 계좌의 18%</div></div>
+<div class="scen"><div class="bull"><b>오르는 경우</b>밈 섹터로 자금이 돌아와 133원(이번 주 고점)을 넘기면 1차 143원, 2차 153원까지 볼 수 있어요.</div><div class="bear"><b>내리는 경우</b>125원(이번 주 저점)을 잃으면 손절선 120원까지 밀릴 수 있어요.</div></div><div class="counter"><b>반대 의견</b>밈 자금이 새 토큰으로 흩어지는 중이라 도지 자체로 들어올 동력이 약해요.</div><details class="more"><summary>틀리는 조건 · 체크리스트 · 관련 뉴스</summary><div class="more-body"><div><div class="mini-h">이 판단이 틀리는 조건</div>125원 아래 주봉 마감이면 판단을 거둬요.</div><div><div class="mini-h">사기 전 체크리스트</div><ul><li>밈코인 전체 시총 반등 여부</li><li>도지 ETF 유입</li><li>125원 지지</li></ul></div><div class="related"><div class="mini-h">관련 뉴스</div><div><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span>California Gov. Gavin Newsom bans public officials from launching memecoins, takes aim at Trump</span></div><div><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span>밈코인 시총 352억달러, 펌프펀·신규 토큰으로 자금 분산</span></div></div></div></details>
 </article></details></div></section>
-<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list"><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="주의, 별 1개">★<span class="off">☆☆☆☆</span></span><small>주의</small></div><div><div><b><a href="../coin/ENA.html">에테나</a></b> <span class="num small">341원</span> <span class="num small down">-2.3%</span></div><div class="small">4주 동안 185원→370원으로 두 배 오른 뒤, 지난주 고점 399원에서 341원(-15%)까지 밀렸어요. 오늘도 -2.3%라 되돌림이 이어지는 중이에요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="주의, 별 1개">★<span class="off">☆☆☆☆</span></span><small>주의</small></div><div><div><b><a href="../coin/PYTH.html">피스네트워크</a></b> <span class="num small">108원</span> <span class="num small down">-2.7%</span></div><div class="small">지난주 +34% 급등(84.6→113원) 뒤 이번 주 -4%, 오늘 -2.7%예요. 급등을 설명할 새 뉴스는 확인되지 않았어요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="주의, 별 1개">★<span class="off">☆☆☆☆</span></span><small>주의</small></div><div><div><b><a href="../coin/WLD.html">월드코인</a></b> <span class="num small">676원</span> <span class="num small up">+1.2%</span></div><div class="small">지난주 798원 고점을 찍고 이번 주 634원까지 밀렸다가 676원이에요(이번 주 -8.4%). 오늘 +1.2% 반등은 약하고 고점 대비 -15%라 추세 복귀 확인이 먼저예요.</div></div></div></div></section>
-<section class="panel section"><h2>뉴스부 · 중요도 순 13건</h2><div class="list"><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 7점, 별 4개">★★★★<span class="off">☆</span></span><small>7/10</small></div><div><a href="https://coinpedia.org/price-analysis/aave-price-surges-16-as-tokenized-stocks-enter-defi-can-aave-break-200/" target="_blank" rel="noopener">에이브 16% 급등, 토큰화 주식 담보 도입·소각안(Aavenomics 3.0) 제안</a><div class="meta"><span class="cat">토큰·공급</span><span class="tone-호재">호재</span> · AAVE · Coinpedia · 09/29 17:33</div><div class="small">에이브 V4가 베이스에서 미국 주식 7종 토큰을 USDC 대출 담보로 받기 시작했고(9/25), 창업자가 바이백에 소각을 더하는 &#x27;Aavenomics 3.0&#x27;을 제안했어요. AAVE는 16% 올라 약 166달러가 됐어요.</div><div class="impact"><b>영향</b> 소각이 확정되면 AAVE 유통량이 줄어 장기 호재지만, 아직 제안 단계예요.</div><div class="priced">가격 반영: AAVE 24h +11.3% — 상당 부분 반영</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 6점, 별 3개">★★★<span class="off">☆☆</span></span><small>6/10</small></div><div><a href="https://www.tokenpost.kr/news/cryptocurrency/415461" target="_blank" rel="noopener">그래프(GRT) 25.58% 상승…AMBCrypto, 0.027달러 지지 여부 주목</a><div class="meta"><span class="cat">기술·업그레이드</span><span class="tone-호재">호재</span> · GRT · 토큰포스트 · 09/29 09:13</div><div class="small">더그래프 재단이 서브그래프 스튜디오 쿼리를 BNB체인·폴리곤부터 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다고 밝혔어요. GRT는 25.58% 올랐고 현물 거래량은 530.9% 늘었어요.</div><div class="impact"><b>영향</b> 네트워크 쿼리 수수료 수요가 늘 수 있어 GRT에 호재예요.</div><div class="priced">가격 반영: GRT 24h +0.5%(지난주 +60%) — 대부분 반영</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://blockchain.news/news/20260929-price-prediction-uni-cme-futures-fee-burns-and-a" target="_blank" rel="noopener">UNI Price Prediction: CME Futures, Fee Burns, and a $10.99 Ceiling — Which Way Does UNI Break?</a><div class="meta"><span class="cat">기관·ETF</span><span class="tone-호재">호재</span> · UNI · Blockchain.News · 09/29 17:33</div><div class="small">CME가 9월 22일 UNI 선물(1만 UNI·1천 UNI)을 10월 19일 출시한다고 발표했어요(규제 검토 조건). 유니스왑은 수수료를 모아 태우는 소각 구조를 운영 중이에요.</div><div class="impact"><b>영향</b> 기관용 선물이 생기면 UNI 거래 수요가 넓어질 수 있어요.</div><div class="priced">가격 반영: UNI 24h +2.6% — 일부 반영(발표는 9/22)</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://www.theblock.co/news/regulation/2026-09-28-california-gov-gavin-newsom-bans-public-officials-from-launching-memecoins-takes-aim-at-trump-416970" target="_blank" rel="noopener">California Gov. Gavin Newsom bans public officials from launching memecoins, takes aim at Trump</a><div class="meta"><span class="cat">규제·정책</span><span class="tone-중립">중립</span> · DOGE · The Block 외 3곳 · 09/28 18:32</div><div class="small">뉴섬 캘리포니아 주지사가 주 공직자의 밈코인 발행과 공직자 얼굴을 쓴 코인 상장을 막는 법(AB 2409)과 디지털자산 자금세탁 대응법(SB 1208)에 서명했어요.</div><div class="impact"><b>영향</b> 공직자 발행 밈코인만 막는 법이라 도지 등 기존 밈코인엔 직접 영향이 작지만, 밈 섹터 규제 분위기엔 부담이에요.</div><div class="priced">가격 반영: DOGE 24h +1.6% — 영향 제한적</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://www.tokenpost.kr/news/policy/415433" target="_blank" rel="noopener">JPYC 상장 당일 37.60원…금융위 시장조성 검토</a><div class="meta"><span class="cat">규제·정책</span><span class="tone-중립">중립</span> · 시장 전체 · 토큰포스트 외 1곳 · 09/29 07:46</div><div class="small">엔화 스테이블코인 JPYC가 국내 상장 당일 37.60원에 거래돼 페그 대비 약 4배로 뛰자, 금융위원회가 시장조성자 도입을 검토한다고 알려졌어요.</div><div class="impact"><b>영향</b> 국내 신규 상장 코인의 가격 왜곡을 줄일 제도 논의라, 원화마켓 상장 초기 급등락 패턴이 바뀔 수 있어요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://cointelegraph.com/news/fake-giwa-blockchain-scam-drains-2m-eth" target="_blank" rel="noopener">Scammers steal $2M in ETH as fake GIWA network fools DYORSWAP</a><div class="meta"><span class="cat">해킹·보안</span><span class="tone-악재">악재</span> · ETH · Cointelegraph · 09/28 18:19</div><div class="small">가짜 GIWA 브릿지에 속은 탈중앙 거래소 DYORSWAP에서 약 200만 달러어치 ETH(766.25 ETH)가 빠져나갔어요. 두나무의 GIWA는 메인넷을 아직 내지 않았다고 밝혔고, DYORSWAP은 200 ETH 이상을 자체 보상했어요.</div><div class="impact"><b>영향</b> 업비트 계열 L2 GIWA를 사칭한 사고라, 출시 전 &#x27;가짜 네트워크&#x27; 주의가 필요해요.</div><div class="priced">가격 반영: ETH 24h +0.6% — 영향 미미</div></div></div><details class="more"><summary>뉴스 7건 더 보기</summary><div class="list"><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://www.coindesk.com/tech/2026/09/28/thorchain-rejects-bitget-request-to-block-hacker-as-usd6-million-moves-to-bitcoin" target="_blank" rel="noopener">THORChain rejects Bitget request to block hacker as $6 million moves to bitcoin</a><div class="meta"><span class="cat">해킹·보안</span><span class="tone-악재">악재</span> · BTC · CoinDesk · 09/28 21:13</div><div class="small">후속: 비트겟 해킹 이후 토르체인이 해커 주소를 막아 달라는 비트겟 요청을 거절했고, 그 사이 600만 달러가 비트코인으로 바뀌었어요.</div><div class="impact"><b>영향</b> 탈취 자금 세탁이 계속되면 해커 매도 물량이 시장에 나올 수 있어요.</div><div class="priced">가격 반영: BTC 24h +0.2% — 영향 미미</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://www.tokenpost.kr/news/economy/415532" target="_blank" rel="noopener">미국 GDP 성장률 2.2% 유지…소비 증가율 2.2%</a><div class="meta"><span class="cat">거시</span><span class="tone-중립">중립</span> · 시장 전체 · 토큰포스트 · 09/29 11:42</div><div class="small">미국 GDP 성장률이 2.2%로 유지됐고 소비 증가율도 2.2%로 나왔어요.</div><div class="impact"><b>영향</b> 경기가 버티면 금리 인하 기대가 약해져 위험자산엔 중립~부담이에요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>5/10</small></div><div><a href="https://www.coindesk.com/business/2026/09/28/crypto-friendly-institution-franklin-templeton-brings-its-tokenized-collateral-service-to-bybit" target="_blank" rel="noopener">Crypto-friendly institution Franklin Templeton brings its tokenized collateral service to Bybit</a><div class="meta"><span class="cat">기관·ETF</span><span class="tone-호재">호재</span> · 시장 전체 · CoinDesk 외 1곳 · 09/28 20:00</div><div class="small">프랭클린템플턴이 토큰화 담보 서비스를 바이비트에 도입해, 토큰화 펀드를 거래 담보로 쓸 수 있게 됐어요.</div><div class="impact"><b>영향</b> 토큰화 자산(RWA)의 실제 쓰임이 늘어나는 흐름이라 RWA·오라클 섹터에 우호적이에요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 4점, 별 2개">★★<span class="off">☆☆☆</span></span><small>4/10</small></div><div><a href="https://www.tokenpost.kr/news/cryptocurrency/415525" target="_blank" rel="noopener">[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</a><div class="meta"><span class="cat">시황</span><span class="tone-중립">중립</span> · 시장 전체 · 토큰포스트 · 09/29 11:30</div><div class="small">알트코인 시즌 지수가 60까지 내려왔고, 비트코인 도미넌스는 58.7%를 유지했어요.</div><div class="impact"><b>영향</b> 알트 전체로 돈이 퍼지기보다 개별 재료 코인만 오르는 장세라는 뜻이에요.</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 4점, 별 2개">★★<span class="off">☆☆☆</span></span><small>4/10</small></div><div><a href="https://www.coindesk.com/business/2026/09/28/the-restaking-gold-rush-is-over-and-top-protocols-are-barely-making-a-profit" target="_blank" rel="noopener">The restaking gold rush is over, and top protocols are barely making a profit</a><div class="meta"><span class="cat">토큰·공급</span><span class="tone-악재">악재</span> · ETH · CoinDesk · 09/29 01:24</div><div class="small">최대 리스테이킹 프로토콜 이더파이가 연말까지 아이겐레이어와 관계를 끊기로 했고, 상위 5개 리스테이킹 프로토콜의 2분기 총이익은 95만 달러로 3분기 전보다 56% 줄었어요.</div><div class="impact"><b>영향</b> 리스테이킹 수익 모델이 약해져 관련 토큰과 ETH 스테이킹 수요 기대에 부담이에요.</div><div class="priced">가격 반영: ETH 24h +0.6% — 반영 신호 없음</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 4점, 별 2개">★★<span class="off">☆☆☆</span></span><small>4/10</small></div><div><a href="https://www.tokenpost.kr/news/cryptocurrency/415466" target="_blank" rel="noopener">밈코인 시총 352억달러, 펌프펀·신규 토큰으로 자금 분산</a><div class="meta"><span class="cat">시황</span><span class="tone-악재">악재</span> · DOGE · 토큰포스트 · 09/29 09:18</div><div class="small">밈코인 전체 시총이 352억 달러로 하루 새 3.3% 줄었고, 자금은 도지(146.5억 달러)·시바이누(33.5억 달러)보다 펌프펀 쪽으로 몰렸어요.</div><div class="impact"><b>영향</b> 대형 밈코인으로의 자금 유입이 약해 도지·시바이누에 부담이에요.</div><div class="priced">가격 반영: DOGE 24h +1.6% — 반영 안 됨</div></div></div><div class="item"><div class="nstar"><span class="stars" role="img" aria-label="중요도 3점, 별 2개">★★<span class="off">☆☆☆</span></span><small>3/10</small></div><div><a href="https://www.blockmedia.co.kr/archives/1145292" target="_blank" rel="noopener">갤럭시 디지털 CEO &quot;비트코인, 연말 10만달러 가도 안 놀라&quot;…강세 전망 유지</a><div class="meta"><span class="cat">시황</span><span class="tone-호재">호재</span> · BTC · 블록미디어 외 1곳 · 09/29 11:12</div><div class="small">갤럭시 디지털 마이크 노보그라츠 CEO가 비트코인이 연말 10만 달러에 가도 놀라지 않을 것이라며 강세 전망을 유지했어요.</div><div class="impact"><b>영향</b> 전망성 발언이라 가격 영향은 작아요.</div><div class="priced">가격 반영: BTC 24h +0.2% — 반영 안 됨</div></div></div></div></details></div></section>
-<section class="panel section"><h2>회고부 · 이번에 채점한 코멘트</h2><p class="small" style="margin:0">아직 채점할 코멘트가 없어요. 오늘 11:45 리포트가 20시간이 지나는 내일(9/30) 07:45 이후부터 &#x27;관심&#x27;·&#x27;주의&#x27; 코멘트의 BTC 대비 성적이 쌓여요.</p><a class="small" href="../track.html">전체 성적표 보기</a></section>
+<section class="section"><div class="sec-head"><h2>주의 코인</h2><span class="sub">리스크관리부</span></div><div class="cz"><div class="cz-item" id="c-ENA"><div class="cz-top"><span class="row"><a href="../coin/ENA.html">에테나</a><span class="num tiny muted">ENA</span><span class="rt rt-주의">주의</span></span><span class="row"><span class="num small">341원</span><span class="chg fall">-2.3%</span></span></div><p>4주 동안 185원→370원으로 두 배 오른 뒤, 지난주 고점 399원에서 341원(-15%)까지 밀렸어요. 오늘도 -2.3%라 되돌림이 이어지는 중이에요.</p></div><div class="cz-item" id="c-PYTH"><div class="cz-top"><span class="row"><a href="../coin/PYTH.html">피스네트워크</a><span class="num tiny muted">PYTH</span><span class="rt rt-주의">주의</span></span><span class="row"><span class="num small">108원</span><span class="chg fall">-2.7%</span></span></div><p>지난주 +34% 급등(84.6→113원) 뒤 이번 주 -4%, 오늘 -2.7%예요. 급등을 설명할 새 뉴스는 확인되지 않았어요.</p></div><div class="cz-item" id="c-WLD"><div class="cz-top"><span class="row"><a href="../coin/WLD.html">월드코인</a><span class="num tiny muted">WLD</span><span class="rt rt-주의">주의</span></span><span class="row"><span class="num small">676원</span><span class="chg rise">+1.2%</span></span></div><p>지난주 798원 고점을 찍고 이번 주 634원까지 밀렸다가 676원이에요(이번 주 -8.4%). 오늘 +1.2% 반등은 약하고 고점 대비 -15%라 추세 복귀 확인이 먼저예요.</p></div></div></section>
+<section class="section" id="news"><div class="sec-head"><h2>뉴스 13건</h2><span class="sub">중요도 순 · 위 3건은 핵심</span></div><div class="news"><article class="ntop"><div class="nscore"><span class="n">7</span><span class="stars" role="img" aria-label="중요도 7점, 별 4개">★★★★<span class="off">☆</span></span><small>/10</small></div><div class="nbody"><a class="ntitle" href="https://coinpedia.org/price-analysis/aave-price-surges-16-as-tokenized-stocks-enter-defi-can-aave-break-200/" target="_blank" rel="noopener">에이브 16% 급등, 토큰화 주식 담보 도입·소각안(Aavenomics 3.0) 제안</a><div class="nmeta"><span class="tone tone-호재">호재</span><span class="tag cat">토큰·공급</span><span>AAVE · Coinpedia · 09/29 17:33</span></div><p class="nsum">에이브 V4가 베이스에서 미국 주식 7종 토큰을 USDC 대출 담보로 받기 시작했고(9/25), 창업자가 바이백에 소각을 더하는 &#x27;Aavenomics 3.0&#x27;을 제안했어요. AAVE는 16% 올라 약 166달러가 됐어요.</p><div class="nimpact"><b>영향</b>소각이 확정되면 AAVE 유통량이 줄어 장기 호재지만, 아직 제안 단계예요.</div><div class="priced">가격 반영: AAVE 24h +11.3% — 상당 부분 반영</div></div></article><article class="ntop"><div class="nscore"><span class="n">6</span><span class="stars" role="img" aria-label="중요도 6점, 별 3개">★★★<span class="off">☆☆</span></span><small>/10</small></div><div class="nbody"><a class="ntitle" href="https://www.tokenpost.kr/news/cryptocurrency/415461" target="_blank" rel="noopener">그래프(GRT) 25.58% 상승…AMBCrypto, 0.027달러 지지 여부 주목</a><div class="nmeta"><span class="tone tone-호재">호재</span><span class="tag cat">기술·업그레이드</span><span>GRT · 토큰포스트 · 09/29 09:13</span></div><p class="nsum">더그래프 재단이 서브그래프 스튜디오 쿼리를 BNB체인·폴리곤부터 네트워크로 옮기고 10월 8일 스테이징 환경을 닫는다고 밝혔어요. GRT는 25.58% 올랐고 현물 거래량은 530.9% 늘었어요.</p><div class="nimpact"><b>영향</b>네트워크 쿼리 수수료 수요가 늘 수 있어 GRT에 호재예요.</div><div class="priced">가격 반영: GRT 24h +0.5%(지난주 +60%) — 대부분 반영</div></div></article><article class="ntop"><div class="nscore"><span class="n">5</span><span class="stars" role="img" aria-label="중요도 5점, 별 3개">★★★<span class="off">☆☆</span></span><small>/10</small></div><div class="nbody"><a class="ntitle" href="https://blockchain.news/news/20260929-price-prediction-uni-cme-futures-fee-burns-and-a" target="_blank" rel="noopener">UNI Price Prediction: CME Futures, Fee Burns, and a $10.99 Ceiling — Which Way Does UNI Break?</a><div class="nmeta"><span class="tone tone-호재">호재</span><span class="tag cat">기관·ETF</span><span>UNI · Blockchain.News · 09/29 17:33</span></div><p class="nsum">CME가 9월 22일 UNI 선물(1만 UNI·1천 UNI)을 10월 19일 출시한다고 발표했어요(규제 검토 조건). 유니스왑은 수수료를 모아 태우는 소각 구조를 운영 중이에요.</p><div class="nimpact"><b>영향</b>기관용 선물이 생기면 UNI 거래 수요가 넓어질 수 있어요.</div><div class="priced">가격 반영: UNI 24h +2.6% — 일부 반영(발표는 9/22)</div></div></article></div><div class="nlist"><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">California Gov. Gavin Newsom bans public officials from launching memecoins, takes aim at Trump</span><div class="nmeta"><span class="tone tone-중립">중립</span><span class="tag cat">규제·정책</span><span>DOGE · The Block 외 3곳 · 09/28 18:32</span></div></summary><div class="nrow-body"><p class="nsum">뉴섬 캘리포니아 주지사가 주 공직자의 밈코인 발행과 공직자 얼굴을 쓴 코인 상장을 막는 법(AB 2409)과 디지털자산 자금세탁 대응법(SB 1208)에 서명했어요.</p><div class="nimpact"><b>영향</b>공직자 발행 밈코인만 막는 법이라 도지 등 기존 밈코인엔 직접 영향이 작지만, 밈 섹터 규제 분위기엔 부담이에요.</div><div class="priced">가격 반영: DOGE 24h +1.6% — 영향 제한적</div><a class="small" href="https://www.theblock.co/news/regulation/2026-09-28-california-gov-gavin-newsom-bans-public-officials-from-launching-memecoins-takes-aim-at-trump-416970" target="_blank" rel="noopener">California Gov. Gavin Newsom bans public officials from launching memecoins, takes aim at Trump</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">JPYC 상장 당일 37.60원…금융위 시장조성 검토</span><div class="nmeta"><span class="tone tone-중립">중립</span><span class="tag cat">규제·정책</span><span>시장 전체 · 토큰포스트 외 1곳 · 09/29 07:46</span></div></summary><div class="nrow-body"><p class="nsum">엔화 스테이블코인 JPYC가 국내 상장 당일 37.60원에 거래돼 페그 대비 약 4배로 뛰자, 금융위원회가 시장조성자 도입을 검토한다고 알려졌어요.</p><div class="nimpact"><b>영향</b>국내 신규 상장 코인의 가격 왜곡을 줄일 제도 논의라, 원화마켓 상장 초기 급등락 패턴이 바뀔 수 있어요.</div><a class="small" href="https://www.tokenpost.kr/news/policy/415433" target="_blank" rel="noopener">JPYC 상장 당일 37.60원…금융위 시장조성 검토</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">Scammers steal $2M in ETH as fake GIWA network fools DYORSWAP</span><div class="nmeta"><span class="tone tone-악재">악재</span><span class="tag cat">해킹·보안</span><span>ETH · Cointelegraph · 09/28 18:19</span></div></summary><div class="nrow-body"><p class="nsum">가짜 GIWA 브릿지에 속은 탈중앙 거래소 DYORSWAP에서 약 200만 달러어치 ETH(766.25 ETH)가 빠져나갔어요. 두나무의 GIWA는 메인넷을 아직 내지 않았다고 밝혔고, DYORSWAP은 200 ETH 이상을 자체 보상했어요.</p><div class="nimpact"><b>영향</b>업비트 계열 L2 GIWA를 사칭한 사고라, 출시 전 &#x27;가짜 네트워크&#x27; 주의가 필요해요.</div><div class="priced">가격 반영: ETH 24h +0.6% — 영향 미미</div><a class="small" href="https://cointelegraph.com/news/fake-giwa-blockchain-scam-drains-2m-eth" target="_blank" rel="noopener">Scammers steal $2M in ETH as fake GIWA network fools DYORSWAP</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">THORChain rejects Bitget request to block hacker as $6 million moves to bitcoin</span><div class="nmeta"><span class="tone tone-악재">악재</span><span class="tag cat">해킹·보안</span><span>BTC · CoinDesk · 09/28 21:13</span></div></summary><div class="nrow-body"><p class="nsum">후속: 비트겟 해킹 이후 토르체인이 해커 주소를 막아 달라는 비트겟 요청을 거절했고, 그 사이 600만 달러가 비트코인으로 바뀌었어요.</p><div class="nimpact"><b>영향</b>탈취 자금 세탁이 계속되면 해커 매도 물량이 시장에 나올 수 있어요.</div><div class="priced">가격 반영: BTC 24h +0.2% — 영향 미미</div><a class="small" href="https://www.coindesk.com/tech/2026/09/28/thorchain-rejects-bitget-request-to-block-hacker-as-usd6-million-moves-to-bitcoin" target="_blank" rel="noopener">THORChain rejects Bitget request to block hacker as $6 million moves to bitcoin</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">미국 GDP 성장률 2.2% 유지…소비 증가율 2.2%</span><div class="nmeta"><span class="tone tone-중립">중립</span><span class="tag cat">거시</span><span>시장 전체 · 토큰포스트 · 09/29 11:42</span></div></summary><div class="nrow-body"><p class="nsum">미국 GDP 성장률이 2.2%로 유지됐고 소비 증가율도 2.2%로 나왔어요.</p><div class="nimpact"><b>영향</b>경기가 버티면 금리 인하 기대가 약해져 위험자산엔 중립~부담이에요.</div><a class="small" href="https://www.tokenpost.kr/news/economy/415532" target="_blank" rel="noopener">미국 GDP 성장률 2.2% 유지…소비 증가율 2.2%</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 3개">★★★<span class="off">☆☆</span></span><span class="t">Crypto-friendly institution Franklin Templeton brings its tokenized collateral service to Bybit</span><div class="nmeta"><span class="tone tone-호재">호재</span><span class="tag cat">기관·ETF</span><span>시장 전체 · CoinDesk 외 1곳 · 09/28 20:00</span></div></summary><div class="nrow-body"><p class="nsum">프랭클린템플턴이 토큰화 담보 서비스를 바이비트에 도입해, 토큰화 펀드를 거래 담보로 쓸 수 있게 됐어요.</p><div class="nimpact"><b>영향</b>토큰화 자산(RWA)의 실제 쓰임이 늘어나는 흐름이라 RWA·오라클 섹터에 우호적이에요.</div><a class="small" href="https://www.coindesk.com/business/2026/09/28/crypto-friendly-institution-franklin-templeton-brings-its-tokenized-collateral-service-to-bybit" target="_blank" rel="noopener">Crypto-friendly institution Franklin Templeton brings its tokenized collateral service to Bybit</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span class="t">[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</span><div class="nmeta"><span class="tone tone-중립">중립</span><span class="tag cat">시황</span><span>시장 전체 · 토큰포스트 · 09/29 11:30</span></div></summary><div class="nrow-body"><p class="nsum">알트코인 시즌 지수가 60까지 내려왔고, 비트코인 도미넌스는 58.7%를 유지했어요.</p><div class="nimpact"><b>영향</b>알트 전체로 돈이 퍼지기보다 개별 재료 코인만 오르는 장세라는 뜻이에요.</div><a class="small" href="https://www.tokenpost.kr/news/cryptocurrency/415525" target="_blank" rel="noopener">[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span class="t">The restaking gold rush is over, and top protocols are barely making a profit</span><div class="nmeta"><span class="tone tone-악재">악재</span><span class="tag cat">토큰·공급</span><span>ETH · CoinDesk · 09/29 01:24</span></div></summary><div class="nrow-body"><p class="nsum">최대 리스테이킹 프로토콜 이더파이가 연말까지 아이겐레이어와 관계를 끊기로 했고, 상위 5개 리스테이킹 프로토콜의 2분기 총이익은 95만 달러로 3분기 전보다 56% 줄었어요.</p><div class="nimpact"><b>영향</b>리스테이킹 수익 모델이 약해져 관련 토큰과 ETH 스테이킹 수요 기대에 부담이에요.</div><div class="priced">가격 반영: ETH 24h +0.6% — 반영 신호 없음</div><a class="small" href="https://www.coindesk.com/business/2026/09/28/the-restaking-gold-rush-is-over-and-top-protocols-are-barely-making-a-profit" target="_blank" rel="noopener">The restaking gold rush is over, and top protocols are barely making a profit</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span class="t">밈코인 시총 352억달러, 펌프펀·신규 토큰으로 자금 분산</span><div class="nmeta"><span class="tone tone-악재">악재</span><span class="tag cat">시황</span><span>DOGE · 토큰포스트 · 09/29 09:18</span></div></summary><div class="nrow-body"><p class="nsum">밈코인 전체 시총이 352억 달러로 하루 새 3.3% 줄었고, 자금은 도지(146.5억 달러)·시바이누(33.5억 달러)보다 펌프펀 쪽으로 몰렸어요.</p><div class="nimpact"><b>영향</b>대형 밈코인으로의 자금 유입이 약해 도지·시바이누에 부담이에요.</div><div class="priced">가격 반영: DOGE 24h +1.6% — 반영 안 됨</div><a class="small" href="https://www.tokenpost.kr/news/cryptocurrency/415466" target="_blank" rel="noopener">밈코인 시총 352억달러, 펌프펀·신규 토큰으로 자금 분산</a></div></details><details class="nrow"><summary><span class="stars" role="img" aria-label="중요도 별 2개">★★<span class="off">☆☆☆</span></span><span class="t">갤럭시 디지털 CEO &quot;비트코인, 연말 10만달러 가도 안 놀라&quot;…강세 전망 유지</span><div class="nmeta"><span class="tone tone-호재">호재</span><span class="tag cat">시황</span><span>BTC · 블록미디어 외 1곳 · 09/29 11:12</span></div></summary><div class="nrow-body"><p class="nsum">갤럭시 디지털 마이크 노보그라츠 CEO가 비트코인이 연말 10만 달러에 가도 놀라지 않을 것이라며 강세 전망을 유지했어요.</p><div class="nimpact"><b>영향</b>전망성 발언이라 가격 영향은 작아요.</div><div class="priced">가격 반영: BTC 24h +0.2% — 반영 안 됨</div><a class="small" href="https://www.blockmedia.co.kr/archives/1145292" target="_blank" rel="noopener">갤럭시 디지털 CEO &quot;비트코인, 연말 10만달러 가도 안 놀라&quot;…강세 전망 유지</a></div></details></div></section>
+<section class="section"><div class="sec-head"><h2>이번에 채점한 코멘트</h2><a class="small" href="../track.html">전체 성적표</a></div><p class="small" style="margin:0">아직 채점할 코멘트가 없어요. 오늘 11:45 리포트가 20시간이 지나는 내일(9/30) 07:45 이후부터 &#x27;관심&#x27;·&#x27;주의&#x27; 코멘트의 BTC 대비 성적이 쌓여요.</p><div class="panel"><span class=small>아직 채점할 코멘트가 없어요.</span></div></section>
 <section class="section"><h2>지난 리포트</h2><div class="archive"><a href="../r/r20260929-1752.html" aria-current=page>9/29(화) 17:52</a><a href="../r/r20260929-1745.html">9/29(화) 17:50</a><a href="../r/r20260929-1445.html">9/29(화) 14:48</a><a href="../r/r20260929-1145.html">9/29(화) 11:53</a></div></section>
 <footer>
   <div>AI가 공개 뉴스와 업비트 시세로 자동 작성한 참고용 코멘트예요. 투자 권유가 아니며, 매매 판단과 책임은 본인에게 있어요.</div>
   
 </footer>
-</div></body></html>
+</div><script>
+function openHash(){var h=location.hash.slice(1);if(!h)return;var el=document.getElementById(h);if(el&&el.tagName==='DETAILS'){el.open=true;}}
+window.addEventListener('hashchange',openHash);openHash();
+</script></body></html>
