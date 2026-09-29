@@ -109,6 +109,29 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-of
 .tl{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .tl-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .res{font-size:13px}
+.pos{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.what{font-size:13px;color:var(--muted);margin-top:2px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.metric{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.metric b{display:block;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.metric span{font-family:var(--font-num);font-size:13px;font-weight:600}
+.scen{display:grid;gap:6px;font-size:14px}
+.scen div{border-left:3px solid var(--line);padding:2px 0 2px 10px}
+.scen .bull{border-color:var(--strong)}.scen .bear{border-color:var(--warn)}
+.scen b{font-weight:600;margin-right:4px}.scen .bull b{color:var(--strong)}.scen .bear b{color:var(--warn)}
+.related{font-size:13px;display:flex;flex-direction:column;gap:4px}
+.related div{display:flex;gap:8px;align-items:baseline}.related .stars{font-size:11px}
+.fold{background:var(--paper);border:1px solid var(--line);border-radius:14px}
+.fold>summary{list-style:none;padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;color:var(--ink);font-weight:400}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary .fname{font-weight:700}.fold>summary .fline{grid-column:1/-1;font-size:13px;color:var(--muted)}
+.fold[open]>summary{border-bottom:1px solid var(--line)}
+.fold>.card{border:0;border-radius:0 0 14px 14px}
+.cat{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin-right:4px;color:var(--muted)}
+.impact{font-size:13px;margin-top:2px}.impact b{color:var(--accent);font-weight:600}
+.priced{font-size:12px;color:var(--muted)}
+.more>summary{font-size:14px;padding:10px 0}
+@media (max-width:480px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 </style></head>

@@ -233,6 +233,29 @@ EXTRA_CSS = """
 .tl{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .tl-top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .res{font-size:13px}
+.pos{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.what{font-size:13px;color:var(--muted);margin-top:2px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.metric{background:var(--bg);border-radius:8px;padding:6px 8px;min-width:0}
+.metric b{display:block;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.metric span{font-family:var(--font-num);font-size:13px;font-weight:600}
+.scen{display:grid;gap:6px;font-size:14px}
+.scen div{border-left:3px solid var(--line);padding:2px 0 2px 10px}
+.scen .bull{border-color:var(--strong)}.scen .bear{border-color:var(--warn)}
+.scen b{font-weight:600;margin-right:4px}.scen .bull b{color:var(--strong)}.scen .bear b{color:var(--warn)}
+.related{font-size:13px;display:flex;flex-direction:column;gap:4px}
+.related div{display:flex;gap:8px;align-items:baseline}.related .stars{font-size:11px}
+.fold{background:var(--paper);border:1px solid var(--line);border-radius:14px}
+.fold>summary{list-style:none;padding:12px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;color:var(--ink);font-weight:400}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary .fname{font-weight:700}.fold>summary .fline{grid-column:1/-1;font-size:13px;color:var(--muted)}
+.fold[open]>summary{border-bottom:1px solid var(--line)}
+.fold>.card{border:0;border-radius:0 0 14px 14px}
+.cat{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;margin-right:4px;color:var(--muted)}
+.impact{font-size:13px;margin-top:2px}.impact b{color:var(--accent);font-weight:600}
+.priced{font-size:12px;color:var(--muted)}
+.more>summary{font-size:14px;padding:10px 0}
+@media (max-width:480px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.tile{padding:8px 10px}.bar-row{grid-template-columns:70px minmax(0,1fr) 84px}}
 @media (prefers-reduced-motion:reduce){.tip{transition:none}}
 """
@@ -327,7 +350,30 @@ def shell(site, title, desc, body, depth, active, charts=False):
 </div>{CHART_JS if charts else ""}</body></html>"""
 
 
-def card(p, base):
+def metric_row(p):
+    m = p.get("metrics") or {}
+    items = [("1주", m.get("chg_1w"), True), ("4주", m.get("chg_4w"), True),
+             ("52주 고점 대비", m.get("from_hi52"), True), ("주간 변동폭", m.get("wk_range"), False)]
+    if not any(v is not None for _, v, _ in items):
+        return ""
+    cells = "".join(
+        f'<div class="metric"><b>{k}</b><span class="{cls(v) if signed else ""}">{pct(v) if signed else "%.0f%%" % (float(v) * 100)}</span></div>'
+        for k, v, signed in items if v is not None)
+    return f'<div class="metrics">{cells}</div>'
+
+
+def related_block(p):
+    rel = p.get("related") or []
+    if not rel:
+        return ""
+    rows = ""
+    for x in rel[:3]:
+        k = news_stars(x)
+        rows += f'<div>{star_html(k, "중요도 별 %d개" % k)}<span>{e(x.get("title"))}</span></div>'
+    return f'<div class="related"><b class="small muted">관련 뉴스</b>{rows}</div>'
+
+
+def card(p, base, wrap=True):
     reasons = "".join(f"<li>{e(r)}</li>" for r in p.get("reasons") or [])
     counter = ""
     if p.get("counter"):
@@ -337,16 +383,40 @@ def card(p, base):
     if p.get("checklist"):
         check = "<details><summary>사기 전 체크리스트</summary><ul>" + "".join(
             f"<li>{e(x)}</li>" for x in p["checklist"]) + "</ul></details>"
+    scen = ""
+    if p.get("bull") or p.get("bear"):
+        scen = '<div class="scen">'
+        if p.get("bull"):
+            scen += f'<div class="bull"><b>오르는 경우</b>{e(p["bull"])}</div>'
+        if p.get("bear"):
+            scen += f'<div class="bear"><b>내리는 경우</b>{e(p["bear"])}</div>'
+        scen += "</div>"
     k = coin_stars(p)
+    pos = f'<span class="pos">{e(p["position"])}</span>' if p.get("position") else ""
+    what = f'<div class="what">{e(p["what"])}</div>' if p.get("what") else ""
     return f"""<article class="card">
-  <div class="card-top"><div><div class="coin"><a href="{base}coin/{e(p["sym"])}.html">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></a></div>
+  <div class="card-top"><div><div class="coin"><a href="{base}coin/{e(p["sym"])}.html">{e(p.get("name") or p["sym"])}<small>{e(p["sym"])}</small></a>{pos}</div>{what}
   <div class="price num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))} 24h</span></div></div>
   <div class="rbox"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>{star_html(k, f"별 {k}개 (5점 만점)")}</div></div>
   {f'<p class="comment">{e(p["comment"])}</p>' if p.get("comment") else ""}
+  {metric_row(p)}
   {f'<ul class="plain small">{reasons}</ul>' if reasons else ""}
+  {scen}
   {ladder(p.get("levels"), p.get("price"))}
+  {related_block(p)}
   {counter}{check}
 </article>"""
+
+
+def folded_card(p, base):
+    k = coin_stars(p)
+    line = e(p.get("comment") or "")
+    if len(line) > 70:
+        line = line[:70] + "…"
+    return (f'<details class="fold"><summary><span><span class="fname">{e(p.get("name") or p["sym"])}</span> '
+            f'<span class="num small muted">{e(p["sym"])}</span></span>'
+            f'<span class="rbox" style="flex-direction:row;align-items:center"><span class="rating r-{e(p.get("rating"))}">{e(p.get("rating"))}</span>'
+            f'{star_html(k, "별 %d개" % k)}</span><span class="fline"><span class="num">{won(p.get("price"))} <span class="{cls(p.get("chg24"))}">{pct(p.get("chg24"))}</span></span> · {line}</span></summary>{card(p, base)}</details>')
 
 
 def report_page(r, site, archive, is_index):
@@ -363,25 +433,42 @@ def report_page(r, site, archive, is_index):
         stats += (f'<div class="stat"><b>공포탐욕</b><div class="v num">{e(f.get("value"))}</div>'
                   f'<div class="small">{e(f.get("label", ""))}{prev}</div></div>')
     watch = "".join(f"<li>{e(w)}</li>" for w in m.get("watch") or [])
-    cards = "".join(card(p, base) for p in picks) or '<div class="panel small muted">이번 리포트에는 코멘트할 관심 코인이 없어요.</div>'
+    strong = [p for p in picks if p.get("rating") in ("강력관심", "관심")]
+    watch_picks = [p for p in picks if p.get("rating") not in ("강력관심", "관심")]
+    cards = "".join(card(p, base) for p in strong) or '<div class="panel small muted">이번 리포트에는 관심 코인이 없어요.</div>'
+    folded = "".join(folded_card(p, base) for p in watch_picks)
     cautions = ""
     for c in r.get("cautions") or []:
         pr = f' <span class="num small">{won(c.get("price"))}</span> <span class="num small {cls(c.get("chg24"))}">{pct(c.get("chg24"))}</span>' if c.get("price") is not None else ""
         cautions += (f'<div class="item"><div class="nstar">{star_html(1, "주의, 별 1개")}<small>주의</small></div><div>'
                      f'<div><b><a href="{base}coin/{e(c["sym"])}.html">{e(c.get("name") or c["sym"])}</a></b>{pr}</div>'
                      f'<div class="small">{e(c.get("reason"))}</div></div></div>')
-    news = ""
+    news_items = []
     for n in r.get("news") or []:
         s = n.get("score")
         url = n.get("url") or ""
         t = f'<a href="{e(url)}" target="_blank" rel="noopener">{e(n.get("title"))}</a>' if url.startswith("http") else e(n.get("title"))
         coins = ", ".join(n.get("coins") or []) or "시장 전체"
         tone = n.get("tone") or "중립"
-        note = f'<div class="small">{e(n["note"])}</div>' if n.get("note") else ""
+        cat = f'<span class="cat">{e(n["category"])}</span>' if n.get("category") else ""
+        body = ""
+        if n.get("summary"):
+            body += f'<div class="small">{e(n["summary"])}</div>'
+        if n.get("impact"):
+            body += f'<div class="impact"><b>영향</b> {e(n["impact"])}</div>'
+        if not body and n.get("note"):
+            body = f'<div class="small">{e(n["note"])}</div>'
+        if n.get("priced_in"):
+            body += f'<div class="priced">가격 반영: {e(n["priced_in"])}</div>'
         k = news_stars(n)
-        news += (f'<div class="item"><div class="nstar">{star_html(k, f"중요도 {s}점, 별 {k}개")}<small>{e(s) + "/10" if s is not None else ""}</small></div><div>{t}'
-                 f'<div class="meta"><span class="tone-{e(tone)}">{e(tone)}</span> · {e(coins)} · {e(n.get("source", ""))}'
-                 f'{" · " + e(n["time"]) if n.get("time") else ""}</div>{note}</div></div>')
+        news_items.append(
+            f'<div class="item"><div class="nstar">{star_html(k, f"중요도 {s}점, 별 {k}개")}<small>{e(s) + "/10" if s is not None else ""}</small></div><div>{t}'
+            f'<div class="meta">{cat}<span class="tone-{e(tone)}">{e(tone)}</span> · {e(coins)} · {e(n.get("source", ""))}'
+            f'{" · " + e(n["time"]) if n.get("time") else ""}</div>{body}</div></div>')
+    news = "".join(news_items[:6])
+    if len(news_items) > 6:
+        news += (f'<details class="more"><summary>뉴스 {len(news_items) - 6}건 더 보기</summary>'
+                 f'<div class="list">{"".join(news_items[6:])}</div></details>')
     tk = r.get("track") or {}
     track = ""
     if tk.get("summary") or tk.get("items"):
@@ -399,9 +486,10 @@ def report_page(r, site, archive, is_index):
 </header>
 {old_notice}
 {f'<section class="section"><div class="stats">{stats}</div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">{e(m.get("summary", ""))}</p>{f"<ul class=plain small>{watch}</ul>" if watch else ""}</div></section>' if (stats or m.get("summary")) else ""}
-<section class="section"><h2>운용부 · 코인별 코멘트</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards">{cards}</div></section>
+<section class="section"><h2>운용부 · 관심 코인 {len(strong)}개</h2><p class="legend">별점 · 코인: ★5 강력관심 · ★4 관심 · ★3 관심(약)/중립(좋은 편) · ★2 중립 · ★1 주의 / 뉴스: 중요도 10점을 별 5개로</p><div class="cards">{cards}</div></section>
+{f'<section class="section"><h2>지켜볼 코인 {len(watch_picks)}개</h2><p class="legend">눌러서 펼치면 전체 분석을 볼 수 있어요.</p><div class="cards">{folded}</div></section>' if watch_picks else ""}
 {f'<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list">{cautions}</div></section>' if cautions else ""}
-{f'<section class="panel section"><h2>뉴스부 · 중요도 순</h2><div class="list">{news}</div></section>' if news else ""}
+{f'<section class="panel section"><h2>뉴스부 · 중요도 순 {len(news_items)}건</h2><div class="list">{news}</div></section>' if news else ""}
 {track}
 {f'<section class="section"><h2>지난 리포트</h2><div class="archive">{arch}</div></section>' if len(archive) > 1 else ""}"""
     desc = m.get("headline") or "AI가 뉴스와 시세를 보고 쓰는 코인 코멘트"
