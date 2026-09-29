@@ -1,8 +1,17 @@
 {
-  // Cloudflare Workers 정적 사이트 설정: public 폴더를 그대로 배포 (빌드 과정 없음)
+  // AI 코인 리서치센터 — Worker(API + 5분 업비트 감시) + public 폴더 정적 파일
   "name": "coin-desk",
+  "main": "src/index.js",
   "compatibility_date": "2025-09-01",
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "coin_desk", "database_id": "86f2c700-5f7c-48ac-b73a-e968b6274394" }
+  ],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true }
 }
