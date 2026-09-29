@@ -161,7 +161,7 @@ def news_stars(n):
 
 
 def star_html(k, label):
-    off = f'<span class="off">{"★" * (5 - k)}</span>' if k < 5 else ""
+    off = f'<span class="off">{"☆" * (5 - k)}</span>' if k < 5 else ""
     return f'<span class="stars" role="img" aria-label="{e(label)}">{"★" * k}{off}</span>'
 
 
