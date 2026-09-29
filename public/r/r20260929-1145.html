@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 코인 리서치센터</title>
+<meta name="description" content="비트코인은 박스, 알트는 금리 부담에 숨 고르기">
+<meta property="og:title" content="AI 코인 리서치센터 · 9/29(화) 11:53">
+<meta property="og:description" content="비트코인은 박스, 알트는 금리 부담에 숨 고르기">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef1f4;--paper:#fff;--ink:#18202b;--muted:#5d6877;--line:#d9dee5;--accent:#23408e;--accent-soft:#e3e9f7;
+--strong:#0e7a4f;--buy:#2459c8;--neutral:#6b7380;--warn:#b42318;--strong-soft:#e2f3eb;--buy-soft:#e4ecfb;--neutral-soft:#eceef1;--warn-soft:#fbe8e6;
+--font-body:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+--font-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--paper:#1a2029;--ink:#e7ebf0;--muted:#98a2b0;--line:#2b3340;--accent:#8fa9f0;
+--accent-soft:#222c40;--strong:#3fc38b;--buy:#79a2ff;--neutral:#9aa3af;--warn:#ff8a7e;--strong-soft:#173327;--buy-soft:#1c2842;
+--neutral-soft:#232932;--warn-soft:#3a1f1d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:flex;flex-direction:column;gap:18px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+h1{font-size:22px;line-height:1.3;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:13px;margin:0;font-weight:600;letter-spacing:.06em;color:var(--muted)}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}
+.section{display:flex;flex-direction:column;gap:10px}
+.small{font-size:13px}.muted{color:var(--muted)}
+.head{display:flex;flex-direction:column;gap:8px}
+.head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap;background:var(--accent-soft);color:var(--accent)}
+.regime-상승장{background:var(--strong-soft);color:var(--strong)}.regime-하락장{background:var(--warn-soft);color:var(--warn)}.regime-횡보장{background:var(--neutral-soft);color:var(--neutral)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.stat b{display:block;font-size:12px;font-weight:500;color:var(--muted)}.stat .v{font-size:16px;font-weight:600}
+.up{color:var(--strong)}.down{color:var(--warn)}
+ul.plain{margin:0;padding-left:18px}
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.coin{font-size:17px;font-weight:700;line-height:1.3}.coin small{font-family:var(--font-num);font-weight:500;color:var(--muted);font-size:13px;margin-left:4px}
+.price{font-size:14px;margin-top:2px}
+.rating{font-size:13px;font-weight:700;padding:4px 11px;border-radius:999px;white-space:nowrap}
+.r-강력관심{background:var(--strong-soft);color:var(--strong)}.r-관심{background:var(--buy-soft);color:var(--buy)}
+.r-중립{background:var(--neutral-soft);color:var(--neutral)}.r-주의{background:var(--warn-soft);color:var(--warn)}
+.comment{margin:0}
+.track{position:relative;height:34px;margin:0 8px}
+.rail{position:absolute;left:0;right:0;top:15px;height:4px;border-radius:2px;background:var(--line)}
+.zone{position:absolute;top:11px;height:12px;border-radius:3px;background:var(--buy-soft);border:1px solid var(--buy)}
+.tick{position:absolute;top:8px;width:2px;height:18px;border-radius:1px;transform:translateX(-1px)}
+.tick.stop{background:var(--warn)}.tick.tgt{background:var(--strong)}
+.cur{position:absolute;top:11px;width:12px;height:12px;border-radius:50%;background:var(--ink);border:2px solid var(--paper);transform:translateX(-6px)}
+.levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:13px}
+.levels div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding-bottom:3px;min-width:0}
+.levels span:first-child{color:var(--muted);white-space:nowrap}
+@media (max-width:480px){.levels{grid-template-columns:minmax(0,1fr)}}
+.lv-stop{color:var(--warn)}.lv-tgt{color:var(--strong)}
+.counter{background:var(--warn-soft);border-radius:10px;padding:10px 12px;font-size:14px}.counter b{color:var(--warn);font-weight:600}
+details{font-size:14px}summary{cursor:pointer;color:var(--accent);font-weight:500}details ul{margin:6px 0 0;padding-left:18px}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.score{font-family:var(--font-num);font-weight:600;font-size:14px;min-width:34px;text-align:center;border-radius:8px;padding:2px 0;background:var(--neutral-soft);height:fit-content}
+.score.hi{background:var(--warn-soft);color:var(--warn)}.score.mid{background:var(--accent-soft);color:var(--accent)}
+.item a{color:var(--ink);text-decoration:none;font-weight:500}.item a:hover{text-decoration:underline}
+.meta{font-size:12px;color:var(--muted)}
+.tone-호재{color:var(--strong);font-weight:600}.tone-악재{color:var(--warn);font-weight:600}.tone-중립{color:var(--muted);font-weight:600}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-weight:500}
+.archive{display:flex;flex-wrap:wrap;gap:6px}
+.archive a{font-family:var(--font-num);font-size:13px;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--paper)}
+.archive a[aria-current]{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+.notice{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:8px 12px;font-size:13px}
+.notice a{color:inherit}
+footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:4px}
+a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style></head>
+<body><div class="wrap">
+<header class="head">
+  <div class="head-top"><div><div class="eyebrow">AI 코인 리서치센터 · 코인 코멘트</div><h1>비트코인은 박스, 알트는 금리 부담에 숨 고르기</h1></div><span class="chip regime-횡보장">횡보장</span></div>
+  <div class="small muted">9/29(화) 11:53 작성 · 업비트 시세 · 토큰포스트·블록미디어·CoinDesk·Cointelegraph</div>
+</header>
+<div class="notice">지난 리포트예요 (9/29(화) 11:53). <a href="../">최신 리포트 보기</a></div>
+<section class="section"><div class="stats"><div class="stat"><b>비트코인</b><div class="v num">1억 1,279만원</div><div class="small num down">-0.6% 24h</div></div><div class="stat"><b>공포탐욕</b><div class="v num">74</div><div class="small">Greed · 전일 70</div></div></div><div class="panel section"><h2>마켓부 · 시장 한 줄</h2><p style="margin:0">비트코인은 1억1,279만원(-0.6%)으로 5주째 1억1천만~1억1,760만원 박스 안에 있어요. 주간 ETF 유입은 2025년 10월 이후 최대였지만, 미 10년물 금리 5.23%와 유가 105달러가 위험자산을 누르고 있어요. 공포탐욕은 74(탐욕)인데 알트는 오늘 대부분 -4~5%라 체감은 더 약해요.</p><ul class=plain small><li>미 10년물 금리 5.25% 돌파 여부</li><li>비트겟 해커 자금 이동 (XRP·ETH 매도 압력)</li><li>비트코인 1억1,054만원(지난주 저점) 지지</li></ul></div></section>
+<section class="section"><h2>운용부 · 코인별 코멘트</h2><div class="cards"><article class="card">
+  <div class="card-top"><div><div class="coin">체인링크<small>LINK</small></div>
+  <div class="price num">20,470원 <span class="down">-2.3% 24h</span></div></div>
+  <span class="rating r-관심">관심</span></div>
+  <p class="comment">스위프트와 손잡고 은행들의 &#x27;토큰화 예금 네트워크&#x27; 연결을 지원한다는 소식이 오늘 나왔어요. 기관 자산을 체인으로 잇는 인프라라는 스토리에 딱 맞는 재료예요. 이번 주 21,420원까지 올랐다가 20,470원으로 밀려 있어서, 뉴스가 가격에 크게 반영되진 않았어요.</p>
+  <ul class="plain small"><li>최근 4주 중 3주 상승 (4주 +13.7%, 1주 +7.7%)</li><li>지지선: 지난주 종가 19,000원</li><li>52주 고점 33,850원 대비 -40% 구간</li></ul>
+  <div class="track" role="img" aria-label="손절 18,060원, 진입 19,000원~20,470원, 현재 20,470원, 목표 23,080원"><div class="rail"></div><div class="zone" style="left:14.08%;width:18.48%"></div><div class="tick stop" style="left:2.27%"></div><div class="tick tgt" style="left:65.36%"></div><div class="tick tgt" style="left:96.78%"></div><div class="cur" style="left:32.56%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">19,000원~20,470원</span></div><div><span>손절</span><span class="num lv-stop">18,060원 (-8.5%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">23,080원 (+16.9%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">25,580원 (+29.6%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 12%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
+  <div class="counter"><b>반대 의견</b> 오늘 알트 대부분이 4~5% 빠질 만큼 시장 분위기가 약하고, 미 국채 10년물 5.2%대 금리가 위험자산을 누르고 있어요. 스위프트 건은 &#x27;연결 지원&#x27; 발표 단계라 실제 사용량으로 이어지기까지 시간이 걸릴 수 있어요.<br><span class="small">틀리는 조건: 주간 종가가 19,000원(지난주 종가) 아래에서 마감</span></div><details><summary>사기 전 체크리스트</summary><ul><li>현재가는 진입 구간 상단이에요. 한 번에 사기보다 되돌림 때 나눠서 보는 편이 유리해요</li><li>손절 18,060원(-8.5%) 아래로 내려가면 정리할 계획이 있나요?</li><li>비중 상한: 계좌의 12% (손절 시 계좌 손실 1% 기준)</li><li>이미 보유 중이면 추가 매수 전에 총비중부터 확인</li><li>스위프트 연동이 발표에서 실제 거래로 이어지는지 후속 뉴스 확인</li></ul></details>
+</article><article class="card">
+  <div class="card-top"><div><div class="coin">세이<small>SEI</small></div>
+  <div class="price num">101원 <span class="down">-4.7% 24h</span></div></div>
+  <span class="rating r-관심">관심</span></div>
+  <p class="comment">메인넷 3년 만에 26억 건을 처리했고 20만 TPS 업그레이드를 추진한다는 소식이 두 매체에서 나왔어요. 가격은 4주 동안 +50% 오른 뒤 이번 주 고점 118원에서 101원까지 식었어요. 이번 주 저점 99.4원에 닿아 있어서, 상승 추세 안의 눌림 구간으로 볼 수 있어요.</p>
+  <ul class="plain small"><li>4주 +49.9% 상승 후 첫 조정</li><li>손익비 2.8 (1차 목표 118원 = 이번 주 고점)</li><li>업그레이드 로드맵 뉴스 2곳 보도</li></ul>
+  <div class="track" role="img" aria-label="손절 93.90원, 진입 99.40원~101원, 현재 101원, 목표 118원"><div class="rail"></div><div class="zone" style="left:18.24%;width:4.53%"></div><div class="tick stop" style="left:2.66%"></div><div class="tick tgt" style="left:70.91%"></div><div class="tick tgt" style="left:96.40%"></div><div class="cur" style="left:22.77%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">99.40원~101원</span></div><div><span>손절</span><span class="num lv-stop">93.90원 (-6.3%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">118원 (+17.8%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">127원 (+27.2%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 16%</span></div><div><span>손익비</span><span class="num ">2.8</span></div></div>
+  <div class="counter"><b>반대 의견</b> 오늘 -4.7%로 알트 약세를 그대로 받고 있고, 52주 고점(435원) 대비 -77%라 긴 하락 추세는 아직 안 끝났어요. 업그레이드는 &#x27;추진&#x27; 단계라 일정이 밀리면 재료가 약해져요.<br><span class="small">틀리는 조건: 99.4원(이번 주 저점)을 깨고 94원 아래로 내려감</span></div><details><summary>사기 전 체크리스트</summary><ul><li>99.4원 지지를 하루 이상 지키는지 확인</li><li>손절 93.9원(-6.3%) 계획</li><li>비중 상한: 계좌의 16%</li><li>변동폭이 커요 (평균 주간 변동 22%)</li></ul></details>
+</article><article class="card">
+  <div class="card-top"><div><div class="coin">비트코인<small>BTC</small></div>
+  <div class="price num">112,793,000원 <span class="down">-0.6% 24h</span></div></div>
+  <span class="rating r-중립">중립</span></div>
+  <p class="comment">주간 ETF 유입이 24억 달러로 2025년 10월 이후 가장 컸고, 스트래티지도 1,665개를 더 샀어요. 반면 미 10년물 금리가 5.23%로 2007년 이후 최고 근처이고 유가도 105달러라 위험자산에 부담이에요. 가격은 5주째 1억1천만~1억1,760만 원 박스 안이라 방향이 정해지지 않았어요.</p>
+  <ul class="plain small"><li>주봉: 박스 1억1,054만 ~ 1억1,760만원</li><li>4주 +3.1%, 1주 -1.5%</li><li>공포탐욕 74(탐욕)인데 가격은 박스 중간</li></ul>
+  <div class="track" role="img" aria-label="손절 107,910,000원, 진입 112,019,000원~112,793,000원, 현재 112,793,000원, 목표 121,398,000원"><div class="rail"></div><div class="zone" style="left:22.96%;width:3.43%"></div><div class="tick stop" style="left:4.78%"></div><div class="tick tgt" style="left:64.47%"></div><div class="tick tgt" style="left:94.33%"></div><div class="cur" style="left:26.39%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">112,019,000원~112,793,000원</span></div><div><span>손절</span><span class="num lv-stop">107,910,000원 (-4.0%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">121,398,000원 (+8.0%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">128,143,000원 (+14.0%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 25%</span></div><div><span>손익비</span><span class="num ">2.0</span></div></div>
+  <div class="counter"><b>반대 의견</b> 탐욕 지수가 높은데 가격이 못 오르는 건 힘이 빠지는 신호일 수 있어요. 금리가 더 오르면 박스 하단 이탈 가능성이 커져요.<br><span class="small">틀리는 조건: 주간 종가 1억1,054만원(지난주 저점) 이탈</span></div><details><summary>사기 전 체크리스트</summary><ul><li>박스 상단 1억1,760만원 돌파 전까지는 방향 확인 대기</li><li>미 10년물 금리 5.25% 돌파 여부</li><li>비트겟 해커 자금 이동 뉴스</li></ul></details>
+</article><article class="card">
+  <div class="card-top"><div><div class="coin">니어프로토콜<small>NEAR</small></div>
+  <div class="price num">6,225원 <span class="down">-5.0% 24h</span></div></div>
+  <span class="rating r-중립">중립</span></div>
+  <p class="comment">NEAR Intents가 비트겟 해커와 연결된 5천만 달러를 막았다는 소식은 신뢰도 측면에서 좋은 뉴스예요. 다만 4주 동안 +88% 급등한 뒤 이번 주 -15%로 첫 큰 조정이 나왔어요. 6,200원 지지를 확인하기 전까지는 기다리는 편이 나아요.</p>
+  <ul class="plain small"><li>4주 +87.7% 급등 후 1주 -14.6%</li><li>이번 주 저점 6,200원 = 현재가 바로 아래</li><li>52주 고점(7,550원) 대비 -18%</li></ul>
+  <div class="track" role="img" aria-label="손절 5,705원, 진입 6,200원~6,225원, 현재 6,225원, 목표 7,340원"><div class="rail"></div><div class="zone" style="left:27.92%;width:1.26%"></div><div class="tick stop" style="left:2.88%"></div><div class="tick tgt" style="left:85.56%"></div><div class="tick tgt" style="left:96.18%"></div><div class="cur" style="left:29.18%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">6,200원~6,225원</span></div><div><span>손절</span><span class="num lv-stop">5,705원 (-8.2%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">7,340원 (+18.1%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">7,550원 (+21.5%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 12%</span></div><div><span>손익비</span><span class="num ">2.2</span></div></div>
+  <div class="counter"><b>반대 의견</b> 급등 뒤 첫 조정은 한 번 더 깊어지는 경우가 많아요. 거래대금이 줄면서 밀리면 5,300원대(지난주 저점)까지 열려 있어요.<br><span class="small">틀리는 조건: 6,200원 이탈 후 회복 실패</span></div><details><summary>사기 전 체크리스트</summary><ul><li>6,200원 지지 확인 전에는 대기</li><li>손절 5,705원(-8.2%)</li><li>주간 변동폭 32% — 비중 작게</li></ul></details>
+</article><article class="card">
+  <div class="card-top"><div><div class="coin">온도파이낸스<small>ONDO</small></div>
+  <div class="price num">673원 <span class="down">-4.9% 24h</span></div></div>
+  <span class="rating r-중립">중립</span></div>
+  <p class="comment">바이비트의 프랭클린템플턴 토큰화 펀드 담보 채택, 씨티·코인베이스 스테이블코인 협업처럼 RWA 쪽 소식은 계속 나오고 있어요. 하지만 가격은 이번 주 824원에서 673원으로 -18% 밀렸고, 24시간 거래대금이 1,664억 원으로 커서 매도가 활발해요.</p>
+  <ul class="plain small"><li>1주 -15.4% (4주로는 +27%)</li><li>이번 주 저점 669원 = 현재가 바로 아래</li><li>24h 거래대금 1,664억원 (업비트 상위)</li></ul>
+  <div class="track" role="img" aria-label="손절 633원, 진입 669원~673원, 현재 673원, 목표 798원"><div class="rail"></div><div class="zone" style="left:20.59%;width:1.95%"></div><div class="tick stop" style="left:3.08%"></div><div class="tick tgt" style="left:83.34%"></div><div class="tick tgt" style="left:95.99%"></div><div class="cur" style="left:22.54%"></div></div><div class="levels"><div><span>진입 구간</span><span class="num ">669원~673원</span></div><div><span>손절</span><span class="num lv-stop">633원 (-5.7%)</span></div><div><span>1차 목표</span><span class="num lv-tgt">798원 (+18.9%)</span></div><div><span>2차 목표</span><span class="num lv-tgt">824원 (+22.8%)</span></div><div><span>비중 상한</span><span class="num ">계좌의 18%</span></div><div><span>손익비</span><span class="num ">3.3</span></div></div>
+  <div class="counter"><b>반대 의견</b> 거래대금이 큰 상태로 밀리는 건 차익 실현이 이어지고 있다는 뜻이에요. RWA 뉴스가 ONDO 토큰 가격으로 바로 이어진다는 보장은 없어요.<br><span class="small">틀리는 조건: 669원 이탈 후 633원 아래 마감</span></div><details><summary>사기 전 체크리스트</summary><ul><li>669원 지지와 거래대금 감소를 함께 확인</li><li>손절 633원(-5.7%)</li></ul></details>
+</article></div></section>
+<section class="panel section"><h2>리스크관리부 · 주의 코인</h2><div class="list"><div class="item"><span class="score hi">주의</span><div><div><b>멀티버스엑스</b> <span class="num small">8,325원</span> <span class="num small up">+13.5%</span></div><div class="small">오늘 +13.5%, 이번 주 +24%. 뚜렷한 뉴스 없이 오르고 평균 주간 변동폭이 56%라 추격 매수는 위험해요.</div></div></div><div class="item"><span class="score hi">주의</span><div><div><b>아이리스</b> <span class="num small">21.70원</span> <span class="num small down">-6.1%</span></div><div class="small">오늘 -6.1%, 52주 고점(146원) 대비 -85%. 하락 추세가 이어지는 중이에요.</div></div></div></div></section>
+<section class="panel section"><h2>뉴스부 · 중요도 순</h2><div class="list"><div class="item"><span class="score hi">8</span><div><a href="https://www.blockmedia.co.kr/archives/1145253" target="_blank" rel="noopener">체인링크, 스위프트와 맞손… 대형 은행 &#x27;토큰화 예금 네트워크&#x27; 연결 지원</a><div class="meta"><span class="tone-호재">호재</span> · LINK · 블록미디어 · 09/29 09:51</div><div class="small">은행 간 토큰화 예금 연결은 체인링크 스토리의 핵심 재료. 가격 반영은 아직 제한적.</div></div></div><div class="item"><span class="score hi">7</span><div><a href="https://www.blockmedia.co.kr/archives/1145207" target="_blank" rel="noopener">미 10년물 국채금리 5.23% 상승…2007년 이후 최고치 육박</a><div class="meta"><span class="tone-악재">악재</span> · 시장 전체 · 블록미디어 · 09/29 06:50</div><div class="small">금리·유가(브렌트 105달러) 동반 상승은 위험자산 전반에 부담. 오늘 알트 약세 배경.</div></div></div><div class="item"><span class="score hi">7</span><div><a href="https://cointelegraph.com/markets/bitcoin-etf-billion-biggest-inflow-week-october-2025" target="_blank" rel="noopener">Bitcoin ETFs draw $2.4B in biggest inflow week since October 2025</a><div class="meta"><span class="tone-호재">호재</span> · BTC · Cointelegraph · 09/28 17:24</div><div class="small">기관 자금 유입은 박스 하단을 받치는 힘.</div></div></div><div class="item"><span class="score mid">6</span><div><a href="https://www.tokenpost.kr/news/cryptocurrency/415465" target="_blank" rel="noopener">비트겟 3억8750만달러 무단 이전…출금 재개 일정 제시</a><div class="meta"><span class="tone-악재">악재</span> · XRP, ETH · 토큰포스트 · 09/29 09:17</div><div class="small">해커가 XRP·ETH를 옮기는 중이라 단기 매도 물량 가능성.</div></div></div><div class="item"><span class="score mid">5</span><div><a href="https://cointelegraph.com/news/near-intents-says-it-blocked-50m-tied-to-bitget-hackers" target="_blank" rel="noopener">NEAR Intents says it blocked $50M tied to Bitget hackers</a><div class="meta"><span class="tone-호재">호재</span> · NEAR · Cointelegraph · 09/29 10:17</div><div class="small">보안·신뢰 측면의 호재. 가격은 급등 후 조정 중.</div></div></div><div class="item"><span class="score mid">5</span><div><a href="https://www.tokenpost.kr/news/blockchain/415527" target="_blank" rel="noopener">세이, 3년 만에 26억건 처리…20만 TPS 업그레이드 추진</a><div class="meta"><span class="tone-호재">호재</span> · SEI · 토큰포스트 외 1곳 · 09/29 11:34</div><div class="small">사용량 지표와 업그레이드 로드맵. 일정 확정 전까지는 중간 강도 재료.</div></div></div><div class="item"><span class="score mid">5</span><div><a href="https://www.blockmedia.co.kr/archives/1145224" target="_blank" rel="noopener">&quot;달러 넣으면 스테이블코인 자동 전환, 연 3.75% 이자&quot;… 씨티·코인베이스 맞손</a><div class="meta"><span class="tone-호재">호재</span> · 시장 전체 · 블록미디어 · 09/29 08:13</div><div class="small">대형 은행의 스테이블코인 채택. 시장 전체에 우호적.</div></div></div><div class="item"><span class="score mid">5</span><div><a href="https://cointelegraph.com/news/strategy-1665-bitcoin-buy-holdings-847666-btc" target="_blank" rel="noopener">Strategy buys 1,665 Bitcoin for $143M as BTC stack hits 847,666</a><div class="meta"><span class="tone-호재">호재</span> · BTC · Cointelegraph · 09/28 21:38</div><div class="small">꾸준한 매수세. 새로운 재료는 아님.</div></div></div><div class="item"><span class="score ">4</span><div><a href="https://www.tokenpost.kr/news/cryptocurrency/415525" target="_blank" rel="noopener">[알트장 오나요] 알트코인 시즌 지수 60까지 하락했지만…비트코인 도미넌스 58.7% 유지</a><div class="meta"><span class="tone-중립">중립</span> · 시장 전체 · 토큰포스트 · 09/29 11:30</div><div class="small">자금이 아직 비트코인 쪽에 머무는 중.</div></div></div><div class="item"><span class="score ">4</span><div><a href="https://www.tokenpost.kr/news/blockchain/415509" target="_blank" rel="noopener">아비트럼, 한 달 개발 커밋 1만4036건…카르다노 3.5배</a><div class="meta"><span class="tone-호재">호재</span> · ARB · 토큰포스트 외 1곳 · 09/29 11:03</div><div class="small">개발 활동 지표. 가격은 오늘 -4%로 반응 없음.</div></div></div></div></section>
+<section class="panel section"><h2>회고부 · 지난 코멘트 성적</h2><p class="small" style="margin:0">첫 리포트라 아직 채점할 코멘트가 없어요. 24시간 뒤부터 &#x27;관심&#x27;·&#x27;주의&#x27; 코멘트의 성적(BTC 대비)이 여기에 쌓여요.</p></section>
+
+<footer>
+  <div>AI가 공개 뉴스와 업비트 시세로 자동 작성한 참고용 코멘트예요. 투자 권유가 아니며, 매매 판단과 책임은 본인에게 있어요.</div>
+  
+</footer>
+</div></body></html>

@@ -1,0 +1,8 @@
+{
+  // Cloudflare Workers 정적 사이트 설정: public 폴더를 그대로 배포 (빌드 과정 없음)
+  "name": "coin-desk",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public"
+  }
+}
