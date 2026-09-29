@@ -1,12 +1,14 @@
 """주간 집계 — 주간 요약을 쓸 때 숫자는 이 스크립트 결과만 쓴다.
 
-사용: python3 weekly_stats.py <리포트 JSON 폴더> <시작 epoch ms> <끝 epoch ms>
+사용: python3 weekly_stats.py <리포트 JSON 폴더> [시작 epoch] [끝 epoch]
+      시작·끝을 빼면 지금부터 7일 전까지. 초 단위로 넣어도 알아서 ms로 바꾼다.
 출력: JSON (counts, top, sectors, track, link_notes, lessons, first_prices)
 """
 import glob
 import json
 import os
 import sys
+import time
 
 ORDER = {"강력관심": 0, "관심": 1, "중립": 2, "주의": 3}
 RSTAR = {"강력관심": 5, "관심": 4, "중립": 3, "주의": 1}
@@ -26,7 +28,14 @@ def group(pos):
 
 
 def main():
-    folder, start, end = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+    folder = sys.argv[1]
+    now = int(time.time() * 1000)
+    start = int(float(sys.argv[2])) if len(sys.argv) > 2 else now - 7 * 86400000
+    end = int(float(sys.argv[3])) if len(sys.argv) > 3 else now
+    start = start * 1000 if 0 < start < 1e12 else start
+    end = end * 1000 if 0 < end < 1e12 else end
+    if start < 0:
+        start = end - 7 * 86400000
     reps = []
     for f in glob.glob(os.path.join(folder, "*.json")):
         try:
