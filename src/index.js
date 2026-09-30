@@ -4,7 +4,7 @@
 // 그 밖의 페이지 경로 : app.html 한 장을 돌려주고, 브라우저의 app.js가 API를 읽어 그린다.
 // 1분마다(cron): 업비트 원화마켓 목록(5분마다)·가격 급변(5분마다)·뉴스 RSS(2곳씩 돌아가며)를 확인해 ★5 긴급 소식을 바로 저장한다.
 
-import { watchNews, watchPrices } from "./newswatch.js";
+import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" };
 const PAGES = [/^\/$/, /^\/index\.html$/, /^\/r\/[\w-]+(\.html)?$/, /^\/track(\.html)?$/, /^\/coin\/?$/, /^\/coin\/[\w-]+(\.html)?$/,
@@ -79,8 +79,10 @@ async function api(url, env) {
   if (p === "/api/health") {
     const r = await db.prepare(`SELECT (SELECT count(*) FROM reports) AS reports, (SELECT max(ts) FROM reports) AS last_report,
       (SELECT count(*) FROM weekly) AS weekly, (SELECT count(*) FROM alerts) AS alerts, (SELECT ts FROM kv WHERE k = 'upbit_krw') AS upbit_checked, (SELECT ts FROM kv WHERE k = 'px') AS price_checked,
-      (SELECT v FROM kv WHERE k = 'rss_status') AS rss`).first();
-    return json(`{"reports":${Number(r.reports)},"last_report":${r.last_report ?? "null"},"weekly":${Number(r.weekly)},"alerts":${Number(r.alerts)},"upbit_checked":${r.upbit_checked ?? "null"},"price_checked":${r.price_checked ?? "null"},"rss":${r.rss || "{}"}}`);
+      (SELECT v FROM kv WHERE k = 'rss_status') AS rss, (SELECT ts FROM kv WHERE k = 'tickers') AS tickers_at,
+      (SELECT count(*) FROM json_each((SELECT v FROM kv WHERE k = 'weeks'))) AS weeks_n, (SELECT ts FROM kv WHERE k = 'fng') AS fng_at,
+      (SELECT count(*) FROM news_items) AS news_items`).first();
+    return json(`{"reports":${Number(r.reports)},"last_report":${r.last_report ?? "null"},"weekly":${Number(r.weekly)},"alerts":${Number(r.alerts)},"upbit_checked":${r.upbit_checked ?? "null"},"price_checked":${r.price_checked ?? "null"},"tickers_at":${r.tickers_at ?? "null"},"weeks":${Number(r.weeks_n || 0)},"fng_at":${r.fng_at ?? "null"},"news_items":${Number(r.news_items || 0)},"rss":${r.rss || "{}"}}`);
   }
   return json('{"error":"not_found"}', 404);
 }
@@ -151,7 +153,9 @@ export default {
   // 한 번에 한 가지 일만 해서 무료 요금제 CPU 한도(10ms) 안에 들어가게 한다
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
-    const job = min % 5 === 0 ? watchUpbit(env) : min % 5 === 2 ? watchPrices(env) : watchNews(env, min);
+    // 0: 업비트 목록 · 1·3: 뉴스(3곳씩) · 2: 전체 시세·급변 · 4: 주봉·공포탐욕
+    const k = min % 5;
+    const job = k === 0 ? watchUpbit(env) : k === 2 ? watchPrices(env) : k === 4 ? watchWeeks(env, min) : watchNews(env, min);
     ctx.waitUntil(job.catch(e => console.error("cron", min, e)));
   },
 };

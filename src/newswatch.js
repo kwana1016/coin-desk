@@ -39,8 +39,10 @@ export function parseItems(xml, max = 40) {
     if (!/^https?:/.test(link)) { const g = tag("guid"); link = /^https?:/.test(g) ? g : ""; }
     const pub = tag("pubDate") || tag("dc:date") || tag("published") || tag("updated");
     const ts = Date.parse(pub);
+    const dm = /<(description|summary)(?:\s[^>]*)?>([\s\S]{0,4000}?)<\/\1>/i.exec(it);
+    const descr = dm ? clean(dm[2]).slice(0, 220) : "";
     try { const u = new URL(link); [...u.searchParams.keys()].filter(k => k.startsWith("utm_")).forEach(k => u.searchParams.delete(k)); link = u.toString(); } catch (e) {}
-    if (title) out.push({ title, link, ts: isNaN(ts) ? null : ts });
+    if (title) out.push({ title, link, ts: isNaN(ts) ? null : ts, descr });
   }
   return out;
 }
@@ -141,12 +143,12 @@ const kstDay = ms => { const d = new Date(ms + 9 * 3600e3); return d.getUTCFullY
 const isKo = s => /[가-힣]/.test(s);
 
 export async function watchNews(env, minute, now = Date.now()) {
-  const i = (minute * 2) % FEEDS.length, pick = [FEEDS[i], FEEDS[(i + 1) % FEEDS.length]];
+  const half = (minute % 5 === 3) ? 3 : 0, pick = FEEDS.slice(half, half + 3);
   const fetched = await Promise.all(pick.map(async ([src, url]) => {
     try {
       const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0; +https://coin-desk.kwana1016.workers.dev)", accept: "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.5" }, cf: { cacheTtl: 30 } });
       if (!res.ok) { try { res.body && res.body.cancel(); } catch (e) {} return { src, code: res.status, items: [] }; }
-      const xml = await readHead(res);
+      const xml = await readHead(res, 110000);
       return { src, code: res.status, bytes: xml.length, items: parseItems(xml) };
     } catch (e) { return { src, code: 0, err: String(e && e.message || e).slice(0, 80), items: [] }; }
   }));
@@ -167,6 +169,11 @@ export async function watchNews(env, minute, now = Date.now()) {
     }
   }
   const stmts = [env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('rss_status', ?1, ?2)").bind(JSON.stringify(status), now)];
+  // 리포트 작업이 읽을 뉴스 목록 (최근 36시간, 이미 있으면 건너뜀)
+  const rowsNew = [];
+  for (const f of fetched) for (const it of f.items) if (it.ts && it.link && now - it.ts < 36 * 3600e3 && it.ts - now < 600e3) rowsNew.push({ l: it.link, s: f.src, t: it.title, p: it.ts, d: it.descr || "" });
+  if (rowsNew.length) stmts.push(env.DB.prepare(`INSERT OR IGNORE INTO news_items (link, src, title, pub, descr, seen)
+    SELECT json_extract(value, '$.l'), json_extract(value, '$.s'), json_extract(value, '$.t'), json_extract(value, '$.p'), json_extract(value, '$.d'), ?2 FROM json_each(?1)`).bind(JSON.stringify(rowsNew), now));
   if (added) {
     hits = hits.slice(-200);
     stmts.push(env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('rss_hits', ?1, ?2)").bind(JSON.stringify(hits), now));
@@ -198,15 +205,22 @@ export async function watchNews(env, minute, now = Date.now()) {
 // ── 가격 급변 (5분마다) ──
 const PX = ["BTC", "ETH", "XRP", "SOL", "DOGE", "ADA", "TRX", "LINK", "AVAX", "SUI", "XLM", "HBAR", "BCH", "DOT", "NEAR", "APT", "UNI", "AAVE", "ETC", "ONDO", "ENA", "PEPE", "SHIB", "ARB", "SEI", "TAO", "WLD", "POL", "USDT"];
 const wonTxt = x => x >= 1e8 ? `${Math.floor(x / 1e8)}억 ${Math.round((x % 1e8) / 1e4).toLocaleString("ko-KR")}만원` : x >= 100 ? Math.round(x).toLocaleString("ko-KR") + "원" : x.toFixed(2) + "원";
+// 원화마켓 전체 시세를 한 번에 받아 저장 (리포트 작업이 D1에서 읽음) + 가격 급변 감지
 export async function watchPrices(env, now = Date.now()) {
   const mk = await env.DB.prepare("SELECT v FROM kv WHERE k = 'upbit_krw'").first();
   let have = null; try { have = mk ? JSON.parse(mk.v) : null; } catch (e) {}
-  const list = PX.filter(s => !have || have["KRW-" + s]);
-  const res = await fetch("https://api.upbit.com/v1/ticker?markets=" + list.map(s => "KRW-" + s).join(","), { headers: { accept: "application/json" } });
+  let res = await fetch("https://api.upbit.com/v1/ticker/all?quote_currencies=KRW", { headers: { accept: "application/json" } });
+  if (!res.ok && have) res = await fetch("https://api.upbit.com/v1/ticker?markets=" + Object.keys(have).join(","), { headers: { accept: "application/json" } });
   if (!res.ok) return;
-  const arr = await res.json(); const p = {};
-  for (const x of arr) if (x && typeof x.market === "string" && x.trade_price > 0) p[x.market.slice(4)] = x.trade_price;
+  const arr = await res.json(); const p = {}, m = {};
+  for (const x of arr) {
+    if (!x || typeof x.market !== "string" || !x.market.startsWith("KRW-") || !(x.trade_price > 0)) continue;
+    const sym = x.market.slice(4);
+    p[sym] = x.trade_price;
+    m[sym] = [x.trade_price, x.prev_closing_price, x.signed_change_rate, Math.round(x.acc_trade_price_24h || 0), x.highest_52_week_price, x.lowest_52_week_price, (have && have[x.market] && have[x.market].n) || sym];
+  }
   if (!p.BTC) return;
+  const tick = env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('tickers', ?1, ?2)").bind(JSON.stringify({ t: now, m }), now);
   const rows = await env.DB.prepare("SELECT k, v FROM kv WHERE k IN ('px', 'px_alerted')").all();
   const kv = Object.fromEntries((rows.results || []).map(r => [r.k, r.v]));
   let snaps = []; try { snaps = JSON.parse(kv.px || "[]"); } catch (e) {}
@@ -234,7 +248,46 @@ export async function watchPrices(env, now = Date.now()) {
     }
     if (events.length) stmts.push(env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('px_alerted', ?1, ?2)").bind(JSON.stringify(alerted), now));
   }
-  snaps.push({ t: now, p }); snaps = snaps.filter(s => now - s.t <= 80 * 60e3);
+  const pp = {}; for (const s of PX) if (p[s]) pp[s] = p[s];
+  snaps.push({ t: now, p: pp }); snaps = snaps.filter(s => now - s.t <= 80 * 60e3);
+  stmts.push(tick);
   stmts.push(env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('px', ?1, ?2)").bind(JSON.stringify(snaps), now));
+  await env.DB.batch(stmts);
+}
+
+// ── 주봉(6주)·공포탐욕 모으기 (5분마다 8개씩 돌아가며) ──
+const WATCH = ["BTC", "ETH", "XRP", "SOL", "ADA", "SUI", "AVAX", "NEAR", "APT", "SEI", "TRX", "HBAR", "XLM", "ALGO", "ETC", "BCH", "DOT", "ATOM",
+  "ARB", "POL", "STX", "ZRO", "AXL", "INJ", "LINK", "PYTH", "GRT", "ONDO", "PLUME", "CFG", "AAVE", "UNI", "ENA", "JUP", "RAY",
+  "TAO", "WLD", "VIRTUAL", "FIL", "RENDER", "DOGE", "SHIB", "PEPE", "PENGU", "AXS", "BIGTIME"];
+export async function watchWeeks(env, minute, now = Date.now()) {
+  const rows = await env.DB.prepare("SELECT k, v FROM kv WHERE k IN ('weeks', 'tickers', 'mine', 'fng')").all();
+  const kv = Object.fromEntries((rows.results || []).map(r => [r.k, r.v]));
+  let weeks = {}; try { weeks = JSON.parse(kv.weeks || "{}"); } catch (e) {}
+  let tk = {}; try { tk = JSON.parse(kv.tickers || "{}").m || {}; } catch (e) {}
+  let mine = []; try { mine = JSON.parse(kv.mine || "[]"); } catch (e) {}
+  const top = Object.entries(tk).filter(([s]) => !/^(USDT|USDC|USDE|USD1|DAI)$/.test(s)).sort((a, b) => (b[1][3] || 0) - (a[1][3] || 0)).slice(0, 25).map(([s]) => s);
+  const want = [...new Set([...mine, ...WATCH, ...top])].filter(s => !Object.keys(tk).length || tk[s]);
+  // 가장 오래된 것부터 8개
+  const pick = want.slice().sort((a, b) => ((weeks[a] || {}).t || 0) - ((weeks[b] || {}).t || 0)).slice(0, 8);
+  const got = await Promise.all(pick.map(async s => {
+    try {
+      const r = await fetch(`https://api.upbit.com/v1/candles/weeks?market=KRW-${s}&count=6`, { headers: { accept: "application/json" } });
+      if (!r.ok) return null;
+      const a = await r.json(); if (!Array.isArray(a) || !a.length) return null;
+      return [s, { t: now, d: String(a[0].candle_date_time_kst || "").slice(0, 10), w: a.map(x => [x.opening_price, x.high_price, x.low_price, x.trade_price]) }];
+    } catch (e) { return null; }
+  }));
+  for (const g of got) if (g) weeks[g[0]] = g[1];
+  for (const k of Object.keys(weeks)) if (now - weeks[k].t > 3 * 86400e3) delete weeks[k];
+  const stmts = [env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('weeks', ?1, ?2)").bind(JSON.stringify(weeks), now)];
+  // 공포탐욕은 1시간마다
+  let fngAt = 0; try { fngAt = JSON.parse(kv.fng || "{}").t || 0; } catch (e) {}
+  if (now - fngAt > 55 * 60e3) {
+    try {
+      const r = await fetch("https://api.alternative.me/fng/?limit=2", { headers: { accept: "application/json" } });
+      if (r.ok) { const j = await r.json(); if (Array.isArray(j.data) && j.data.length) stmts.push(env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('fng', ?1, ?2)").bind(JSON.stringify({ t: now, data: j.data.map(x => ({ value: Number(x.value), label: x.value_classification, ts: Number(x.timestamp) * 1000 })) }), now)); }
+    } catch (e) {}
+    stmts.push(env.DB.prepare("DELETE FROM news_items WHERE pub < ?1").bind(now - 4 * 86400e3));
+  }
   await env.DB.batch(stmts);
 }
