@@ -81,13 +81,6 @@ async function api(url, env) {
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
-  if (p === "/api/probe-src") {  // 임시 진단 (확인 뒤 지움)
-    const U = ["https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=5&sortBy=market_cap&sortType=desc&convert=USD",
-      "https://min-api.cryptocompare.com/data/top/mktcapfull?limit=10&tsym=USD", "https://api.coingecko.com/api/v3/ping",
-      "https://api.coinlore.net/api/tickers/?start=0&limit=3"];
-    const out = await Promise.all(U.map(async u => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0", accept: "application/json" } }); const t = (await r.text()).slice(0, 300); return [u.slice(8, 60), r.status, t]; } catch (e) { return [u, -1, String(e).slice(0, 80)]; } }));
-    return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-  }
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
@@ -170,7 +163,7 @@ export default {
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
     if (event.cron === CRON2) {
-      // 3·18·33·48분: 코인게코 시세 · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8·28·38·58분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
+      // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8·28·38·58분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
       // 23분(6시간마다): 바이낸스 선물 목록 · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12, hour = new Date(event.scheduledTime || Date.now()).getUTCHours();
       const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : (t === 4) ? (hour % 6 === 0 ? watchBinance(env) : null)

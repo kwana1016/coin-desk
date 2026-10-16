@@ -31,12 +31,13 @@ async function readHead(res, limit) {
 }
 const put = (db, k, v, now) => db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES (?1, ?2, ?3)").bind(k, typeof v === "string" ? v : JSON.stringify(v), now);
 
-// ── 시세: 코인게코 시총 상위 250개, 막히면(429 등) 코인로어 상위 200개로 ──
+// ── 시세: 코인마켓캡 공개 데이터 상위 200개 → 막히면 코인게코 250개 → 그것도 막히면 코인로어 200개 ──
 // 코인파프리카 무료 API는 Cloudflare 공용 IP에서 402, 코인게코는 가끔 429라 둘을 이어 쓴다.
-// kv 'cp' = {t, src:"cg"|"cl", m: {id: [순위, 심볼, 가격$, 시총$, 24h거래대금$, 24h%, 7일%, 30일%, 출처(1=코인게코 2=코인로어), 고점대비%, null, 유통비율]}}
+// kv 'cp' = {t, src:"cmc"|"cg"|"cl", m: {id: [순위, 심볼, 가격$, 시총$, 24h거래대금$, 24h%, 7일%, 30일%, 출처(3=코인마켓캡 1=코인게코 2=코인로어), 고점대비%, null, 유통비율]}}
 // kv 'ath' = {심볼: 역대 최고가$} — 코인게코가 될 때마다 채우고, 코인로어 때는 이것으로 고점 대비를 계산(새 고점이면 올림)
 const CG_MARKETS = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&price_change_percentage=7d,30d";
 const CL_TICKERS = "https://api.coinlore.net/api/tickers/?start=";
+const CMC_LIST = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=200&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=ath,cmc_rank,max_supply,circulating_supply,total_supply,self_reported_circulating_supply,self_reported_market_cap";
 async function getJson(url, limit) {
   const res = await fetch(url, { headers: UA });
   if (!res.ok) { try { res.body && res.body.cancel(); } catch (e) {} return { code: res.status, j: null, bytes: 0 }; }
@@ -51,8 +52,30 @@ export async function watchMarket(env, now = Date.now()) {
   const prevBySym = {}; for (const a of Object.values(prev)) if (a && a[1] && !(a[1] in prevBySym)) prevBySym[a[1]] = a;
   const m = {}; const status = { at: now };
   let athChanged = false;
-  // 1) 코인게코
+  // 1) 코인마켓캡 공개 데이터(웹사이트용 data-api) — 30일 변동·역대 최고가 포함
   try {
+    const r = await getJson(CMC_LIST, 1500000); status.cmc = r.code;
+    if (r.t) {
+      const d = JSON.parse(r.t); const list = (d && d.data && d.data.cryptoCurrencyList) || [];
+      if (Array.isArray(list) && list.length >= 100) for (const x of list) {
+        const q = (x.quotes || []).find(z => z && z.name === "USD") || (x.quotes || [])[0] || {};
+        const sym = String(x.symbol || "").toUpperCase(), price = Number(q.price) || 0;
+        const mcap = Number(q.marketCap) > 0 ? Number(q.marketCap) : (Number(q.selfReportedMarketCap) || 0);
+        if (!sym || !(price > 0)) continue;
+        if (Number(x.ath) > 0 && !(ath[sym] >= Number(x.ath))) { ath[sym] = sig(Number(x.ath)); athChanged = true; }
+        if (ath[sym] > 0 && price > ath[sym]) { ath[sym] = sig(price); athChanged = true; }
+        const maxS = Number(x.maxSupply) > 0 ? Number(x.maxSupply) : Number(x.totalSupply) || 0;
+        const cs = Number(x.circulatingSupply) > 0 ? Number(x.circulatingSupply) : Number(x.selfReportedCirculatingSupply) || 0;
+        const circ = maxS > 0 && cs > 0 ? Math.min(1, cs / maxS) : null;
+        m["cmc:" + (x.slug || x.id)] = [Number(x.cmcRank) || 0, sym, sig(price), Math.round(mcap), Math.round(Number(q.volume24h) || 0),
+          pct1(q.percentChange24h), pct1(q.percentChange7d), pct1(q.percentChange30d), 3,
+          ath[sym] > 0 ? pct1((price / ath[sym] - 1) * 100) : null, null, circ == null ? null : Math.round(circ * 1000) / 1000];
+      }
+    }
+  } catch (e) { status.cmc = status.cmc || -1; }
+  status.src = "cmc";
+  // 2) 코인게코 (코인마켓캡이 막혔을 때)
+  if (Object.keys(m).length < 100) try {
     const r = await getJson(CG_MARKETS, 900000); status.cg = r.code;
     if (r.t) {
       let t = r.t; if (!/\]\s*$/.test(t)) { const k = t.lastIndexOf('},{"id":"'); t = k > 0 ? t.slice(0, k + 1) + "]" : "[]"; }
@@ -68,9 +91,9 @@ export async function watchMarket(env, now = Date.now()) {
           pct1(x.ath_change_percentage), null, circ == null ? null : Math.round(circ * 1000) / 1000];
       }
     }
+    if (Object.keys(m).length >= 100) status.src = "cg";
   } catch (e) { status.cg = status.cg || -1; }
-  status.src = "cg";
-  // 2) 코인로어 (코인게코가 막혔을 때)
+  // 3) 코인로어 (둘 다 막혔을 때)
   if (Object.keys(m).length < 100) {
     status.src = "cl";
     for (const start of [0, 100]) {
@@ -97,7 +120,7 @@ export async function watchMarket(env, now = Date.now()) {
   for (const a of Object.values(m)) { if (a[7] != null) continue; const w = (weeks[a[1]] || {}).w;
     if (Array.isArray(w) && w.length >= 5 && w[4] && w[4][3] > 0 && w[0] && w[0][3] > 0) { a[7] = pct1((w[0][3] / w[4][3] - 1) * 100); w4++; } }
   status.w4 = w4;
-  status.n = Object.keys(m).length; status.code = status.src === "cg" ? status.cg : (status.cl0 || status.cg);
+  status.n = Object.keys(m).length; status.code = status.src === "cmc" ? status.cmc : status.src === "cg" ? status.cg : (status.cl0 || status.cg);
   if (status.n < 100) { await put(db, "cp_status", status, now).run(); return status; }
   const writes = [put(db, "cp", { t: now, src: status.src, m }, now), put(db, "cp_status", status, now)];
   if (athChanged) writes.push(put(db, "ath", ath, now));
