@@ -152,7 +152,7 @@ coin("ICP", "icp-internet-computer", "l1", "인터넷컴퓨터", [9, 10, 8, 9, 8
      "AI 앱 빌더(Caffeine) 등 사용량 급증, 대형 제휴", "사용료(사이클) 소각", stake=True)
 coin("GRAM", "toncoin-the-open-network", "l1", "톤코인(그램)", [11, 8, 13, 11, 7], "텔레그램 안에서 지갑·결제·미니앱을 돌리는 체인",
      ["텔레그램 10억 사용자 유통망", "미니앱·스테이블코인 결제 성장"], ["텔레그램 한 회사 의존도가 큼", "고점 대비 -80%대"],
-     "텔레그램 결제·광고 연동 확대, 미국 거래소·ETF", "수수료 일부 소각", kr="TON")
+     "텔레그램 결제·광고 연동 확대, 미국 거래소·ETF", "수수료 일부 소각", kr="TON", cg="the-open-network")
 coin("ALGO", "algo-algorand", "l1", "알고랜드", [7, 6, 8, 14, 14], "학술 기반 PoS — 결제·RWA 쪽으로 방향을 잡은 체인",
      ["빠른 확정과 안정적 운영 이력", "공급 대부분 유통 중"], ["앱·사용자 규모가 작음", "체인 수익이 거의 없음"],
      "기관 RWA·결제 채택 발표", "거의 없음", stake=True)
@@ -482,12 +482,24 @@ steth-lido-staked-ether 스테이킹 파생|wsteth-wrapped-liquid-staked-ether-2
 wbtc-wrapped-bitcoin 래핑|cbbtc-coinbase-wrapped-btc 래핑|weth-weth 래핑|eth-ethereum-token 래핑|wbnb-wrapped-bnb 래핑|wtrx-wrapped-trx 래핑|tbtc-tbtc 래핑|btcb-bitcoin-avalanche-bridged-btcb 래핑|sol-binance-peg-sol 래핑
 paxg-pax-gold 금 토큰|xaut-tether-gold 금 토큰|jlp-jupiter-perpetuals-liquidity-provider-token LP 토큰|mag7ssi-mag7ssi 지수 토큰|spcxb-spacex-tokenized-bstocks 토큰화 주식
 ftm-fantom 옛 토큰(소닉 S로 전환)|matic-polygon 옛 토큰(POL로 전환)|agix-singularitynet 옛 토큰(FET로 통합)|eos-eos 옛 토큰(볼타 A로 전환)|ton-tontoken 중복 표기|zec-zcash-token 중복 표기|flr-flare 중복 표기|luna-terra 2022년 붕괴 체인(테라 클래식)|hex-hex-from-pulsechain 다단계 논란"""
+# 세 번째 값 = 심볼 (시세 소스가 바뀌어도 심볼로 거른다). 심볼이 진짜 코인과 겹치면 None(아이디로만)
+SYM_FIX = {"usdce-usd-coine": "USDC.E", "eth-ethereum-token": None, "sol-binance-peg-sol": None, "luna-terra": "LUNC", "ton-tontoken": None,
+           "zec-zcash-token": None, "flr-flare": None, "eth-reserve-protocol-eth-plus": "ETH+", "btcb-bitcoin-avalanche-bridged-btcb": "BTC.B", "chip-usdai": None}
 EXCLUDED = []
 for part in EX.replace("\n", "|").split("|"):
     part = part.strip()
     if part:
         cid, why = part.split(" ", 1)
-        EXCLUDED.append([cid, why])
+        EXCLUDED.append([cid, why, SYM_FIX.get(cid, cid.split("-")[0].upper())])
+# 코인게코 시총 상위에 자주 보이는 파생·스테이블 토큰 (아이디는 참고용, 심볼로 거름)
+for sym, why in [("BSC-USD", "스테이블(브릿지)"), ("USDT0", "스테이블"), ("WBETH", "스테이킹 파생"), ("OSETH", "스테이킹 파생"), ("UBTC", "래핑 BTC"),
+                 ("WHYPE", "래핑"), ("WSOL", "래핑"), ("CMETH", "스테이킹 파생"), ("FBTC", "래핑 BTC"), ("BUIDL", "토큰화 국채 펀드"), ("USYC", "토큰화 국채 펀드"),
+                 ("OUSG", "토큰화 국채 펀드"), ("USTB", "토큰화 국채 펀드"), ("SYRUPUSDT", "스테이블(이자형)"), ("LUSD", "스테이블"), ("BOLD", "스테이블"),
+                 ("DOLA", "스테이블"), ("AUSD", "스테이블"), ("EURC", "스테이블(유로)"), ("USDX", "스테이블"), ("XSOLVBTC", "래핑 BTC"), ("CLBTC", "래핑 BTC"),
+                 ("WEETH", "스테이킹 파생"), ("EZETH", "스테이킹 파생"), ("RSETH", "스테이킹 파생"), ("SUSDE", "스테이블(이자형)"), ("SUSDS", "스테이블(이자형)"),
+                 ("STKAAVE", "스테이킹 파생"), ("JLP", "LP 토큰"), ("USDF", "스테이블"), ("USD1", "스테이블"), ("RLUSD", "스테이블"), ("PYUSD", "스테이블"), ("FDUSD", "스테이블")]:
+    if not any(e[2] == sym for e in EXCLUDED):
+        EXCLUDED.append(["sym:" + sym.lower(), why, sym])
 
 def main():
     syms = [c["sym"] for c in C]; cps = [c["cp"] for c in C]
@@ -497,7 +509,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-16", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED}
+    out = {"version": "2026-10-16b", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))

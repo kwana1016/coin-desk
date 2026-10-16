@@ -81,13 +81,6 @@ async function api(url, env) {
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
-  if (p === "/api/probe-src") {  // 임시 진단: 시세 소스 접근 확인 (확인 뒤 지움)
-    const U = ["https://api.coinpaprika.com/v1/tickers?quotes=USD", "https://api.coinpaprika.com/v1/tickers?limit=200", "https://api.coinlore.net/api/tickers/?start=0&limit=100",
-      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=250&page=1", "https://fapi.binance.com/fapi/v1/ticker/price", "https://api.bithumb.com/v1/market/all",
-      "https://api.coincap.io/v2/assets?limit=10", "https://api.coinpaprika.com/v1/global"];
-    const out = await Promise.all(U.map(async u => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0", accept: "application/json" } }); const t = (await r.text()).slice(0, 120); return [u, r.status, t]; } catch (e) { return [u, -1, String(e).slice(0, 80)]; } }));
-    return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
-  }
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
@@ -170,10 +163,11 @@ export default {
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
     if (event.cron === CRON2) {
-      // 3·33분: 코인파프리카 시세 · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8분: 초기 데이터 · 23분: 바이낸스 선물 목록 · 53분: 빗썸 목록
-      const t = Math.floor(min / 5) % 12;
-      const job = (t === 0 || t === 6) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : t === 1 ? maybeSeed(env)
-        : t === 4 ? watchBinance(env) : t === 10 ? watchBithumb(env) : null;
+      // 3·18·33·48분: 코인게코 시세 · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8·28·38·58분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
+      // 23분(6시간마다): 바이낸스 선물 목록 · 53분: 빗썸 목록
+      const t = Math.floor(min / 5) % 12, hour = new Date(event.scheduledTime || Date.now()).getUTCHours();
+      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : (t === 4) ? (hour % 6 === 0 ? watchBinance(env) : null)
+        : t === 10 ? watchBithumb(env) : maybeSeed(env);
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }

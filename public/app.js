@@ -398,20 +398,25 @@
     const upbit = new Set(Object.keys(d.kv.upbit || {}).map(k => k.replace(/^KRW-/, "")));
     const bithumb = new Set(d.kv.bithumb || []), bnf = new Set(d.kv.bnf || []), mine = new Set(d.kv.mine || []);
     const sec = {}; (d.sectors || []).forEach(s => sec[s.id] = s);
+    // 시세 찾기: 코인게코 id(b.cg) → 심볼(같은 심볼이 여럿이면 시총이 가장 큰 것)
+    const bySym = new Map(); Object.entries(cp).forEach(([id, a]) => { const s = String(a[1] || "").toUpperCase(), cur = bySym.get(s); if (!cur || (n(a[3]) || 0) > (n(cp[cur][3]) || 0)) bySym.set(s, id); });
+    const keyOf = b => (b.cg && cp[b.cg]) ? b.cg : ([b.sym, b.kr].filter(Boolean).map(x => bySym.get(String(x).toUpperCase())).find(Boolean) || null);
     const coins = {}, baseCp = new Set();
     (d.coins || []).forEach(b => {
-      baseCp.add(b.cp);
+      const key = keyOf(b); if (key) baseCp.add(key);
       const c = rank.c[b.sym] || [b.sector, 0, 0, null, (b.q || []).reduce((a, x) => a + x, 0), 0, 0, 0, null, ""];
-      const mk = cp[b.cp] || null, kr = b.kr || b.sym;
+      const mk = key ? cp[key] : null, kr = b.kr || b.sym;
       coins[b.sym] = { b, sym: b.sym, sec: c[0], pos: c[1], lg: c[2], score: n(c[3]), Q: n(c[4]), S: n(c[5]), N: n(c[6]), chal: c[7], crank: c[8], why: c[9],
         mk, flags: flagsOf(mk), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [] };
     });
-    const ex = new Map((d.kv.ex || []).map(([id, why]) => [id, why]));
+    const exId = new Map(), exSym = new Map();
+    (d.kv.ex || []).forEach(([id, why, sym]) => { exId.set(id, why); if (sym) exSym.set(String(sym).toUpperCase(), why); });
     const exRows = [], pending = [];
-    Object.entries(cp).forEach(([id, m]) => { if (!(m[0] <= 150)) return;
-      if (ex.has(id)) exRows.push({ id, sym: m[1], rank: m[0], why: ex.get(id), mcap: m[3] });
-      else if (!baseCp.has(id)) pending.push({ id, sym: m[1], rank: m[0], mcap: m[3] }); });
+    Object.entries(cp).forEach(([id, m]) => { if (!(m[0] > 0 && m[0] <= 150) || baseCp.has(id)) return;
+      const why = exId.get(id) || exSym.get(String(m[1] || "").toUpperCase());
+      if (why) exRows.push({ id, sym: m[1], rank: m[0], why, mcap: m[3] });
+      else pending.push({ id, sym: m[1], rank: m[0], mcap: m[3] }); });
     exRows.sort((a, b) => a.rank - b.rank); pending.sort((a, b) => a.rank - b.rank);
     return { rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
   }
@@ -494,7 +499,7 @@
         <div id="sec-body"></div></section>
       ${M.pending.length ? `<section class="section"><div class="sec-head"><h2>분류 대기 ${M.pending.length}개</h2><span class="sub">시총 150위 안에 새로 들어와 아직 섹터를 정하지 않은 코인</span></div><div class="panel small">${M.pending.map(p => `<span class="pend">${esc(p.sym)} <span class="tiny muted">${p.rank}위</span></span>`).join(" ")}</div></section>` : ""}
       <details class="panel exl"><summary>시총 150위 안에서 뺀 토큰 ${M.exRows.length}개 — 스테이블코인·래핑·스테이킹 파생·금 토큰 등</summary><div class="exl-body">${M.exRows.map(x => `<div><span class="num tiny muted">${x.rank}위</span> <b>${esc(x.sym)}</b> <span class="muted small">${esc(x.why)}</span></div>`).join("") || '<div class="small muted">시세를 받은 뒤 표시돼요.</div>'}</div></details>
-      <p class="legend">점수와 섹터 생존 점수는 공개 데이터를 바탕으로 한 AI 판단 점수이며 확률 예측이나 투자 권유가 아니에요. 시세: 코인파프리카(달러) · 거래소 표시: 업비트·빗썸 원화마켓, 바이낸스 USDⓈ-M 선물 목록.</p>`;
+      <p class="legend">점수와 섹터 생존 점수는 공개 데이터를 바탕으로 한 AI 판단 점수이며 확률 예측이나 투자 권유가 아니에요. 시세: 코인게코(달러) · 거래소 표시: 업비트·빗썸 원화마켓, 바이낸스 USDⓈ-M 선물 목록.</p>`;
     const F = c => {
       const f = pref.f || [];
       if (f.includes("nohot") && c.flags.includes("hot")) return false;
@@ -553,7 +558,7 @@
         ${b.qnote ? `<p class="small muted">${esc(b.qnote)}</p>` : ""}</section>
       <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>
-        <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}${n(mk[10]) != null ? ` · 비트코인 대비 변동성(베타) ${n(mk[10]).toFixed(2)}` : ""}</div></section>
+        <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}</div></section>
       ${posPts.length > 1 ? `<section class="section"><div class="sec-head"><h2>섹터 안 순위 흐름</h2><span class="sub">위로 갈수록 높은 순위</span></div><div class="panel">${lineChart(posPts, v => Math.round(-v) + "위", false, "섹터 안 순위")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>순위에 반영된 뉴스</h2><span class="sub">AI가 매긴 영향(-10~+10), 시간이 지나면 줄어요</span></div><div class="panel cn-list">${newsRows || '<div class="small muted">아직 반영된 뉴스가 없어요.</div>'}</div></section>
       <p class="legend"><a href="/sectors">섹터 순위판으로</a> · 점수는 AI 판단 점수이며 투자 권유가 아니에요.</p>`;
