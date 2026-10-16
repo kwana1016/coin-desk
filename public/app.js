@@ -229,7 +229,7 @@
   const main = () => $("main");
   function setTitle(t, desc) { document.title = t ? `${t} · ${SITE.title || "AI 코인 리서치센터"}` : (SITE.title || "AI 코인 리서치센터"); }
   function nav(active) {
-    const items = [["latest", "/", "최신 리포트"], ["weekly", "/weekly/", "주간 요약"], ["track", "/track", "성적표"], ["coins", "/coin/", "코인별"], ["map", "/map", "생태계 지도"]];
+    const items = [["latest", "/", "최신 리포트"], ["weekly", "/weekly/", "주간 요약"], ["track", "/track", "성적표"], ["coins", "/coin/", "코인별"], ["sectors", "/sectors", "섹터 순위"], ["map", "/map", "생태계 지도"]];
     $("nav").innerHTML = items.map(([k, h, l]) => `<a href="${h}"${k === active ? ' aria-current="page"' : ""}>${l}</a>`).join("");
   }
   function openHash() { const h = decodeURIComponent(location.hash.slice(1)); if (!h) return; const el = document.getElementById(h); if (el) { if (el.tagName === "DETAILS") el.open = true; el.scrollIntoView({ block: "start" }); } }
@@ -371,6 +371,194 @@
     let s = "1"; try { s = localStorage.getItem("mapLevel") || "1"; } catch (e) {} if (/^[123]$/.test(location.hash.slice(1))) s = location.hash.slice(1); set(s);
   }
 
+  // ── 섹터 순위판 ──
+  // 순위는 Worker가 규칙대로 계산(점수 = 품질×0.6 + 규모×0.25 + 섹터 생존×0.15 + 뉴스), 뉴스 점수는 하루 3번 AI가 넣어요.
+  const QN = ["실사용·수익", "토큰 가치 포착", "경쟁우위", "공급 건전성", "생존 이력"];
+  const GRADE = s => s >= 80 ? ["A", "핵심"] : s >= 65 ? ["B", "성장"] : s >= 50 ? ["C", "순환"] : ["D", "회피"];
+  const SPARTS = [["실수익", 25], ["사용 추세", 20], ["기관 채택", 15], ["규제 내구성", 15], ["대체 불가능성", 15], ["사이클 생존", 10]];
+  const WHY = { rank: "시총 150위 밖", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
+  const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락" };
+  const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움" };
+  const pp = x => { x = n(x); return x == null ? "-" : (x > 0 ? "+" : "") + x.toFixed(Math.abs(x) >= 100 ? 0 : 1) + "%"; };
+  const ppc = x => { x = n(x); return x == null ? "" : x > 0 ? "rise" : x < 0 ? "fall" : ""; };
+  const ppChip = (x, suf = "") => n(x) == null ? `<span class="chg">-</span>` : `<span class="chg ${ppc(x)}">${pp(x)}${suf}</span>`;
+  function usd(x) { x = n(x); if (x == null) return "-"; if (x >= 1000) return "$" + Math.round(x).toLocaleString("en-US"); if (x >= 1) return "$" + x.toFixed(2);
+    return "$" + Number(x.toPrecision(3)).toString(); }
+  function capKo(x) { x = n(x); if (!x) return "-"; if (x >= 1e12) return (x / 1e12).toFixed(2) + "조 달러"; const e = x / 1e8; return (e >= 10 ? Math.round(e).toLocaleString("ko-KR") : e.toFixed(1)) + "억 달러"; }
+  function flagsOf(mk) {
+    const f = []; if (!mk) return f; const d7 = n(mk[6]), d30 = n(mk[7]), ath = n(mk[9]);
+    if ((d30 != null && d30 >= 40) || (d7 != null && d7 >= 25)) f.push("hot");
+    if ((ath != null && ath <= -90) || (d30 != null && d30 <= -30)) f.push("deep");
+    return f;
+  }
+  const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"] };
+  function sectorModel(d) {
+    const rank = d.rank || { c: {}, moves: [], news: {}, trail: {} };
+    const cp = (d.kv.cp && d.kv.cp.m) || {};
+    const upbit = new Set(Object.keys(d.kv.upbit || {}).map(k => k.replace(/^KRW-/, "")));
+    const bithumb = new Set(d.kv.bithumb || []), bnf = new Set(d.kv.bnf || []), mine = new Set(d.kv.mine || []);
+    const sec = {}; (d.sectors || []).forEach(s => sec[s.id] = s);
+    const coins = {}, baseCp = new Set();
+    (d.coins || []).forEach(b => {
+      baseCp.add(b.cp);
+      const c = rank.c[b.sym] || [b.sector, 0, 0, null, (b.q || []).reduce((a, x) => a + x, 0), 0, 0, 0, null, ""];
+      const mk = cp[b.cp] || null, kr = b.kr || b.sym;
+      coins[b.sym] = { b, sym: b.sym, sec: c[0], pos: c[1], lg: c[2], score: n(c[3]), Q: n(c[4]), S: n(c[5]), N: n(c[6]), chal: c[7], crank: c[8], why: c[9],
+        mk, flags: flagsOf(mk), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
+        trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [] };
+    });
+    const ex = new Map((d.kv.ex || []).map(([id, why]) => [id, why]));
+    const exRows = [], pending = [];
+    Object.entries(cp).forEach(([id, m]) => { if (!(m[0] <= 150)) return;
+      if (ex.has(id)) exRows.push({ id, sym: m[1], rank: m[0], why: ex.get(id), mcap: m[3] });
+      else if (!baseCp.has(id)) pending.push({ id, sym: m[1], rank: m[0], mcap: m[3] }); });
+    exRows.sort((a, b) => a.rank - b.rank); pending.sort((a, b) => a.rank - b.rank);
+    return { rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
+  }
+  function exBadges(c) { return `${c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}${c.ex.bt ? '<span class="xb bt" title="빗썸 원화마켓">빗</span>' : ""}${c.ex.bf ? '<span class="xb bf" title="바이낸스 USDⓈ-M 선물">바선</span>' : ""}`; }
+  function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(FLAG[f][1])}">${FLAG[f][0]}</span>`).join(""); }
+  function moveMark(c) {
+    const t = c.trail || [], cur = c.pos, prev = t.length > 1 ? t[t.length - 2] : null;
+    if (!cur) return "";
+    if (prev === 0 || prev == null) return t.length > 1 ? `<span class="mv new" title="이번에 후보 진입">새</span>` : "";
+    if (prev === cur) return "";
+    return prev > cur ? `<span class="mv up" title="${prev}위 → ${cur}위">▲${prev - cur}</span>` : `<span class="mv down" title="${prev}위 → ${cur}위">▼${cur - prev}</span>`;
+  }
+  function coinRow(c, opt = {}) {
+    const mk = c.mk || [];
+    const name = esc(c.b.ko || c.sym);
+    const chal = c.lg === 2 && c.chal ? `<span class="chal" title="1군 꼴찌보다 3점 이상 앞섬 — 2번 연속이면 승격">도전 ${c.chal}/2</span>` : "";
+    const newsMark = c.N && Math.abs(c.N) >= 1 ? `<span class="nw ${c.N > 0 ? "rise" : "fall"}" title="뉴스 점수">뉴스 ${c.N > 0 ? "+" : ""}${c.N.toFixed(1)}</span>` : "";
+    return `<a class="rk-row${c.lg === 1 ? " major" : ""}" href="/rank/${encodeURIComponent(c.sym)}">
+      <span class="rk-no num">${opt.no != null ? opt.no : (c.pos || "-")}</span>
+      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}</span>
+        <span class="rk-s">${exBadges(c)}${flagBadges(c)}${chal}${newsMark}</span></span>
+      <span class="rk-sc"><span class="num">${c.score != null ? c.score.toFixed(1) : "-"}</span>${opt.noMove ? "" : moveMark(c)}</span>
+      <span class="rk-px"><span class="num">${usd(mk[2])}</span><span class="rk-cg">7일 <b class="num ${ppc(mk[6])}">${pp(mk[6])}</b> · 고점 <b class="num ${ppc(mk[9])}">${pp(mk[9])}</b></span></span></a>`;
+  }
+  function survival(s) {
+    const [g, gl] = GRADE(s.score); const parts = s.parts || [];
+    return `<div class="sv" title="${esc(SPARTS.map(([k, mx], i) => `${k} ${parts[i] ?? "-"}/${mx}`).join(" · "))}"><span class="sv-g g-${g}">${g}</span>
+      <span class="sv-bar" role="img" aria-label="생존 점수 ${s.score}/100">${SPARTS.map(([k, mx], i) => `<i style="flex:${mx}"><em style="width:${Math.round((parts[i] || 0) / mx * 100)}%"></em></i>`).join("")}</span>
+      <span class="sv-n num">${s.score}</span><span class="sv-l">${gl}</span></div>`;
+  }
+  function sectorCard(s, M, F) {
+    const arr = Object.values(M.coins).filter(c => c.sec === s.id && c.lg);
+    const majors = arr.filter(c => c.lg === 1).sort((a, b) => a.pos - b.pos);
+    const minors = arr.filter(c => c.lg === 2).sort((a, b) => a.pos - b.pos).filter(F);
+    const others = Object.values(M.coins).filter(c => c.sec === s.id && !c.lg && c.why !== "core");
+    return `<section class="sec-card" id="s-${esc(s.id)}"><div class="sc-top"><h3>${esc(s.name)}</h3><span class="sc-cy">${esc(s.cycle || "")}</span></div>
+      ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>
+      <div class="rk-h"><span>1군 · 3대장</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div>
+      <div class="rk-list">${majors.length ? majors.map(c => coinRow(c)).join("") : `<div class="empty small">후보가 아직 없어요 (시총 150위 안·거래량 기준)</div>`}</div>
+      ${minors.length ? `<details class="minor"><summary>마이너리그 ${minors.length}개</summary><div class="rk-list">${minors.map(c => coinRow(c)).join("")}</div></details>` : ""}
+      <details class="more"><summary>섹터 설명 · 급등 재료 · 위험</summary><div class="more-body">
+        <div><div class="mini-h">웹2로 치면</div>${esc(s.web2 || "")}</div>
+        <div><div class="mini-h">끝까지 남을까</div>${esc(s.why || "")}</div>
+        <div><div class="mini-h">급등할 수 있는 때</div>${esc(s.trigger || "")}</div>
+        <div><div class="mini-h">위험</div>${esc(s.risk || "")}</div>
+        <div><div class="mini-h">생존 점수 구성</div>${SPARTS.map(([k, mx], i) => `${k} ${(s.parts || [])[i] ?? "-"}/${mx}`).join(" · ")}</div>
+        ${others.length ? `<div><div class="mini-h">지금 후보가 아닌 코인</div>${others.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="tiny muted">${esc(WHY[c.why] || c.why || "")}</span>`).join(" · ")}</div>` : ""}
+      </div></details></section>`;
+  }
+  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"]];
+  const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"]];
+  function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
+  function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
+  async function sectorsPage() {
+    nav("sectors"); setTitle("섹터 순위판");
+    const d = await get("/api/sectors");
+    const M = sectorModel(d), R = M.rank;
+    const pref = loadPref();
+    const secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
+    const core = Object.values(M.coins).filter(c => c.why === "core" || c.b.core).sort((a, b) => (a.crank || 99) - (b.crank || 99));
+    const moves = (R.moves || []).filter(m => m[0] === "promo" || m[0] === "demo" || m[0] === "in" || m[0] === "out");
+    const ups = (R.moves || []).filter(m => m[0] === "up" || m[0] === "down");
+    const nm = s => esc((M.coins[s] && M.coins[s].b.ko) || s);
+    const moveHtml = moves.length ? moves.slice(0, 12).map(m => `<div class="mvf mvf-${m[0]}"><b>${esc(MOVE[m[0]])}</b><a href="/rank/${encodeURIComponent(m[1])}">${nm(m[1])}</a><span class="muted">${esc(secName[m[2]] || m[2])}${m[3] ? ` ${m[3]}위` : ""}${m[4] ? ` → ${m[4]}위` : ""}${m[5] ? " · " + esc(VIA[m[5]] || WHY[m[5]] || m[5]) : ""}</span></div>`).join("")
+      : `<div class="small muted">이번 계산에서는 1군·2군 사이 이동이 없었어요${ups.length ? ` · 같은 리그 안 순위 변동 ${ups.length}건` : ""}.</div>`;
+    const intro = `<details class="more rules"><summary>순위는 이렇게 정해요</summary><div class="more-body">
+      <div><b>점수</b> = 코인 품질×0.6 + 규모×0.25 + 섹터 생존 점수×0.15 + 뉴스 점수. 품질은 ${QN.join("·")} 5항목(각 20점), 규모는 시총 1억 달러=0 ~ 1,000억 달러=100, 뉴스 점수는 -20~+20이에요.</div>
+      <div><b>뉴스</b>는 하루 3번 AI가 코인별로 -10~+10을 매기고, 시간이 지나면 줄어들어요(단기 3일·보통 10일·구조적 변화 45일마다 절반). 큰 코인은 웬만한 뉴스로는 순위가 잘 안 바뀌어요.</div>
+      <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
+      <div><b>후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
+      <div><b>과열</b> = 30일 +40% 이상 또는 7일 +25% 이상. <b>과대낙폭</b> = 고점 대비 -90% 이하 또는 30일 -30% 이하. 둘 다 거르거나 그 순서로 볼 수 있어요.</div>
+      <div><b>섹터 생존 점수</b>(0~100) = ${SPARTS.map(([k, mx]) => `${k} ${mx}`).join(" · ")}. A 80+ 핵심 · B 65+ 성장 · C 50+ 순환 · D 50 미만 회피.</div></div></details>`;
+    main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>섹터별 3대장과 마이너리그</h1>
+      <div class="stamp">${R.ts ? `순위 계산 ${kst(R.ts)}` : "첫 순위 계산 전이에요"}${M.cpAt ? ` · 시세 ${kst(M.cpAt)}` : ""} · 뉴스 반영 하루 3번</div>${intro}</header>
+      ${core.length ? `<section class="section"><div class="sec-head"><h2>기준 코인</h2><span class="sub">순위에서 빼고 시장 기준으로만 봐요</span></div><div class="core-strip">${core.map(c => { const mk = c.mk || []; return `<a class="core-c" href="/rank/${encodeURIComponent(c.sym)}"><b>${esc(c.b.ko || c.sym)}</b><span class="num">${usd(mk[2])}</span><span class="num ${ppc(mk[6])}">7일 ${pp(mk[6])}</span><span class="num tiny muted">고점 ${pp(mk[9])}</span></a>`; }).join("")}</div></section>` : ""}
+      <section class="section"><div class="sec-head"><h2>이번 순위 변동</h2><span class="sub">${R.ts ? kst(R.ts) : ""}</span></div><div class="panel mvf-list">${moveHtml}</div></section>
+      <section class="section"><div class="lvl" id="sec-view" role="group" aria-label="보기"><button type="button" data-v="sec">섹터별</button><button type="button" data-v="all">전체 순위</button></div>
+        <div class="ctl" id="sec-ctl"><label class="sel">정렬 <select id="sec-sort">${SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
+        <div class="fchips">${FILTERS.map(([k, l]) => `<button type="button" class="fchip" data-f="${k}" aria-pressed="false">${l}</button>`).join("")}</div></div>
+        <div id="sec-body"></div></section>
+      ${M.pending.length ? `<section class="section"><div class="sec-head"><h2>분류 대기 ${M.pending.length}개</h2><span class="sub">시총 150위 안에 새로 들어와 아직 섹터를 정하지 않은 코인</span></div><div class="panel small">${M.pending.map(p => `<span class="pend">${esc(p.sym)} <span class="tiny muted">${p.rank}위</span></span>`).join(" ")}</div></section>` : ""}
+      <details class="panel exl"><summary>시총 150위 안에서 뺀 토큰 ${M.exRows.length}개 — 스테이블코인·래핑·스테이킹 파생·금 토큰 등</summary><div class="exl-body">${M.exRows.map(x => `<div><span class="num tiny muted">${x.rank}위</span> <b>${esc(x.sym)}</b> <span class="muted small">${esc(x.why)}</span></div>`).join("") || '<div class="small muted">시세를 받은 뒤 표시돼요.</div>'}</div></details>
+      <p class="legend">점수와 섹터 생존 점수는 공개 데이터를 바탕으로 한 AI 판단 점수이며 확률 예측이나 투자 권유가 아니에요. 시세: 코인파프리카(달러) · 거래소 표시: 업비트·빗썸 원화마켓, 바이낸스 USDⓈ-M 선물 목록.</p>`;
+    const F = c => {
+      const f = pref.f || [];
+      if (f.includes("nohot") && c.flags.includes("hot")) return false;
+      if (f.includes("nodeep") && c.flags.includes("deep")) return false;
+      if (f.includes("up") && !c.ex.up) return false;
+      if (f.includes("bf") && !c.ex.bf) return false;
+      return true; };
+    const draw = () => {
+      document.querySelectorAll("#sec-view button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === pref.view)));
+      document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.setAttribute("aria-pressed", String((pref.f || []).includes(b.dataset.f))));
+      $("sec-sort").value = pref.sort; $("sec-sort").closest(".sel").hidden = pref.view !== "all";
+      const box = $("sec-body");
+      if (pref.view === "sec") {
+        box.innerHTML = M.groups.map(g => { const ss = Object.values(M.sec).filter(s => s.group === g).sort((a, b) => b.score - a.score || a.ord - b.ord);
+          return ss.length ? `<div class="grp"><h2 class="grp-h">${esc(g)}</h2>${ss.map(s => sectorCard(s, M, F)).join("")}</div>` : ""; }).join("");
+      } else {
+        const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
+        const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0 }[pref.sort] || (c => c.score);
+        const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
+        box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
+          <p class="legend">1군은 진한 표시, 30일 수치는 기록이 쌓인 코인만 있어요.</p></div>`;
+      }
+      savePref(pref);
+    };
+    document.querySelectorAll("#sec-view button").forEach(b => b.addEventListener("click", () => { pref.view = b.dataset.v; draw(); }));
+    document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.addEventListener("click", () => { const f = new Set(pref.f || []); f.has(b.dataset.f) ? f.delete(b.dataset.f) : f.add(b.dataset.f); pref.f = [...f]; draw(); }));
+    $("sec-sort").addEventListener("change", e => { pref.sort = e.target.value; draw(); });
+    draw(); openHash();
+  }
+  async function rankCoinPage(sym) {
+    nav("sectors");
+    const [d, h] = await Promise.all([get("/api/sectors"), get("/api/sector-coin/" + encodeURIComponent(sym)).catch(() => ({ hist: [], news: [] }))]);
+    const M = sectorModel(d), c = M.coins[sym];
+    if (!c) { setTitle(sym); main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>${esc(sym)}</h1></header><div class="empty">순위판에 없는 코인이에요. <a href="/sectors">섹터 순위판으로</a></div>`; return; }
+    const b = c.b, s = M.sec[c.sec] || {}, mk = c.mk || [];
+    setTitle(`${b.ko || sym} 섹터 순위`);
+    const R = (d.rank && d.rank.rules) || { w: [0.6, 0.25, 0.15] }, w = R.w || [0.6, 0.25, 0.15];
+    const parts = [["코인 품질", (c.Q || 0) * w[0], `${c.Q ?? "-"}/100 × ${w[0]}`], ["규모(시총)", (c.S || 0) * w[1], `${c.S ?? "-"}/100 × ${w[1]}`], ["섹터 생존", (s.score || 0) * w[2], `${s.score ?? "-"}/100 × ${w[2]}`], ["뉴스", c.N || 0, "-20~+20"]];
+    const lgName = c.lg === 1 ? `1군 ${c.pos}위` : c.lg === 2 ? `마이너리그 ${c.pos}위` : (WHY[c.why] || "후보 아님");
+    const hist = (h.hist || []).map(([ts, x]) => [ts, x]).sort((a, b) => a[0] - b[0]);
+    const posPts = hist.filter(([, x]) => x && x[1]).map(([ts, x]) => [ts, -x[1], `${kst(ts)} · ${x[2] === 1 ? "1군" : "2군"} ${x[1]}위 · ${n(x[3]) != null ? n(x[3]).toFixed(1) : "-"}점`]);
+    const newsRows = (h.news || []).map(x => { const nn = x.n || {}; const u = safeUrl(nn.url); const hl = { short: 3, normal: 10, structural: 45 }[x.kind] || 10;
+      const now = n(x.impact) * Math.pow(0.5, Math.max(0, Date.now() - (n(nn.pub) || x.ts)) / (hl * 86400e3));
+      return `<div class="cn-row"><span class="cn-i num ${n(x.impact) > 0 ? "rise" : "fall"}">${n(x.impact) > 0 ? "+" : ""}${n(x.impact)}</span><div><div>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(nn.title || "")}</a>` : esc(nn.title || "")}</div>
+        <div class="tiny muted">${kst(n(nn.pub) || x.ts)} · ${esc({ short: "단기", normal: "보통", structural: "구조적" }[x.kind] || x.kind)} · 지금 영향 ${now > 0 ? "+" : ""}${now.toFixed(1)}${nn.why ? " · " + esc(nn.why) : ""}</div></div></div>`; }).join("");
+    main().innerHTML = `<header class="head"><div class="eyebrow"><a href="/sectors#s-${esc(c.sec)}">${esc(s.name || c.sec)}</a> · 섹터 순위판</div>
+      <h1>${esc(b.ko || sym)} <span class="muted num" style="font-size:15px">${esc(sym)}</span></h1>
+      <div class="row"><span class="chip${c.lg === 1 ? " lg1" : ""}">${esc(lgName)}</span>${exBadges(c)}${flagBadges(c)}${c.mine ? '<span class="tag mine">내 코인</span>' : ""}</div>
+      <p class="c-what">${esc(b.story || "")}</p></header>
+      <section class="tiles"><div class="tile"><b>점수</b><div class="v num">${c.score != null ? c.score.toFixed(1) : "-"}</div><div class="s">${c.crank ? `시총 ${c.crank}위` : ""}</div></div>
+        <div class="tile"><b>가격</b><div class="v num">${usd(mk[2])}</div><div class="s">${ppChip(mk[5], " 24h")}</div></div>
+        <div class="tile"><b>고점 대비</b><div class="v num ${ppc(mk[9])}">${pp(mk[9])}</div><div class="s">7일 ${pp(mk[6])} · 30일 ${pp(mk[7])}</div></div></section>
+      <section class="panel section sb"><h2>점수 구성</h2>${parts.map(([k, v, t]) => `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill${v < 0 ? " neg" : ""}" style="width:${Math.min(100, Math.abs(v) / 60 * 100).toFixed(0)}%"></div></div><span class="num small">${v >= 0 ? "" : "-"}${Math.abs(v).toFixed(1)}</span></div>`).join("")}
+        <p class="tiny muted" style="margin:0">${parts.map(([k, , t]) => `${k} ${t}`).join(" · ")}</p>
+        <div class="mini-h">코인 품질 5항목 (각 20점)</div>${QN.map((k, i) => `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${((b.q || [])[i] || 0) / 20 * 100}%"></div></div><span class="num small">${(b.q || [])[i] ?? "-"}/20</span></div>`).join("")}
+        ${b.qnote ? `<p class="small muted">${esc(b.qnote)}</p>` : ""}</section>
+      <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
+        <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>
+        <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}${n(mk[10]) != null ? ` · 비트코인 대비 변동성(베타) ${n(mk[10]).toFixed(2)}` : ""}</div></section>
+      ${posPts.length > 1 ? `<section class="section"><div class="sec-head"><h2>섹터 안 순위 흐름</h2><span class="sub">위로 갈수록 높은 순위</span></div><div class="panel">${lineChart(posPts, v => Math.round(-v) + "위", false, "섹터 안 순위")}</div></section>` : ""}
+      <section class="section"><div class="sec-head"><h2>순위에 반영된 뉴스</h2><span class="sub">AI가 매긴 영향(-10~+10), 시간이 지나면 줄어요</span></div><div class="panel cn-list">${newsRows || '<div class="small muted">아직 반영된 뉴스가 없어요.</div>'}</div></section>
+      <p class="legend"><a href="/sectors">섹터 순위판으로</a> · 점수는 AI 판단 점수이며 투자 권유가 아니에요.</p>`;
+  }
+
   // ── 라우팅 ──
   async function route() {
     const p = location.pathname.replace(/\.html$/, "");
@@ -384,6 +572,8 @@
       if (p === "/weekly" || p === "/weekly/" || p === "/weekly/index") return await weeklyPage(null);
       if ((m = p.match(/^\/weekly\/([\w-]+)$/))) return await weeklyPage(m[1]);
       if (p === "/map") return await mapPage();
+      if (p === "/sectors" || p === "/sectors/") return await sectorsPage();
+      if ((m = p.match(/^\/rank\/([^/]+)\/?$/))) return await rankCoinPage(decodeURIComponent(m[1]).toUpperCase());
       nav(""); main().innerHTML = `<div class="empty">페이지를 찾지 못했어요. <a href="/">최신 리포트로 가기</a></div>`;
     } catch (e) {
       main().innerHTML = `<div class="empty">내용을 불러오지 못했어요. 잠시 후 새로고침해 주세요.<br><span class="tiny muted">${esc(e.message || e)}</span></div>`;

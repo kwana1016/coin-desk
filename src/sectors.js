@@ -1,0 +1,318 @@
+// 섹터 순위 — 시세(코인파프리카)·빗썸 원화마켓·바이낸스 선물 목록을 모으고, 섹터별 1군(3대장)·2군 순위를 계산한다.
+// AI(예약 실행)는 코인별 뉴스 점수(coin_news)와 기본 점수(coin_base)만 넣고, 순위는 아래 규칙대로 코드가 정한다.
+//   점수 = 품질 Q×0.6 + 규모 S×0.25 + 섹터 생존 점수×0.15 + 뉴스 N
+//     Q: 기본 점수 5항목 합(0~100) · S: 시총 1억 달러=0 ~ 1,000억 달러=100 (로그)
+//     N: 뉴스 영향(-10~+10)의 합, 반감기(단기 3일·보통 10일·구조적 45일)로 줄어듦, ±20 제한
+//   후보: 시총 150위 안 · 24시간 거래대금이 시총의 0.1% 이상 · 기준 코인(BTC·ETH·BNB·XRP·SOL) 제외
+//   1군(3대장): 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속이면 교체 (뉴스 점수 +10 이상이면 바로 승격)
+//   2군(마이너리그): 매 갱신 점수순
+
+export const RULES = { cap: 150, liq: 0.001, margin: 3, need: 2, fast: 10, nmax: 20,
+  hl: { short: 3, normal: 10, structural: 45 }, w: [0.6, 0.25, 0.15], keep: 12 };
+
+const DAY = 86400e3;
+const CP_ALL = "https://api.coinpaprika.com/v1/tickers?quotes=USD";
+const CP_ONE = "https://api.coinpaprika.com/v1/tickers/";
+const UA = { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0; +https://coin-desk.kwana1016.workers.dev)", accept: "application/json" };
+
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const r1 = x => Math.round(x * 10) / 10;
+const sig = x => (x == null || !isFinite(x)) ? null : Number(Number(x).toPrecision(6));
+const pct1 = x => (x == null || !isFinite(x)) ? null : Math.round(Number(x) * 10) / 10;
+const ymd = ms => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+const kstId = ms => { const d = new Date(ms + 9 * 3600e3); const p = n => String(n).padStart(2, "0");
+  return `k${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}-${p(d.getUTCHours())}${p(d.getUTCMinutes())}`; };
+const parse = (s, d) => { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } };
+
+async function readHead(res, limit) {
+  if (!res.body) return "";
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let out = "", n = 0;
+  while (n < limit) { const { done, value } = await reader.read(); if (done) break; n += value.length; out += dec.decode(value, { stream: true }); }
+  try { await reader.cancel(); } catch (e) {}
+  return out;
+}
+const put = (db, k, v, now) => db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES (?1, ?2, ?3)").bind(k, typeof v === "string" ? v : JSON.stringify(v), now);
+
+// ── 시세: 코인파프리카 상위 ~300개 (+ 기본 목록에 있는데 빠진 코인은 하나씩) ──
+// kv 'cp' = {t, m: {cp_id: [순위, 심볼, 가격$, 시총$, 24h거래대금$, 24h%, 7일%, 30일%, 30일출처(1=일별 기록 2=업비트 4주 0=없음), 고점대비%, 베타, 유통비율]}}
+export async function watchMarket(env, now = Date.now()) {
+  const db = env.DB;
+  const [bq, kq] = await Promise.all([
+    db.prepare("SELECT sym, json_extract(json,'$.cp') AS cp, json_extract(json,'$.supply') AS sup, json_extract(json,'$.kr') AS kr FROM coin_base").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'cp_daily', 'weeks', 'cp_bad')").all(),
+  ]);
+  const base = (bq.results || []).filter(b => b.cp);
+  const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
+  let list = [], code = 0, bytes = 0;
+  try {
+    const res = await fetch(CP_ALL, { headers: UA });
+    code = res.status;
+    if (res.ok) {
+      let t = await readHead(res, 400000); bytes = t.length;
+      if (!/\]\s*$/.test(t)) { const k = t.lastIndexOf('},{"id":"'); t = k > 0 ? t.slice(0, k + 1) + "]" : "[]"; }
+      list = JSON.parse(t);
+    } else { try { res.body && res.body.cancel(); } catch (e) {} }
+  } catch (e) { code = code || -1; }
+  const status = { code, n: list.length, bytes, at: now };
+  if (!Array.isArray(list) || list.length < 100) { await put(db, "cp_status", status, now).run(); return status; }
+
+  const byId = new Map();
+  for (const x of list) if (x && x.id && x.quotes && x.quotes.USD) byId.set(x.id, x);
+  const sup = Object.fromEntries(base.filter(b => b.sup).map(b => [b.cp, Number(b.sup)]));
+  // 상위 목록에 없거나 시총이 0으로 나오는(공급량 데이터 오류) 기본 코인은 따로 받는다 (무료 한도 때문에 한 번에 3개, 돌아가며)
+  // 없는 id(404)는 cp_bad에 적어 7일 동안 건너뛴다 — 예약 실행이 이 목록을 보고 id를 고친다
+  const bad = parse(kv.cp_bad, {}); for (const [id, t] of Object.entries(bad)) if (now - t > 7 * DAY) delete bad[id];
+  const miss = base.filter(b => !bad[b.cp] && (!byId.has(b.cp) || (!(byId.get(b.cp).quotes.USD.market_cap > 0) && sup[b.cp]))).map(b => b.cp);
+  const per = 3, rounds = Math.max(1, Math.ceil(miss.length / per)), off = (Math.floor(now / 1800e3) % rounds) * per;
+  const pick = miss.slice(off, off + per);
+  let badN = 0;
+  const got = await Promise.all(pick.map(async id => {
+    try { const r = await fetch(CP_ONE + id, { headers: UA }); if (!r.ok) { if (r.status === 404) { bad[id] = now; badN++; } try { r.body && r.body.cancel(); } catch (e) {} return null; } return await r.json(); } catch (e) { return null; }
+  }));
+  for (const s of got) if (s && s.id && s.quotes && s.quotes.USD) byId.set(s.id, s);
+  status.singles = got.filter(Boolean).length; status.miss = miss.length; status.bad = Object.keys(bad).length;
+
+  const prev = parse(kv.cp, {}).m || {};
+  const daily = parse(kv.cp_daily, { d: [] }); if (!Array.isArray(daily.d)) daily.d = [];
+  const weeks = parse(kv.weeks, {});
+  const baseCp = new Set(base.map(b => b.cp)), krOf = Object.fromEntries(base.map(b => [b.cp, b.kr || b.sym]));
+  // 30일 전 가격: 일별 기록에서 27~33일 전 가장 가까운 날
+  const target = now - 30 * DAY; let old = null, best = 4 * DAY;
+  for (const [d, px] of daily.d) { const t = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)); if (Math.abs(t - target) < best) { best = Math.abs(t - target); old = px; } }
+
+  const rows = [];
+  for (const x of byId.values()) {
+    const q = x.quotes.USD, price = Number(q.price) || 0;
+    let mcap = Number(q.market_cap) || 0; if (!(mcap > 0) && sup[x.id] && price > 0) mcap = price * sup[x.id];
+    rows.push({ x, q, price, mcap });
+  }
+  rows.sort((a, b) => b.mcap - a.mcap);
+  const m = {};
+  rows.forEach((r, i) => {
+    const rank = i + 1, id = r.x.id;
+    if (rank > 320 && !baseCp.has(id)) return;
+    let ch30 = null, src = 0;
+    if (old && old[id] > 0 && r.price > 0) { ch30 = (r.price / old[id] - 1) * 100; src = 1; }
+    else { const w = (weeks[krOf[id]] || {}).w; if (Array.isArray(w) && w.length >= 5 && w[4][3] > 0) { ch30 = (w[0][3] / w[4][3] - 1) * 100; src = 2; } }
+    const maxS = Number(r.x.max_supply) > 0 ? Number(r.x.max_supply) : Number(r.x.total_supply) || 0;
+    const circ = (!sup[id] && r.price > 0 && maxS > 0 && r.mcap > 0) ? Math.min(1, r.mcap / (r.price * maxS)) : null;
+    m[id] = [rank, r.x.symbol, sig(r.price), Math.round(r.mcap), Math.round(Number(r.q.volume_24h) || 0), pct1(r.q.percent_change_24h), pct1(r.q.percent_change_7d),
+      pct1(ch30), src, pct1(r.q.percent_from_price_ath), r.x.beta_value != null ? Math.round(r.x.beta_value * 100) / 100 : null, circ == null ? null : Math.round(circ * 1000) / 1000];
+  });
+  // 이번에 못 받은 기본 코인은 직전 값을 유지 (표시용, 오래된 값)
+  for (const cp of baseCp) if (!m[cp] && prev[cp]) m[cp] = prev[cp];
+  // 일별 기록 (UTC 날짜마다 마지막 값, 40일)
+  const today = ymd(now), px = {};
+  for (const cp of baseCp) if (m[cp] && m[cp][2]) px[cp] = m[cp][2];
+  if (daily.d.length && daily.d[daily.d.length - 1][0] === today) daily.d[daily.d.length - 1][1] = px; else daily.d.push([today, px]);
+  daily.d = daily.d.slice(-40);
+  status.kept = Object.keys(m).length;
+  const writes = [put(db, "cp", { t: now, m }, now), put(db, "cp_daily", daily, now), put(db, "cp_status", status, now)];
+  if (badN || Object.keys(bad).length !== Object.keys(parse(kv.cp_bad, {})).length) writes.push(put(db, "cp_bad", bad, now));
+  await db.batch(writes);
+  return status;
+}
+
+// ── 초기 데이터 (public/sector_seed.json) — 버전이 바뀌었을 때 한 번만 넣는다 ──
+// D1이 원본이라, 이미 있는 섹터·코인은 D1 값을 그대로 두고 새 항목(과 새로 생긴 필드)만 더한다.
+export const SEED_VERSION = "2026-10-16";
+export async function maybeSeed(env, now = Date.now()) {
+  const db = env.DB;
+  const cur = await db.prepare("SELECT v FROM kv WHERE k = 'sector_seed_v'").first();
+  if (cur && cur.v === SEED_VERSION) return false;
+  const res = await env.ASSETS.fetch("https://assets.local/sector_seed.json");
+  if (!res.ok) return false;
+  const d = await res.json();
+  if (d.version !== SEED_VERSION) return false;
+  const st = [];
+  for (const x of d.sectors || []) st.push(db.prepare("INSERT INTO sectors (id, ord, json) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET json = json_patch(excluded.json, sectors.json)").bind(x.id, x.ord, JSON.stringify(x)));
+  for (const c of d.coins || []) st.push(db.prepare("INSERT INTO coin_base (sym, sector, json) VALUES (?1, ?2, ?3) ON CONFLICT(sym) DO UPDATE SET json = json_patch(excluded.json, coin_base.json)").bind(c.sym, c.sector, JSON.stringify(c)));
+  st.push(put(db, "sector_excluded", d.excluded || [], now));
+  st.push(put(db, "sector_groups", d.groups || [], now));
+  st.push(db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('sector_seed_v', ?1, ?2)").bind(SEED_VERSION, now));
+  st.push(db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('rank_req', ?1, ?2)").bind(String(now), now));
+  await db.batch(st);
+  return true;
+}
+
+// ── 빗썸 원화마켓 목록 (1시간마다) ──
+export async function watchBithumb(env, now = Date.now()) {
+  let syms = null, code = 0;
+  try {
+    const r = await fetch("https://api.bithumb.com/v1/market/all", { headers: UA }); code = r.status;
+    if (r.ok) { const a = await r.json(); if (Array.isArray(a)) syms = a.map(x => String(x.market || "")).filter(s => s.startsWith("KRW-")).map(s => s.slice(4)); }
+    else { try { r.body && r.body.cancel(); } catch (e) {} }
+  } catch (e) {}
+  if (!syms || syms.length < 50) {
+    try {
+      const r = await fetch("https://api.bithumb.com/public/ticker/ALL_KRW", { headers: UA }); code = r.status;
+      if (r.ok) { const j = await r.json(); syms = Object.keys((j && j.data) || {}).filter(k => k !== "date"); }
+    } catch (e) {}
+  }
+  if (!syms || syms.length < 50) { await put(env.DB, "bithumb_status", { code, at: now }, now).run(); return; }
+  await put(env.DB, "bithumb_krw", syms, now).run();
+}
+
+// ── 바이낸스 USDⓈ-M 무기한 선물 목록 (1시간마다, 지역에 따라 막히면 건너뜀) ──
+export async function watchBinance(env, now = Date.now()) {
+  let code = 0;
+  try {
+    const r = await fetch("https://fapi.binance.com/fapi/v1/ticker/price", { headers: UA }); code = r.status;
+    if (r.ok) {
+      const a = await r.json(); const set = new Set();
+      if (Array.isArray(a)) for (const x of a) { const s = String(x.symbol || ""); if (!s.endsWith("USDT")) continue; set.add(s.slice(0, -4).replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, "")); }
+      if (set.size > 100) { await put(env.DB, "bnf", [...set], now).run(); return; }
+    } else { try { r.body && r.body.cancel(); } catch (e) {} }
+  } catch (e) {}
+  await put(env.DB, "bnf_status", { code, at: now }, now).run();
+}
+
+// ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
+// coins: [{sym, sector, cp, q:[5], core, off}], news: [{sym, ts, impact, kind, t, u, pub}], cp: {id: arr}, sectors: {id: score}, prev: 직전 스냅숏
+export function rankCore({ now, sectors, coins, news, cp, prev }) {
+  const R = RULES;
+  const nsum = {}, ntop = {};
+  for (const x of news || []) {
+    const hl = (R.hl[x.kind] || R.hl.normal) * DAY;
+    const t0 = Number(x.pub) > 0 ? Number(x.pub) : Number(x.ts);
+    const v = Number(x.impact) * Math.pow(0.5, Math.max(0, now - t0) / hl);
+    if (!isFinite(v)) continue;
+    nsum[x.sym] = (nsum[x.sym] || 0) + v;
+    (ntop[x.sym] = ntop[x.sym] || []).push([x.t || "", x.u || "", r1(v), x.kind || "normal", t0]);
+  }
+  const pc = (prev && prev.c) || {}, ptrail = (prev && prev.trail) || {};
+  const pchal = sym => (pc[sym] && pc[sym][2] === 2) ? (pc[sym][7] || 0) : 0;
+  const rows = {}, bySec = {};
+  for (const b of coins) {
+    if (b.off) continue;
+    const q = Array.isArray(b.q) ? b.q : [];
+    const Q = q.reduce((s, x) => s + (Number(x) || 0), 0);
+    const N = clamp(nsum[b.sym] || 0, -R.nmax, R.nmax);
+    const m = cp[b.cp];
+    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0 };
+    rows[b.sym] = row;
+    if (b.core) row.why = "core";
+    if (!m) { row.why = row.why || "nodata"; continue; }
+    const rank = Number(m[0]), mcap = Number(m[3]) || 0, vol = Number(m[4]) || 0;
+    const S = mcap > 0 ? clamp((Math.log10(mcap) - 8) / 3 * 100, 0, 100) : 0;
+    row.S = r1(S); row.rank = rank;
+    row.score = r1(R.w[0] * Q + R.w[1] * S + R.w[2] * (Number(sectors[b.sector]) || 50) + N);
+    if (b.core) continue;
+    if (!(rank <= R.cap)) { row.why = "rank"; continue; }
+    if (!(mcap > 0 && vol / mcap >= R.liq)) { row.why = "liq"; continue; }
+    row.el = true;
+    (bySec[b.sector] = bySec[b.sector] || []).push(row);
+  }
+  const via = {};
+  for (const [sec, arr] of Object.entries(bySec)) {
+    arr.sort((a, b) => b.score - a.score || a.rank - b.rank);
+    const maj = new Set(prev ? arr.filter(x => pc[x.sym] && pc[x.sym][0] === sec && pc[x.sym][2] === 1).map(x => x.sym) : arr.slice(0, 3).map(x => x.sym));
+    for (const x of arr) { if (maj.size >= 3) break; if (!maj.has(x.sym)) { maj.add(x.sym); if (prev) via[x.sym] = "fill"; } }
+    while (maj.size > 3) { const lo = arr.filter(x => maj.has(x.sym)).pop(); maj.delete(lo.sym); }
+    // 도전: 2군 1등 vs 1군 꼴찌
+    for (let g = 0; g < 3; g++) {
+      const majors = arr.filter(x => maj.has(x.sym)); if (majors.length < 3) break;
+      const weak = majors.reduce((a, b) => (b.score < a.score ? b : a));
+      const cand = arr.find(x => !maj.has(x.sym)); if (!cand) break;
+      if (cand.score - weak.score < R.margin) break;
+      const streak = pchal(cand.sym) + 1;
+      if (streak >= R.need || cand.N >= R.fast) { maj.delete(weak.sym); maj.add(cand.sym); via[cand.sym] = streak >= R.need ? "chal" : "fast"; continue; }
+      break;
+    }
+    const majors = arr.filter(x => maj.has(x.sym)), minors = arr.filter(x => !maj.has(x.sym));
+    const weak = majors.length >= 3 ? majors.reduce((a, b) => (b.score < a.score ? b : a)) : null;
+    majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
+    minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
+  }
+  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유]
+  const c = {}, trail = {}, moves = [], top = {};
+  for (const x of Object.values(rows)) {
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why];
+    const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
+    if (t.some(Boolean)) trail[x.sym] = t;
+    const p = pc[x.sym];
+    const pl = p ? p[2] : 0, pp = p ? p[1] : 0;
+    if (pl === 2 && x.lg === 1) moves.push(["promo", x.sym, x.sec, pp, x.pos, via[x.sym] || ""]);
+    else if (pl === 1 && x.lg === 2) moves.push(["demo", x.sym, x.sec, pp, x.pos, ""]);
+    else if (prev && !pl && x.lg) moves.push(["in", x.sym, x.sec, 0, x.pos, x.lg === 1 ? (via[x.sym] || "") : ""]);
+    else if (pl && !x.lg) moves.push(["out", x.sym, x.sec, pp, 0, x.why]);
+    else if (pl && x.lg && p[0] === x.sec && pp !== x.pos) moves.push([pp > x.pos ? "up" : "down", x.sym, x.sec, pp, x.pos, ""]);
+    const nt = (ntop[x.sym] || []).filter(n => Math.abs(n[2]) >= 0.3).sort((a, b) => Math.abs(b[2]) - Math.abs(a[2])).slice(0, 3);
+    if (nt.length) top[x.sym] = nt;
+  }
+  return { v: 1, ts: now, id: kstId(now), c, trail, moves, news: top, rules: { cap: R.cap, liq: R.liq, margin: R.margin, need: R.need, fast: R.fast, w: R.w, hl: R.hl } };
+}
+
+export async function computeRanks(env, now = Date.now()) {
+  const db = env.DB;
+  const [sq, bq, nq, kq, pq] = await Promise.all([
+    db.prepare("SELECT id, json_extract(json,'$.score') AS score FROM sectors").all(),
+    db.prepare("SELECT sym, sector, json_extract(json,'$.cp') AS cp, json_extract(json,'$.q') AS q, json_extract(json,'$.core') AS core, json_extract(json,'$.off') AS off FROM coin_base").all(),
+    db.prepare("SELECT sym, ts, impact, kind, json_extract(json,'$.title') AS t, json_extract(json,'$.url') AS u, json_extract(json,'$.pub') AS pub FROM coin_news WHERE ts > ?1").bind(now - 240 * DAY).all(),
+    db.prepare("SELECT v, ts FROM kv WHERE k = 'cp'").all(),
+    db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
+  ]);
+  const cpRow = (kq.results || [])[0]; if (!cpRow) return null;
+  const cp = parse(cpRow.v, {}).m || {};
+  const sectors = Object.fromEntries((sq.results || []).map(r => [r.id, Number(r.score) || 50]));
+  const coins = (bq.results || []).map(r => ({ sym: r.sym, sector: r.sector, cp: r.cp, q: parse(r.q, []), core: !!r.core, off: !!r.off }));
+  const prevRow = (pq.results || [])[0];
+  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null });
+  snap.cp_at = Number(cpRow.ts) || null;
+  await db.batch([
+    db.prepare("INSERT OR REPLACE INTO rankings (id, ts, json) VALUES (?1, ?2, ?3)").bind(snap.id, now, JSON.stringify(snap)),
+    db.prepare("DELETE FROM rankings WHERE ts < ?1").bind(now - 60 * DAY),
+    db.prepare("DELETE FROM kv WHERE k = 'rank_err'"),
+  ]);
+  return snap;
+}
+
+// 예약 실행이 순위 계산을 요청했거나(kv rank_req) 마지막 계산이 11시간 넘었으면 계산한다. 실패하면 1시간 동안 다시 시도하지 않는다.
+export async function maybeRanks(env, now = Date.now()) {
+  const st = await env.DB.prepare(`SELECT (SELECT ts FROM kv WHERE k = 'rank_req') AS req, (SELECT ts FROM kv WHERE k = 'cp') AS cpt,
+    (SELECT max(ts) FROM rankings) AS last, (SELECT ts FROM kv WHERE k = 'rank_err') AS err`).first();
+  if (!st || !st.cpt) return false;
+  const last = Number(st.last || 0), req = Number(st.req || 0), err = Number(st.err || 0);
+  if (!(req > last) && now - last < 11 * 3600e3) return false;
+  if (err && now - err < 3600e3) return false;
+  try { await computeRanks(env, now); }
+  catch (e) { await put(env.DB, "rank_err", { at: now, msg: String(e && e.message || e).slice(0, 200) }, now).run(); }
+  return true;
+}
+
+// 예약 실행이 뉴스 점수를 넣고 kv rank_req를 남긴 뒤 /api/rank-now 를 부르면 바로 계산해 이동 결과를 돌려준다.
+// 요청이 없으면 아무것도 하지 않는다 (누가 불러도 무해).
+export async function rankNow(env, now = Date.now()) {
+  const st = await env.DB.prepare(`SELECT (SELECT ts FROM kv WHERE k = 'rank_req') AS req, (SELECT max(ts) FROM rankings) AS last, (SELECT ts FROM kv WHERE k = 'cp') AS cpt`).first();
+  const req = Number((st && st.req) || 0), last = Number((st && st.last) || 0);
+  if (!st || !st.cpt || !(req > last)) return { computed: false, last: last || null, req: req || null };
+  const snap = await computeRanks(env, now);
+  if (!snap) return { computed: false, last };
+  return { computed: true, id: snap.id, ts: snap.ts, moves: snap.moves.filter(m => m[0] !== "up" && m[0] !== "down"), shifts: snap.moves.filter(m => m[0] === "up" || m[0] === "down").length };
+}
+
+// ── API 조각 (저장된 JSON을 다시 파싱하지 않고 이어 붙인다) ──
+export async function apiSectors(db) {
+  const [rq, kq, sq, bq] = await Promise.all([
+    db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'bithumb_krw', 'bnf', 'sector_excluded', 'sector_groups', 'mine')").all(),
+    db.prepare("SELECT json FROM sectors ORDER BY ord").all(),
+    db.prepare("SELECT json FROM coin_base").all(),
+  ]);
+  const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
+  const v = k => kv[k] || "null";
+  const r = (rq.results || [])[0];
+  return `{"rank":${r ? r.json : "null"},"sectors":[${(sq.results || []).map(x => x.json).join(",")}],"coins":[${(bq.results || []).map(x => x.json).join(",")}],` +
+    `"kv":{"cp":${v("cp")},"upbit":${v("upbit_krw")},"bithumb":${v("bithumb_krw")},"bnf":${v("bnf")},"ex":${v("sector_excluded")},"groups":${v("sector_groups")},"mine":${v("mine")}}}`;
+}
+
+export async function apiSectorCoin(db, sym) {
+  const path = '$.c."' + sym.replace(/"/g, "") + '"';
+  const [hq, nq] = await Promise.all([
+    db.prepare("SELECT ts, json_extract(json, ?1) AS x FROM rankings ORDER BY ts DESC LIMIT 60").bind(path).all(),
+    db.prepare("SELECT id, ts, impact, kind, json FROM coin_news WHERE sym = ?1 ORDER BY ts DESC LIMIT 20").bind(sym).all(),
+  ]);
+  const hist = (hq.results || []).filter(x => x.x).map(x => `[${Number(x.ts)},${x.x}]`).join(",");
+  const news = (nq.results || []).map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"impact":${Number(x.impact)},"kind":${JSON.stringify(x.kind)},"n":${x.json}}`).join(",");
+  return `{"sym":${JSON.stringify(sym)},"hist":[${hist}],"news":[${news}]}`;
+}

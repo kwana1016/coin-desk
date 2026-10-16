@@ -5,10 +5,14 @@
 // 1분마다(cron): 업비트 원화마켓 목록(5분마다)·가격 급변(5분마다)·뉴스 RSS(2곳씩 돌아가며)를 확인해 ★5 긴급 소식을 바로 저장한다.
 
 import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
+import { watchMarket, watchBithumb, watchBinance, maybeRanks, maybeSeed, rankNow, apiSectors, apiSectorCoin } from "./sectors.js";
+
+// 두 번째 cron (섹터 순위판용): 5분마다 3·8·13…분에 한 가지씩 — 첫 번째 cron과 CPU 한도를 나눠 쓰지 않는다
+const CRON2 = "3-58/5 * * * *";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" };
 const PAGES = [/^\/$/, /^\/index\.html$/, /^\/r\/[\w-]+(\.html)?$/, /^\/track(\.html)?$/, /^\/coin\/?$/, /^\/coin\/[\w-]+(\.html)?$/,
-  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/];
+  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/, /^\/sectors\/?$/, /^\/rank\/[^/]+\/?$/];
 
 function json(body, status = 200) { return new Response(body, { status, headers: JSON_HEADERS }); }
 // 저장된 JSON 문자열을 다시 파싱하지 않고 이어 붙인다 (CPU 절약)
@@ -76,13 +80,18 @@ async function api(url, env) {
     const { results } = await db.prepare("SELECT id, ts, kind, json FROM alerts WHERE ts > ?1 AND kind NOT IN ('rejected', 'cand') ORDER BY ts DESC LIMIT 12").bind(since).all();
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
+  if (p === "/api/sectors") return json(await apiSectors(db));
+  if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  m = p.match(/^\/api\/sector-coin\/(.+)$/);
+  if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
   if (p === "/api/health") {
     const r = await db.prepare(`SELECT (SELECT count(*) FROM reports) AS reports, (SELECT max(ts) FROM reports) AS last_report,
       (SELECT count(*) FROM weekly) AS weekly, (SELECT count(*) FROM alerts) AS alerts, (SELECT ts FROM kv WHERE k = 'upbit_krw') AS upbit_checked, (SELECT ts FROM kv WHERE k = 'px') AS price_checked,
       (SELECT v FROM kv WHERE k = 'rss_status') AS rss, (SELECT ts FROM kv WHERE k = 'tickers') AS tickers_at,
       (SELECT count(*) FROM json_each((SELECT v FROM kv WHERE k = 'weeks'))) AS weeks_n, (SELECT ts FROM kv WHERE k = 'fng') AS fng_at,
-      (SELECT count(*) FROM news_items) AS news_items`).first();
-    return json(`{"reports":${Number(r.reports)},"last_report":${r.last_report ?? "null"},"weekly":${Number(r.weekly)},"alerts":${Number(r.alerts)},"upbit_checked":${r.upbit_checked ?? "null"},"price_checked":${r.price_checked ?? "null"},"tickers_at":${r.tickers_at ?? "null"},"weeks":${Number(r.weeks_n || 0)},"fng_at":${r.fng_at ?? "null"},"news_items":${Number(r.news_items || 0)},"rss":${r.rss || "{}"}}`);
+      (SELECT count(*) FROM news_items) AS news_items, (SELECT v FROM kv WHERE k = 'cp_status') AS cp, (SELECT max(ts) FROM rankings) AS rank_at,
+      (SELECT v FROM kv WHERE k = 'rank_err') AS rank_err, (SELECT v FROM kv WHERE k = 'sector_seed_v') AS seed`).first();
+    return json(`{"reports":${Number(r.reports)},"last_report":${r.last_report ?? "null"},"weekly":${Number(r.weekly)},"alerts":${Number(r.alerts)},"upbit_checked":${r.upbit_checked ?? "null"},"price_checked":${r.price_checked ?? "null"},"tickers_at":${r.tickers_at ?? "null"},"weeks":${Number(r.weeks_n || 0)},"fng_at":${r.fng_at ?? "null"},"news_items":${Number(r.news_items || 0)},"rss":${r.rss || "{}"},"cp":${r.cp || "null"},"rank_at":${r.rank_at ?? "null"},"rank_err":${r.rank_err || "null"},"seed":${JSON.stringify(r.seed || null)}}`);
   }
   return json('{"error":"not_found"}', 404);
 }
@@ -153,6 +162,14 @@ export default {
   // 한 번에 한 가지 일만 해서 무료 요금제 CPU 한도(10ms) 안에 들어가게 한다
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
+    if (event.cron === CRON2) {
+      // 3·33분: 코인파프리카 시세 · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8분: 초기 데이터 · 23분: 바이낸스 선물 목록 · 53분: 빗썸 목록
+      const t = Math.floor(min / 5) % 12;
+      const job = (t === 0 || t === 6) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : t === 1 ? maybeSeed(env)
+        : t === 4 ? watchBinance(env) : t === 10 ? watchBithumb(env) : null;
+      if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
+      return;
+    }
     // 0: 업비트 목록 · 1·3: 뉴스(3곳씩) · 2: 전체 시세·급변 · 4: 주봉·공포탐욕
     const k = min % 5;
     const job = k === 0 ? watchUpbit(env) : k === 2 ? watchPrices(env) : k === 4 ? watchWeeks(env, min) : watchNews(env, min);
