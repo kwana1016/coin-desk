@@ -45,7 +45,7 @@ async function getJson(url, limit) {
 }
 export async function watchMarket(env, now = Date.now()) {
   const db = env.DB;
-  const kq = await db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'ath')").all();
+  const kq = await db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'ath', 'weeks')").all();
   const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
   const ath = parse(kv.ath, {}); const prev = parse(kv.cp, {}).m || {};
   const prevBySym = {}; for (const a of Object.values(prev)) if (a && a[1] && !(a[1] in prevBySym)) prevBySym[a[1]] = a;
@@ -92,6 +92,11 @@ export async function watchMarket(env, now = Date.now()) {
       } catch (e) { status["cl" + start] = status["cl" + start] || -1; }
     }
   }
+  // 30일 변동이 없으면 업비트 주봉(최근 4주)으로 채운다 — 업비트 원화마켓 코인만
+  const weeks = parse(kv.weeks, {}); let w4 = 0;
+  for (const a of Object.values(m)) { if (a[7] != null) continue; const w = (weeks[a[1]] || {}).w;
+    if (Array.isArray(w) && w.length >= 5 && w[4] && w[4][3] > 0 && w[0] && w[0][3] > 0) { a[7] = pct1((w[0][3] / w[4][3] - 1) * 100); w4++; } }
+  status.w4 = w4;
   status.n = Object.keys(m).length; status.code = status.src === "cg" ? status.cg : (status.cl0 || status.cg);
   if (status.n < 100) { await put(db, "cp_status", status, now).run(); return status; }
   const writes = [put(db, "cp", { t: now, src: status.src, m }, now), put(db, "cp_status", status, now)];

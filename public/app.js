@@ -520,7 +520,7 @@
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0 }[pref.sort] || (c => c.score);
         const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
         box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
-          <p class="legend">1군은 진한 표시, 30일 수치는 기록이 쌓인 코인만 있어요.</p></div>`;
+          <p class="legend">1군은 진한 표시예요. 30일 변동은 코인게코 값이 없으면 업비트 주봉 4주 변동으로 채우고, 둘 다 없으면 비워요.</p></div>`;
       }
       savePref(pref);
     };
