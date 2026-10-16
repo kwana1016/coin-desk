@@ -512,7 +512,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-16b", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
+    out = {"version": "2026-10-16c", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
