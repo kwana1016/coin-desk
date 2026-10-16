@@ -81,6 +81,13 @@ async function api(url, env) {
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
+  if (p === "/api/probe-src") {  // 임시 진단: 시세 소스 접근 확인 (확인 뒤 지움)
+    const U = ["https://api.coinpaprika.com/v1/tickers?quotes=USD", "https://api.coinpaprika.com/v1/tickers?limit=200", "https://api.coinlore.net/api/tickers/?start=0&limit=100",
+      "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=250&page=1", "https://fapi.binance.com/fapi/v1/ticker/price", "https://api.bithumb.com/v1/market/all",
+      "https://api.coincap.io/v2/assets?limit=10", "https://api.coinpaprika.com/v1/global"];
+    const out = await Promise.all(U.map(async u => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0", accept: "application/json" } }); const t = (await r.text()).slice(0, 120); return [u, r.status, t]; } catch (e) { return [u, -1, String(e).slice(0, 80)]; } }));
+    return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  }
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
