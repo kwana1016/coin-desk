@@ -31,36 +31,72 @@ async function readHead(res, limit) {
 }
 const put = (db, k, v, now) => db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES (?1, ?2, ?3)").bind(k, typeof v === "string" ? v : JSON.stringify(v), now);
 
-// ── 시세: 코인게코 시총 상위 250개 (코인파프리카 무료 API는 Cloudflare 공용 IP에서 402로 막힘) ──
-// kv 'cp' = {t, src:"cg", m: {코인게코 id: [순위, 심볼, 가격$, 시총$, 24h거래대금$, 24h%, 7일%, 30일%, 1, 고점대비%, null, 유통비율]}}
-// 기본 코인은 json.cg(코인게코 id)가 있으면 그것으로, 없으면 심볼(같은 심볼이 여럿이면 시총이 가장 큰 것)로 찾는다.
+// ── 시세: 코인게코 시총 상위 250개, 막히면(429 등) 코인로어 상위 200개로 ──
+// 코인파프리카 무료 API는 Cloudflare 공용 IP에서 402, 코인게코는 가끔 429라 둘을 이어 쓴다.
+// kv 'cp' = {t, src:"cg"|"cl", m: {id: [순위, 심볼, 가격$, 시총$, 24h거래대금$, 24h%, 7일%, 30일%, 출처(1=코인게코 2=코인로어), 고점대비%, null, 유통비율]}}
+// kv 'ath' = {심볼: 역대 최고가$} — 코인게코가 될 때마다 채우고, 코인로어 때는 이것으로 고점 대비를 계산(새 고점이면 올림)
 const CG_MARKETS = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&price_change_percentage=7d,30d";
+const CL_TICKERS = "https://api.coinlore.net/api/tickers/?start=";
+async function getJson(url, limit) {
+  const res = await fetch(url, { headers: UA });
+  if (!res.ok) { try { res.body && res.body.cancel(); } catch (e) {} return { code: res.status, j: null, bytes: 0 }; }
+  let t = await readHead(res, limit);
+  return { code: res.status, t, bytes: t.length };
+}
 export async function watchMarket(env, now = Date.now()) {
   const db = env.DB;
-  let list = [], code = 0, bytes = 0;
+  const kq = await db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'ath')").all();
+  const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
+  const ath = parse(kv.ath, {}); const prev = parse(kv.cp, {}).m || {};
+  const prevBySym = {}; for (const a of Object.values(prev)) if (a && a[1] && !(a[1] in prevBySym)) prevBySym[a[1]] = a;
+  const m = {}; const status = { at: now };
+  let athChanged = false;
+  // 1) 코인게코
   try {
-    const res = await fetch(CG_MARKETS, { headers: UA });
-    code = res.status;
-    if (res.ok) {
-      let t = await readHead(res, 900000); bytes = t.length;
-      if (!/\]\s*$/.test(t)) { const k = t.lastIndexOf('},{"id":"'); t = k > 0 ? t.slice(0, k + 1) + "]" : "[]"; }
-      list = JSON.parse(t);
-    } else { try { res.body && res.body.cancel(); } catch (e) {} }
-  } catch (e) { code = code || -1; }
-  const status = { code, n: Array.isArray(list) ? list.length : 0, bytes, at: now, src: "cg" };
-  if (!Array.isArray(list) || list.length < 100) { await put(db, "cp_status", status, now).run(); return status; }
-  const m = {};
-  for (const x of list) {
-    if (!x || !x.id) continue;
-    const price = Number(x.current_price) || 0, mcap = Number(x.market_cap) || 0;
-    const maxS = Number(x.max_supply) > 0 ? Number(x.max_supply) : Number(x.total_supply) || 0;
-    const circ = maxS > 0 && Number(x.circulating_supply) > 0 ? Math.min(1, Number(x.circulating_supply) / maxS) : null;
-    m[x.id] = [Number(x.market_cap_rank) || 0, String(x.symbol || "").toUpperCase(), sig(price), Math.round(mcap), Math.round(Number(x.total_volume) || 0),
-      pct1(x.price_change_percentage_24h), pct1(x.price_change_percentage_7d_in_currency), pct1(x.price_change_percentage_30d_in_currency), 1,
-      pct1(x.ath_change_percentage), null, circ == null ? null : Math.round(circ * 1000) / 1000];
+    const r = await getJson(CG_MARKETS, 900000); status.cg = r.code;
+    if (r.t) {
+      let t = r.t; if (!/\]\s*$/.test(t)) { const k = t.lastIndexOf('},{"id":"'); t = k > 0 ? t.slice(0, k + 1) + "]" : "[]"; }
+      const list = JSON.parse(t);
+      if (Array.isArray(list) && list.length >= 100) for (const x of list) {
+        if (!x || !x.id) continue;
+        const sym = String(x.symbol || "").toUpperCase(), price = Number(x.current_price) || 0, mcap = Number(x.market_cap) || 0;
+        const maxS = Number(x.max_supply) > 0 ? Number(x.max_supply) : Number(x.total_supply) || 0;
+        const circ = maxS > 0 && Number(x.circulating_supply) > 0 ? Math.min(1, Number(x.circulating_supply) / maxS) : null;
+        if (Number(x.ath) > 0 && sym && (!(ath[sym] > 0) || Number(x.ath) > ath[sym] || Number(x.market_cap_rank) <= 300)) { if (ath[sym] !== Number(x.ath)) { ath[sym] = sig(Number(x.ath)); athChanged = true; } }
+        m[x.id] = [Number(x.market_cap_rank) || 0, sym, sig(price), Math.round(mcap), Math.round(Number(x.total_volume) || 0),
+          pct1(x.price_change_percentage_24h), pct1(x.price_change_percentage_7d_in_currency), pct1(x.price_change_percentage_30d_in_currency), 1,
+          pct1(x.ath_change_percentage), null, circ == null ? null : Math.round(circ * 1000) / 1000];
+      }
+    }
+  } catch (e) { status.cg = status.cg || -1; }
+  status.src = "cg";
+  // 2) 코인로어 (코인게코가 막혔을 때)
+  if (Object.keys(m).length < 100) {
+    status.src = "cl";
+    for (const start of [0, 100]) {
+      try {
+        const r = await getJson(CL_TICKERS + start + "&limit=100", 400000); status["cl" + start] = r.code;
+        if (!r.t) continue;
+        const d = JSON.parse(r.t); const list = (d && d.data) || [];
+        for (const x of list) {
+          const sym = String(x.symbol || "").toUpperCase(), price = Number(x.price_usd) || 0, mcap = Number(x.market_cap_usd) || 0;
+          if (!sym || !(price > 0)) continue;
+          if (ath[sym] > 0 && price > ath[sym]) { ath[sym] = sig(price); athChanged = true; }
+          const fromAth = ath[sym] > 0 ? (price / ath[sym] - 1) * 100 : null;
+          const maxS = Number(x.msupply) > 0 ? Number(x.msupply) : Number(x.tsupply) || 0;
+          const circ = maxS > 0 && Number(x.csupply) > 0 ? Math.min(1, Number(x.csupply) / maxS) : null;
+          const old = prevBySym[sym];
+          m["cl:" + (x.nameid || x.id)] = [Number(x.rank) || 0, sym, sig(price), Math.round(mcap), Math.round(Number(x.volume24) || 0),
+            pct1(x.percent_change_24h), pct1(x.percent_change_7d), old ? old[7] : null, 2, pct1(fromAth), null, circ == null ? null : Math.round(circ * 1000) / 1000];
+        }
+      } catch (e) { status["cl" + start] = status["cl" + start] || -1; }
+    }
   }
-  status.kept = Object.keys(m).length;
-  await db.batch([put(db, "cp", { t: now, src: "cg", m }, now), put(db, "cp_status", status, now)]);
+  status.n = Object.keys(m).length; status.code = status.src === "cg" ? status.cg : (status.cl0 || status.cg);
+  if (status.n < 100) { await put(db, "cp_status", status, now).run(); return status; }
+  const writes = [put(db, "cp", { t: now, src: status.src, m }, now), put(db, "cp_status", status, now)];
+  if (athChanged) writes.push(put(db, "ath", ath, now));
+  await db.batch(writes);
   return status;
 }
 
@@ -95,6 +131,8 @@ export async function maybeSeed(env, now = Date.now()) {
   for (const e of parse(old && old.v, [])) if (Array.isArray(e) && !have.has(e[0])) { ex.push(e); have.add(e[0]); }
   st.push(put(db, "sector_excluded", ex, now));
   st.push(put(db, "sector_groups", d.groups || [], now));
+  if (d.ath) { const oa = await db.prepare("SELECT v FROM kv WHERE k = 'ath'").first(); const a = parse(oa && oa.v, {});
+    for (const [k, v] of Object.entries(d.ath)) if (!(a[k] >= v)) a[k] = v; st.push(put(db, "ath", a, now)); }
   st.push(db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('sector_seed_v', ?1, ?2)").bind(SEED_VERSION, now));
   st.push(db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('rank_req', ?1, ?2)").bind(String(now), now));
   await db.batch(st);

@@ -501,6 +501,9 @@ for sym, why in [("BSC-USD", "스테이블(브릿지)"), ("USDT0", "스테이블
     if not any(e[2] == sym for e in EXCLUDED):
         EXCLUDED.append(["sym:" + sym.lower(), why, sym])
 
+# 역대 최고가 초기값 (10/16 코인파프리카 가격·고점 대비로 되계산, 이후 Worker가 코인게코 값으로 갱신)
+ATH = {"BTC": 126174.0, "ETH": 4945.07, "USDT": 1.21608, "BNB": 1370.48, "XRP": 3.84139, "USDC": 1.90719, "SOL": 294.037, "TRX": 0.440604, "STETH": 4929.93, "ZEC": 5940.45, "HYPE": 97.8552, "DOGE": 0.751152, "WSTETH": 5977.92, "XMR": 795.997, "USDS": 1.58266, "LINK": 52.9857, "WBT": 87.8818, "WBTC": 126058.0, "ADA": 3.09595, "LEO": 10.463, "CBBTC": 126070.0, "NEAR": 20.3646, "RAIN": 0.0195205, "XLM": 0.938493, "BCH": 4360.99, "UNI": 45.003, "LTC": 413.256, "AVAX": 145.597, "SUI": 5.35439, "CC": 0.195008, "GRAM": 8.27213, "BTW": 2.80117, "HBAR": 0.566297, "SHIB": 8.83162e-05, "CRO": 0.951691, "ENA": 1.5229, "TAO": 768.97, "QNT": 425.169, "OKB": 257.303, "AAVE": 664.82, "ONDO": 2.13828, "PUMP": 0.00878836, "WLD": 11.7817, "DOT": 54.9626, "M": 4.83979, "WLFI": 0.599369, "MNT": 2.86176, "PEPE": 2.83032e-05, "ICP": 343.82, "SKY": 0.100334, "JST": 0.19234, "ARB": 2.39021, "BGB": 8.50481, "ETC": 166.944, "GT": 25.9721, "VVV": 34.4666, "ASTER": 2.41557, "ALGO": 2.64365, "KCS": 28.5276, "KAS": 0.206593, "JUP": 1.83976, "POL": 1.2942, "RENDER": 13.5745}
+
 def main():
     syms = [c["sym"] for c in C]; cps = [c["cp"] for c in C]
     assert len(syms) == len(set(syms)), "중복 sym"
@@ -509,7 +512,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-16b", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED}
+    out = {"version": "2026-10-16b", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
