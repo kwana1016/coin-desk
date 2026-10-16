@@ -81,6 +81,13 @@ async function api(url, env) {
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
+  if (p === "/api/probe-src") {  // 임시 진단 (확인 뒤 지움)
+    const U = ["https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=5&sortBy=market_cap&sortType=desc&convert=USD",
+      "https://min-api.cryptocompare.com/data/top/mktcapfull?limit=10&tsym=USD", "https://api.coingecko.com/api/v3/ping",
+      "https://api.coinlore.net/api/tickers/?start=0&limit=3"];
+    const out = await Promise.all(U.map(async u => { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0", accept: "application/json" } }); const t = (await r.text()).slice(0, 300); return [u.slice(8, 60), r.status, t]; } catch (e) { return [u, -1, String(e).slice(0, 80)]; } }));
+    return new Response(JSON.stringify(out), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  }
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
