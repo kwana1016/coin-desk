@@ -143,7 +143,7 @@ export function marketKey(idx, b) {
 
 // ── 초기 데이터 (public/sector_seed.json) — 버전이 바뀌었을 때 한 번만 넣는다 ──
 // D1이 원본이라, 이미 있는 섹터·코인은 D1 값을 그대로 두고 새 항목(과 새로 생긴 필드)만 더한다.
-export const SEED_VERSION = "2026-10-16c";
+export const SEED_VERSION = "2026-10-17a";
 export async function maybeSeed(env, now = Date.now()) {
   const db = env.DB;
   const cur = await db.prepare("SELECT v FROM kv WHERE k = 'sector_seed_v'").first();

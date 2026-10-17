@@ -1,4 +1,4 @@
-# 섹터 순위판 초기 데이터 (2026-10-16 기준). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
+# 섹터 순위판 초기 데이터 (2026-10-16 기준, 10/17 코인 18개·섹터 1개 추가). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
 # 이후 섹터·코인 기본 점수는 D1(sectors, coin_base)이 원본이고, 예약 실행이 거기서 고친다.
 # 점수는 공개 정보를 바탕으로 한 AI 판단 점수(0~100)이며 확률 예측이 아니다.
 import json, os, sys
@@ -108,6 +108,11 @@ sec("meme", "소비자", "밈·런치패드", "팬덤·캐릭터 굿즈", [6, 10
     "도지코인 말고는 사이클을 넘어 살아남은 경우가 드물고, 매 사이클 새 밈이 자리를 빼앗아요.",
     "알트시즌 막바지 과열, 유명인·거래소 이벤트",
     "-90% 이상 급락이 흔함")
+sec("app", "소비자", "소비자 앱·지갑·ID", "브라우저·도메인 등록·지갑 앱", [10, 8, 4, 10, 6, 9], "정체",
+    "브라우저 광고 보상, 이더리움 이름(주소 대신 쓰는 이름), 지갑처럼 일반 사용자가 직접 쓰는 앱의 토큰.",
+    "앱은 2017년부터 살아남았지만, 사용자가 늘어도 토큰 수요로 이어지는 고리가 약해요.",
+    "앱 수익을 토큰 바이백·소각에 쓰는 구조 도입, 브라우저·지갑 기본 탑재 같은 대형 제휴",
+    "토큰 없이도 되는 웹2 서비스와의 경쟁")
 sec("pow", "기타", "PoW·디지털 금", "금·은 같은 원자재", [8, 9, 9, 13, 6, 10], "성숙 · 점유율 하락",
     "비트코인처럼 채굴(PoW)로 발행되는 코인. 기준 코인 비트코인은 순위에서 빼고 따로 봐요.",
     "비트코인이 '디지털 금' 자리를 거의 독점해, 나머지 PoW 코인은 점유율이 해마다 줄어요(비트코인을 넣으면 95점).",
@@ -477,6 +482,26 @@ coin("NIGHT", "night-midnight2", "privacy", "미드나잇", [5, 7, 8, 7, 2], "�
 coin("ZEN", "zen-horizen", "privacy", "호라이즌", [7, 7, 7, 12, 13], "프라이버시 앱 체인(2025년 베이스로 이전)", ["2017년부터 운영"], ["관심 감소"], "프라이버시 테마", "스테이킹", stake=True)
 
 # ── 순위에서 뺄 토큰 (코인파프리카 id, 이유) — 스테이블·래핑·스테이킹 파생·금·LP·옛 토큰 ──
+# ── 10/17 추가: 코인마켓캡 시세로 바꾸며 시총 150위 안에 새로 보인 코인 ──
+coin("ENS", "ens-ethereum-name-service", "app", "이더리움 네임 서비스", [12, 7, 14, 12, 12], "지갑 주소를 'kwan.eth' 같은 이름으로 바꿔 주는 서비스", ["이름 등록 수수료라는 실제 매출", "웹3 이름 표준 1위"], ["수익이 토큰에 바로 가지 않고 DAO 금고에 쌓임", "신규 등록 정체"], "ENS v2·자체 L2 가동, 수익 환원 결정", "거버넌스(금고 사용 결정)")
+coin("BAT", "bat-basic-attention-token", "app", "베이직어텐션토큰", [8, 5, 9, 14, 15], "브레이브 브라우저의 광고 보상 토큰", ["브레이브 월 사용자 수천만 명", "2017년부터 생존, 공급 대부분 유통"], ["사용자 증가가 토큰 수요로 이어지지 않음", "광고 매출 규모 작음"], "브레이브 수익의 BAT 바이백 도입", "광고 결제·보상(약함)")
+coin("TWT", "twt-trust-wallet-token", "app", "트러스트월렛", [7, 5, 9, 13, 11], "바이낸스 계열 지갑 앱 트러스트월렛의 토큰", ["지갑 앱 사용자 규모", "바이낸스 생태계 지원"], ["토큰 쓰임새 약함", "지갑 해킹 사고 이력"], "지갑 수수료 할인·혜택 확대", "수수료 할인·거버넌스")
+coin("SUN", "sun-sun-token", "dex", "선", [10, 10, 6, 10, 9], "트론 대표 DEX(선스왑)·밈 발행(선펌프) 토큰 — 수익으로 SUN 바이백·소각", ["트론 생태계 안 독점적 위치", "바이백·소각"], ["저스틴 선 한 사람의 영향력", "트론 밖 확장 없음"], "트론 밈·디파이 붐", "수익 일부 바이백·소각")
+coin("MET", "met-meteora", "dex", "메테오라", [12, 8, 9, 6, 2], "솔라나 유동성 풀 DEX — 밈·신규 토큰 유동성이 몰리는 곳(2025년 10월 토큰 출시)", ["솔라나 신규 토큰 유동성 상위", "수수료 수익 큼"], ["출시 뒤 하락·언락 물량", "공동창업자 밈코인(LIBRA) 논란"], "솔라나 밈 시즌 재개", "수수료 일부(설계 중)")
+coin("FLUID", "fluid-instadapp", "lending", "플루이드", [13, 11, 11, 11, 9], "대출과 DEX를 한 금고에 합친 디파이(인스타댑 후신) — 수익으로 바이백", ["이더리움 대출·DEX 거래량 상위권", "바이백 진행"], ["구조가 복잡해 위험 파악이 어려움", "에이브·모포와 경쟁"], "디파이 수익 환원 테마, 거래량 급증", "수익 바이백")
+coin("CVX", "cvx-convex-finance", "stable", "컨벡스", [9, 10, 8, 14, 13], "커브(CRV) 보상을 키워 주는 수익 플랫폼 — CRV 투표권 상당 부분 보유", ["커브 거버넌스 영향력", "2021년부터 생존"], ["커브 성장에 묶여 있음", "보상 수익 감소"], "커브 거래량·보상 회복", "플랫폼 수수료 일부를 스테이커에게")
+coin("GNO", "gno-gnosis", "l1", "노시스", [8, 8, 8, 15, 15], "노시스체인·노시스페이 카드·세이프 지갑의 뿌리(2017년)", ["노시스페이 실결제 카드", "공급 고정에 가깝고 금고가 큼"], ["체인 사용량이 작음", "생태계 성장 느림"], "노시스페이·결제 테마", "체인 스테이킹·수수료", stake=True)
+coin("A", "a-vaulta", "l1", "볼타(구 EOS)", [5, 5, 5, 10, 12], "EOS가 이름을 바꾼 체인 — 웹3 은행 업무로 방향 전환(2025년)", ["2017년 대형 L1 브랜드", "토큰 전환으로 공급 정리"], ["사용자·개발자 대부분 이탈", "방향 전환 성과 미지수"], "웹3 은행 서비스 실적", "스테이킹·수수료", stake=True)
+coin("XCN", "xcn-onyxcoin", "l2", "오닉스코인", [3, 4, 4, 8, 6], "오닉스 프로토콜 토큰 — 베이스 위 L3 체인으로 전환 중", ["업비트 원화 상장", "커뮤니티 활발"], ["실사용 매우 적음", "대출 프로토콜 해킹 이력"], "국내 거래 급증", "가스·스테이킹(약함)")
+coin("SOON", "soon-soon", "l2", "순", [5, 5, 6, 5, 1], "솔라나 엔진(SVM)으로 돌아가는 롤업 — 이더리움·BNB 등에 체인을 붙여 줌", ["SVM 속도", "여러 체인에 배포"], ["사용량 작음", "언락 물량"], "SVM 롤업 채택 뉴스", "가스·스테이킹(약함)")
+coin("ZAMA", "zama-zama", "privacy", "자마", [5, 7, 13, 6, 1], "완전동형암호(FHE)로 데이터를 암호화한 채 계산하게 해 주는 프로토콜(2026년 초 토큰 출시)", ["FHE 기술 선두 팀, 대형 투자 유치", "기관 기밀 거래 수요"], ["실사용 초기", "언락 물량"], "기관 기밀 토큰·기밀 스테이블코인 도입", "암호 연산 수수료·스테이킹")
+coin("PONS", "pons-pons", "meme", "폰스", [11, 13, 5, 7, 1], "로빈후드 체인의 밈코인 발행 공장 — 수익 약 80%로 PONS 바이백·소각", ["하루 수수료 수백만 달러(9월 초)", "공급 약 29% 소각"], ["7월 저점 대비 수백 배 급등 — 과열", "로빈후드 체인 하나에 의존"], "로빈후드 체인 밈 열풍 지속", "수익 약 80% 바이백·소각")
+coin("NFT", "nft-apenft", "game", "APENFT", [3, 4, 4, 8, 7], "트론 계열 NFT 마켓·자산 토큰", ["트론 생태계 지원", "대형 거래소 상장"], ["NFT 시장 침체", "공급 매우 많음"], "트론 생태계 이벤트", "거의 없음")
+coin("JASMY", "jasmy-jasmycoin", "depin", "재스미", [4, 5, 5, 11, 9], "일본 IoT 데이터 거래 플랫폼(소니 출신 창업)", ["일본 대표 코인", "개인 데이터 주권 테마"], ["실사용 불분명", "팀 물량 매도 논란"], "일본 규제 완화·IoT 제휴", "데이터 거래 결제(약함)")
+coin("ZBCN", "zbcn-zebec-network", "pay", "제벡", [6, 6, 5, 8, 6], "급여·결제를 실시간으로 흘려 보내는 '스트리밍 결제'와 크립토 카드", ["실결제 카드·급여 제품", "결제 테마"], ["사용 규모 작음", "공급 많음"], "결제·급여 제휴", "스테이킹·수수료(약함)")
+coin("TRAC", "trac-origintrail", "ai", "오리진트레일", [7, 7, 8, 14, 13], "공급망·AI용 '탈중앙 지식 그래프' — 데이터 출처를 검증", ["공급망 기업 사용 사례", "2018년부터 생존, 공급 고정"], ["토큰 수요 연결 약함", "AI 테마 의존"], "AI 데이터 검증 제휴", "데이터 게시 수수료·스테이킹")
+coin("PIEVERSE", "pieverse-pieverse", "ai", "파이버스", [4, 5, 5, 5, 1], "AI 에이전트용 결제 인프라(가스 없는 x402b 결제, BNB체인)", ["에이전트 결제 테마", "업비트 원화 상장"], ["실사용 초기", "토큰 쓰임새 약함"], "x402 에이전트 결제 확산", "수수료 할인·스테이킹")
+
 EX = """usdt-tether 스테이블|usdc-usd-coin 스테이블|usds-usds 스테이블|susds-susds 스테이블(이자형)|dai-dai 스테이블|usd1-usd1 스테이블|usde-ethena-usde 스테이블|usdg-global-dollar 스테이블|pyusd-paypal-usd 스테이블|usdf-falcon-finance 스테이블|usdd-usdd 스테이블|bfusd-bfusd 스테이블|susde-ethena-staked-usde 스테이블(이자형)|syrupusdc-syrupusdc 스테이블(이자형)|usdce-usd-coine 스테이블(브릿지)|gho-gho 스테이블|usd0-usual-usd 스테이블|tusd-trueusd 스테이블|usdtb-usdtb 스테이블|fdusd-first-digital-usd 스테이블|euroc-euro-coin 스테이블(유로)|alusd-alchemixusd 스테이블|frax-frax 스테이블|usdai-usdai 스테이블|susdai-staked-usdai 스테이블(이자형)|rlusd-ripple-usd 스테이블|chip-usdai 스테이블|crvusd-curvefi-usd-stablecoin 스테이블|usdf-astherus-usdf 스테이블|uusd-unity-usd 스테이블|musd-metamask-usd 스테이블|frxusd-frax-usd 스테이블|cash-cash 스테이블|onyc-onyc 이자형 토큰
 steth-lido-staked-ether 스테이킹 파생|wsteth-wrapped-liquid-staked-ether-20 스테이킹 파생|weeth-wrapped-eeth 스테이킹 파생|reth-rocket-pool-eth 스테이킹 파생|rseth-rseth 스테이킹 파생|meth-meth 스테이킹 파생|lseth-liquid-staked-ethereum 스테이킹 파생|cbeth-coinbase-wrapped-staked-eth 스테이킹 파생|frxeth-frax-ether 스테이킹 파생|sfrxeth-staked-frax-ether 스테이킹 파생|ethx-stader-ethx 스테이킹 파생|oeth-origin-ether 스테이킹 파생|superoeth-super-oeth 스테이킹 파생|eth-reserve-protocol-eth-plus 스테이킹 파생|ezeth-renzo-restaked-eth 스테이킹 파생|pufeth-pufeth 스테이킹 파생|jitosol-jito-staked-sol 스테이킹 파생|bnsol-binance-staked-sol 스테이킹 파생|jupsol-jupiter-staked-sol 스테이킹 파생|msol-marinade-staked-sol 스테이킹 파생|vsol-the-vault-staked-sol 스테이킹 파생|scnsol-socean-staked-sol 스테이킹 파생|bbsol-bybit-staked-sol 스테이킹 파생|khype-kinetiq-staked-hype 스테이킹 파생|asbnb-astherus-staked-bnb 스테이킹 파생|stkaave-staked-aave 스테이킹 파생|lbtc-lombard-staked-btc 스테이킹 파생|ebtc-etherfi-staked-btc 스테이킹 파생|solvbtc-solv-protocol-solvbtc 래핑 BTC
 wbtc-wrapped-bitcoin 래핑|cbbtc-coinbase-wrapped-btc 래핑|weth-weth 래핑|eth-ethereum-token 래핑|wbnb-wrapped-bnb 래핑|wtrx-wrapped-trx 래핑|tbtc-tbtc 래핑|btcb-bitcoin-avalanche-bridged-btcb 래핑|sol-binance-peg-sol 래핑
@@ -512,7 +537,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-16c", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
+    out = {"version": "2026-10-17a", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
