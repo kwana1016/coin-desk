@@ -191,7 +191,8 @@ export async function watchBinance(env, now = Date.now()) {
   // 6시간마다 새로 받되, 실패하면 다음 시간에 다시 시도한다 (코인게코 → 코인마켓캡 순서)
   const last = await env.DB.prepare("SELECT ts FROM kv WHERE k = 'bnf'").first().catch(() => null);
   if (last && now - Number(last.ts) < 6 * HOUR - 10 * 60000) return;
-  const norm = x => x.toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, "");
+  const ALIAS = { RAYSOL: "RAY", BEAMX: "BEAM", LUNA2: "LUNA" };
+  const norm = x => { const s = x.toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, ""); return ALIAS[s] || s; };
   const tries = [
     ["cg", "https://api.coingecko.com/api/v3/derivatives/exchanges/binance_futures?include_tickers=unexpired",
       /"base":"([A-Za-z0-9]+)","target":"(USDT|USDC)"/g, m => m[1]],
