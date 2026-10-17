@@ -11,6 +11,7 @@ export const RULES = { cap: 150, liq: 0.001, margin: 3, need: 2, fast: 10, nmax:
   hl: { short: 3, normal: 10, structural: 45 }, w: [0.6, 0.25, 0.15], keep: 12 };
 
 const DAY = 86400e3;
+const HOUR = 3600000;
 const UA = { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0; +https://coin-desk.kwana1016.workers.dev)", accept: "application/json" };
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -187,16 +188,31 @@ export async function watchBithumb(env, now = Date.now()) {
 
 // ── 바이낸스 USDⓈ-M 무기한 선물 목록 (6시간마다) — fapi.binance.com은 Cloudflare 위치에서 403이라 코인게코 파생상품 정보로 받는다 ──
 export async function watchBinance(env, now = Date.now()) {
-  let code = 0;
-  try {
-    const r = await fetch("https://api.coingecko.com/api/v3/derivatives/exchanges/binance_futures?include_tickers=unexpired", { headers: UA }); code = r.status;
-    if (r.ok) {
-      const t = await readHead(r, 2500000); const set = new Set(); const re = /"base":"([A-Za-z0-9]+)","target":"(USDT|USDC)"/g; let mt;
-      while ((mt = re.exec(t))) set.add(mt[1].toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, ""));
-      if (set.size > 100) { await put(env.DB, "bnf", [...set], now).run(); await put(env.DB, "bnf_status", { code, n: set.size, at: now }, now).run(); return; }
-    } else { try { r.body && r.body.cancel(); } catch (e) {} }
-  } catch (e) {}
-  await put(env.DB, "bnf_status", { code, at: now }, now).run();
+  // 6시간마다 새로 받되, 실패하면 다음 시간에 다시 시도한다 (코인게코 → 코인마켓캡 순서)
+  const last = await env.DB.prepare("SELECT ts FROM kv WHERE k = 'bnf'").first().catch(() => null);
+  if (last && now - Number(last.ts) < 6 * HOUR - 10 * 60000) return;
+  const norm = x => x.toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, "");
+  const tries = [
+    ["cg", "https://api.coingecko.com/api/v3/derivatives/exchanges/binance_futures?include_tickers=unexpired",
+      /"base":"([A-Za-z0-9]+)","target":"(USDT|USDC)"/g, m => m[1]],
+    ["cmc", "https://api.coinmarketcap.com/data-api/v3/exchange/market-pairs/latest?slug=binance&category=perpetual&start=1&limit=1000",
+      /"category":"([a-z]+)"[^{}]*?"baseSymbol":"([^"]+)"[^{}]*?"quoteSymbol":"(USDT|USDC)"/g, m => m[1] === "spot" ? null : m[2]],
+  ];
+  const st = { at: now };
+  for (const [name, url, re, pick] of tries) {
+    try {
+      const r = await fetch(url, { headers: UA }); st[name] = r.status;
+      if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} continue; }
+      const t = await readHead(r, 2500000); const set = new Set(); let mt;
+      while ((mt = re.exec(t))) { const b = pick(mt); if (b) set.add(norm(b)); }
+      if (set.size > 100) {
+        await put(env.DB, "bnf", [...set], now).run();
+        await put(env.DB, "bnf_status", { ...st, src: name, n: set.size, code: 200 }, now).run(); return;
+      }
+      st[name + "_n"] = set.size;
+    } catch (e) { st[name + "_err"] = String(e).slice(0, 80); }
+  }
+  await put(env.DB, "bnf_status", st, now).run();
 }
 
 // ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
