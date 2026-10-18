@@ -655,8 +655,7 @@
       <p class="legend">사람 판단 없이 숫자로만 매긴 점수예요(DefiLlama 수수료·매출, 코인마켓캡 유통량·언락). 아직 종합 점수에는 넣지 않고, 성적표에서 '데이터 점수 상위 3' 바구니가 시총 상위 3보다 나은지 4주 이상 지켜본 뒤 반영 여부를 정해요.${c.sg != null ? ` 실제 공급 증가율 연 ${c.sg > 0 ? "+" : ""}${c.sg.toFixed(1)}%.` : " 실제 공급 증가율은 기록이 28일 쌓이면 들어가요."}</p></section>`;
   }
   const DDK = { pay: "누가 돈을 내나", accrue: "토큰에 돌아오나", supply: "공급·희석", users: "사용자·활동", moat: "경쟁", team: "팀·개발", risk: "리스크", value: "밸류에이션", catalyst: "일정·촉매", against: "반대 논리" };
-  function deepPanel(b) {
-    const d = b.dd;
+  function deepPanel(d) {
     if (!d || !Array.isArray(d.items)) return `<section class="panel section"><div class="sec-head"><h2>심층 점검</h2><span class="sub">아직 전</span></div><div class="small muted">AI가 하루 3번 몇 개씩 차례로 10가지 체크리스트를 근거 링크와 함께 채워요. 1군·내 코인부터 해요.</div></section>`;
     const dots = v => { v = Math.max(0, Math.min(5, Math.round(n(v) || 0))); return `<span class="dd-dots" aria-label="${v}/5">${"●".repeat(v)}<i>${"●".repeat(5 - v)}</i></span>`; };
     const qn = d.q && Array.isArray(d.q.from) && Array.isArray(d.q.to) ? QN.map((k, i) => d.q.from[i] !== d.q.to[i] ? `${k} ${d.q.from[i]}→${d.q.to[i]}` : "").filter(Boolean) : [];
@@ -697,7 +696,7 @@
           return `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(used || 0) / 20 * 100}%"></div></div><span class="num small">${used ?? "-"}/20</span></div>${dv != null ? `<div class="tiny muted qd">AI 판단 ${man} · 실제 수익 데이터 ${dv.toFixed(1)} → 반반 섞어 ${used}</div>` : ""}`; }).join("")}
         ${b.qnote ? `<p class="small muted">${esc(b.qnote)}</p>` : ""}</section>
       ${dataPanel(c)}
-      ${deepPanel(b)}
+      ${deepPanel(h.dd || b.dd)}
       ${c.fz ? `<section class="panel section"><div class="sec-head"><h2>실제 수익</h2><span class="sub">DefiLlama${c.fz.at ? " · " + kst(c.fz.at) : ""}${c.fz.chain ? " · 체인 수수료" : ""}</span></div>
         <div class="fz-grid">
           <div><span class="tiny muted">수수료 30일</span><b class="num">${krUsd(c.fz.f30)}</b><span class="tiny muted">연 ${krUsd(c.fz.F)}</span></div>

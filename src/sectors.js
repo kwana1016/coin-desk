@@ -473,7 +473,7 @@ export async function apiSectors(db) {
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
     db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'bithumb_krw', 'bnf', 'sector_excluded', 'sector_groups', 'mine', 'fees', 'fund', 'unlocks')").all(),
     db.prepare("SELECT json FROM sectors ORDER BY ord").all(),
-    db.prepare("SELECT json FROM coin_base").all(),
+    db.prepare("SELECT json_remove(json, '$.dd') AS json FROM coin_base").all(), // 심층 점검(dd)은 코인 페이지 API로만 보낸다
   ]);
   const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
   const v = k => kv[k] || "null";
@@ -484,11 +484,12 @@ export async function apiSectors(db) {
 
 export async function apiSectorCoin(db, sym) {
   const path = '$.c."' + sym.replace(/"/g, "") + '"';
-  const [hq, nq] = await Promise.all([
+  const [hq, nq, dq] = await Promise.all([
     db.prepare("SELECT ts, json_extract(json, ?1) AS x FROM rankings ORDER BY ts DESC LIMIT 60").bind(path).all(),
     db.prepare("SELECT id, ts, impact, kind, json FROM coin_news WHERE sym = ?1 ORDER BY ts DESC LIMIT 20").bind(sym).all(),
+    db.prepare("SELECT json_extract(json, '$.dd') AS dd FROM coin_base WHERE sym = ?1").bind(sym).first(),
   ]);
   const hist = (hq.results || []).filter(x => x.x).map(x => `[${Number(x.ts)},${x.x}]`).join(",");
   const news = (nq.results || []).map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"impact":${Number(x.impact)},"kind":${JSON.stringify(x.kind)},"n":${x.json}}`).join(",");
-  return `{"sym":${JSON.stringify(sym)},"hist":[${hist}],"news":[${news}]}`;
+  return `{"sym":${JSON.stringify(sym)},"hist":[${hist}],"news":[${news}],"dd":${dq && dq.dd ? dq.dd : "null"}}`;
 }
