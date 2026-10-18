@@ -734,7 +734,54 @@
   // 스마트폰 시대에 돈은 앱이 벌었다 — 웹3에서 지금 실제로 수수료를 버는 곳과, 그 돈이 토큰 보유자에게 얼마나 돌아오는지.
   // 데이터: DefiLlama 수수료·매출·보유자 수익(kv fees) + 코인마켓캡 시총·유통 비율(kv cp). 모든 금액은 연환산 달러.
   //   수수료(F) = 사용자가 낸 돈 전체 · 매출(R) = 그중 프로토콜이 가져간 몫 · 보유자 몫(H) = 바이백·소각·분배로 토큰 보유자에게 간 몫
-  const MONEY_SORTS = [["H", "보유자 몫 큰 순"], ["yield", "보유자 수익률 높은 순"], ["fyield", "희석 반영 수익률 높은 순"], ["pe", "수익 대비 싼 순"], ["growth", "수수료 성장 빠른 순"], ["F", "수수료 큰 순"], ["payout", "보유자 환원율 높은 순"]];
+  // 정렬 = 순위가 답하는 질문 [키, 짧은 이름, 질문, 읽는 법, 용어]
+  const MONEY_SORTS = [
+    ["F", "수수료", "사람들이 돈을 내고 가장 많이 쓰는 곳은?", "인기·사용량 순위예요. 다만 이 돈이 토큰에 오는지는 따로 봐야 해요.", "fee"],
+    ["R", "매출", "사업으로 가장 많이 버는 곳은?", "유동성 공급자·검증인 몫을 빼고 프로토콜에 남는 돈 순위예요.", "rev"],
+    ["H", "보유자 몫", "토큰 가진 사람에게 가장 많이 돌려주는 곳은?", "바이백·소각·분배로 실제 돌아간 돈의 크기 순위예요.", "hold"],
+    ["yield", "수익률", "들고 있으면 가장 많이 돌아오는 곳은?", "가격 대비 돌려받는 비율이에요. 100만 원어치 들고 있을 때 1년에 돌아오는 몫으로 같이 보여줘요.", "yield"],
+    ["fyield", "희석 반영", "앞으로 풀릴 물량까지 치면 어디가 많이 돌려주나?", "아직 잠긴 토큰이 다 풀린다고 보고 다시 계산한 수익률이에요. 유통 비율이 낮을수록 많이 줄어요.", "dil"],
+    ["pe", "싼 순", "버는 돈에 비해 가장 싼 곳은?", "시가총액이 1년 보유자 몫의 몇 배인지(주식의 PER) — 낮을수록 싸요.", "pe"],
+    ["growth", "성장", "요즘 가장 빨리 크는 곳은?", "최근 30일 수수료가 1년 평균보다 얼마나 늘었는지예요.", "growth"],
+    ["payout", "환원율", "번 돈을 가장 아낌없이 돌려주는 곳은?", "매출 중 보유자에게 돌려준 비율(주식의 배당성향)이에요.", "payout"]];
+  // 처음 보는 사람을 위한 용어 풀이 — 가게·주식에 빗대어
+  const GLOSS = {
+    fee: ["수수료", "사용자가 그 서비스를 쓰면서 낸 돈 전체예요. 가게로 치면 손님이 계산대에 낸 돈 총액이에요. 크면 '많이 쓰인다'는 뜻이지만, 이 돈이 토큰 주인에게 가는지는 별개예요."],
+    rev: ["매출 (프로토콜 매출)", "수수료 중에서 서비스를 만든 쪽(프로토콜)이 가져간 몫이에요. 나머지는 거래 상대가 돼 준 유동성 공급자나 체인을 지키는 검증인에게 가요. 가게로 치면 재료비·카드 수수료를 떼고 가게에 남는 돈이에요."],
+    hold: ["보유자 몫", "매출 중에서 바이백·소각·분배로 토큰 가진 사람에게 실제로 돌아간 돈이에요. 주식으로 치면 배당 + 자사주 매입이에요. 이게 있어야 '서비스가 잘되면 토큰도 좋아지는' 연결고리가 생겨요."],
+    yield: ["보유자 수익률", "1년 보유자 몫 ÷ 시가총액이에요. 주식의 배당수익률과 같아요. 3%면 100만 원어치 들고 있을 때 1년에 약 3만 원어치가 돌아오는 셈이에요(바이백은 현금이 아니라 토큰 가치로 돌아와요). 가격 오르내림은 빼고 계산해요."],
+    dil: ["희석 · 희석 반영 수익률", "희석은 새 토큰이 풀려서 내 몫이 작아지는 거예요(주식의 신주 발행). 희석 반영 수익률은 아직 잠겨 있는 토큰까지 다 풀렸다고 치고 다시 계산한 수익률이에요. 지금 수익률이 높아 보여도 이 숫자가 많이 낮으면, 앞으로 나눠 가질 사람이 크게 늘어난다는 뜻이에요."],
+    circ: ["유통 비율", "최대 발행량 중 지금 시장에 풀려 있는 비율이에요. 30%면 앞으로 지금의 2배 넘는 물량이 더 풀릴 수 있어요. 낮을수록 언락(잠금 해제) 때 파는 물량이 나올 수 있어요."],
+    pe: ["시총 ÷ 보유자 몫 (PER)", "시가총액이 1년 보유자 몫의 몇 배인지예요. 주식의 PER과 같아서 낮을수록 버는 돈에 비해 싸요. 20배 = 수익률 5%, 50배 = 2%, 100배 = 1%."],
+    pf: ["시총 ÷ 수수료", "시가총액이 1년 수수료의 몇 배인지예요. 보유자 몫이 없는 코인도 비교할 수 있어서, 같은 섹터 안에서 비싼지 싼지 볼 때 써요."],
+    payout: ["환원율", "매출 중 보유자에게 돌려준 비율이에요. 주식의 배당성향과 같아요. 100%에 가까우면 번 돈을 거의 다 돌려주고, 0%면 금고에 쌓아 둬요."],
+    growth: ["수수료 성장", "최근 30일 하루 평균 수수료가 지난 1년 하루 평균보다 몇 % 많은지예요. +면 요즘 더 많이 쓰이고, -면 식고 있어요."],
+    secmed: ["섹터 중앙값", "같은 섹터(예: 현물 DEX)에서 데이터가 있는 코인들의 '시총 ÷ 수수료'를 줄 세웠을 때 가운데 값이에요. 이보다 낮으면 그 섹터 안에서 싼 편이에요."],
+    buyback: ["바이백 · 소각", "프로토콜이 번 돈으로 시장에서 자기 토큰을 사들이는 게 바이백, 사들인 토큰을 없애는 게 소각이에요. 둘 다 남은 토큰 한 개의 몫을 키워요(주식의 자사주 매입·소각)."],
+    arch: ["돈이 돌아오는 방식", "환원형 = 번 돈 대부분을 돌려줌 · 체인 소각형 = 체인 수수료를 태움 · 금고 적립형 = 프로토콜 금고(DAO)에 쌓아 둠 · 통과형 = 수수료가 대부분 유동성 공급자·검증인 몫 · 혼합형 = 일부만 돌려줌."],
+    ann: ["1년치로 환산", "최근 30일 실적을 1년(×365÷30)으로 늘린 값이에요. 단, 1년 실제 실적의 절반보다 작으면 1년 실적을 써서 한 달 반짝한 것에 속지 않게 했어요."],
+    fswitch: ["수수료 스위치", "지금은 금고에 쌓는 매출을 토큰 보유자에게 돌리기로 결정하는 것(주로 거버넌스 투표)이에요. 결정되면 보유자 몫이 0에서 갑자기 생겨서 대표적인 급등 재료가 돼요."] };
+  const tq = k => GLOSS[k] ? `<button type="button" class="tq" data-term="${k}" aria-label="${esc(GLOSS[k][0])} 뜻">?</button>` : "";
+  // 받침에 따라 은/는 (한글이 아니면 '은(는)')
+  const eun = w => { const c = String(w || "").trim().slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 ? ((c - 0xac00) % 28 ? "은" : "는") : "은(는)"; };
+  const wonPer = y => y > 0 ? `${y >= 10 ? y.toFixed(0) : y >= 1 ? y.toFixed(1) : y.toFixed(2)}만 원` : "0원"; // 100만 원어치 기준 1년 몫
+  let tqBound = false;
+  function bindTerms() { // '?' 누르면 용어 풀이 말풍선
+    if (tqBound) return; tqBound = true;
+    const pop = document.createElement("div"); pop.className = "tq-pop"; pop.hidden = true; pop.setAttribute("role", "dialog"); document.body.appendChild(pop);
+    const close = () => { pop.hidden = true; };
+    document.addEventListener("click", e => {
+      const b = e.target.closest && e.target.closest(".tq");
+      if (!b) { if (!pop.contains(e.target)) close(); return; }
+      e.preventDefault(); e.stopPropagation();
+      const g = GLOSS[b.dataset.term]; if (!g) return;
+      pop.textContent = ""; const h = document.createElement("b"); h.textContent = g[0]; const p2 = document.createElement("p"); p2.textContent = g[1]; pop.append(h, p2);
+      pop.hidden = false; const r = b.getBoundingClientRect(), w = Math.min(320, window.innerWidth - 24);
+      pop.style.width = w + "px"; pop.style.left = Math.max(12, Math.min(r.left + window.scrollX - w / 2 + r.width / 2, window.scrollX + window.innerWidth - w - 12)) + "px"; pop.style.top = (r.bottom + window.scrollY + 8) + "px";
+    }, true);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+    window.addEventListener("resize", close);
+  }
   const ARCH = { give: ["환원형", "매출의 절반 이상을 바이백·소각·분배로 보유자에게 돌려줘요"], burn: ["체인 소각형", "체인 수수료를 태워서 모든 보유자의 몫을 늘려요"],
     vault: ["금고 적립형", "매출은 있지만 대부분 프로토콜 금고(DAO)에 쌓여요 — 환원 결정이 나오면 보유자 몫이 생길 수 있어요"],
     pass: ["통과형", "수수료 대부분이 유동성 공급자·검증인(체인은 검증인·금고)에게 가고 토큰 보유자 몫이 작아요"], mix: ["혼합형", "매출 일부만 보유자에게 돌아가요"] };
@@ -831,28 +878,28 @@
   }
   function moneyRow(r, i, key, secName) {
     const c = r.c, a = ARCH[r.arch];
-    const main = { H: [krUsd(r.H), "연 보유자 몫"], yield: [pct0(r.yield), "보유자 수익률(연)"], fyield: [pct0(r.fyield), "희석 반영 수익률"], pe: [xMult(r.pe), "시총 ÷ 보유자 몫"],
-      growth: [pp(r.growth), "수수료 성장"], F: [krUsd(r.F), "연 수수료"], payout: [r.R > 0 ? pct0(r.payout * 100) : "-", "매출 중 보유자 몫"] }[key];
+    const main = { H: [krUsd(r.H), "연 보유자 몫"], yield: [pct0(r.yield), `100만 원당 연 ${wonPer(r.yield)}`], fyield: [pct0(r.fyield), `희석 반영 · 100만 원당 ${wonPer(r.fyield)}`], pe: [xMult(r.pe), "시총 ÷ 보유자 몫"],
+      growth: [pp(r.growth), "수수료 성장"], F: [krUsd(r.F), "연 수수료"], R: [krUsd(r.R), "연 매출"], payout: [r.R > 0 ? pct0(r.payout * 100) : "-", "매출 중 보유자 몫"] }[key] || [krUsd(r.H), "연 보유자 몫"];
     const fun = [[r.F, "수수료", "f"], [r.R, "매출", "r"], [r.H, "보유자", "h"]];
     const tmax = Math.max(r.d1y || 0, r.d30 || 0, r.d7 || 0, 1);
     const tr = [[r.d1y, "1년 평균"], [r.d30, "최근 30일"], [r.d7, "최근 7일"]];
     const cav = moneyCaveats(r);
     return `<details class="mrow"${i < 1 ? " open" : ""}><summary>
         <span class="mr-no num">${i + 1}</span>
-        <span class="mr-nm"><b>${esc(c.b.ko || c.sym)}</b> <span class="sym">${esc(c.sym)}</span><span class="mr-tags"><span class="tag">${esc(secName[c.sec] || c.sec)}</span>${c.b.core ? '<span class="tag">기준 코인</span>' : c.lg === 1 ? '<span class="tag mine">1군</span>' : ""}<span class="tag arch-${r.arch}" title="${esc(a[1])}">${a[0]}</span></span></span>
+        <span class="mr-nm"><b>${esc(c.b.ko || c.sym)}</b> <span class="sym">${esc(c.sym)}</span><span class="mr-tags"><span class="tag">${esc(secName[c.sec] || c.sec)}</span>${c.b.core ? '<span class="tag">기준 코인</span>' : c.lg === 1 ? '<span class="tag mine">1군</span>' : ""}<span class="tag arch-${r.arch}" title="${esc(a[1])}">${a[0]}</span>${r.c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}</span></span>
         <span class="mr-v"><b class="num">${main[0]}</b><span class="tiny muted">${main[1]}</span></span></summary>
       <div class="mr-body">
         <div class="mr-grid">
-          <div><span class="tiny muted">연 수수료</span><b class="num">${krUsd(r.F)}</b></div>
-          <div><span class="tiny muted">연 매출</span><b class="num">${krUsd(r.R)}</b></div>
-          <div><span class="tiny muted">연 보유자 몫</span><b class="num">${krUsd(r.H)}</b></div>
-          <div><span class="tiny muted">보유자 수익률</span><b class="num">${r.H > 0 ? pct0(r.yield) : "0%"}</b><span class="tiny muted">시총 대비</span></div>
-          <div><span class="tiny muted">희석 반영</span><b class="num">${r.H > 0 ? pct0(r.fyield) : "-"}</b><span class="tiny muted">${r.fdv ? "완전 희석 시총 대비" : "유통 비율 모름"}</span></div>
-          <div><span class="tiny muted">시총 ÷ 수수료</span><b class="num">${xMult(r.pf)}</b><span class="tiny muted">${r.vsSec ? `섹터 중앙값의 ${r.vsSec.toFixed(1)}배` : "섹터 비교 없음"}</span></div>
+          <div><span class="tiny muted">연 수수료 ${tq("fee")}</span><b class="num">${krUsd(r.F)}</b><span class="tiny muted">손님이 낸 돈</span></div>
+          <div><span class="tiny muted">연 매출 ${tq("rev")}</span><b class="num">${krUsd(r.R)}</b><span class="tiny muted">가게에 남은 돈</span></div>
+          <div><span class="tiny muted">연 보유자 몫 ${tq("hold")}</span><b class="num">${krUsd(r.H)}</b><span class="tiny muted">토큰 주인에게 간 돈</span></div>
+          <div><span class="tiny muted">보유자 수익률 ${tq("yield")}</span><b class="num">${r.H > 0 ? pct0(r.yield) : "0%"}</b><span class="tiny muted">100만 원당 연 ${wonPer(r.yield)}</span></div>
+          <div><span class="tiny muted">희석 반영 ${tq("dil")}</span><b class="num">${r.H > 0 ? pct0(r.fyield) : "-"}</b><span class="tiny muted">${r.fdv ? `유통 ${Math.round((r.circ || 0) * 100)}% · 100만 원당 ${wonPer(r.fyield)}` : "유통 비율 모름"}</span></div>
+          <div><span class="tiny muted">시총 ÷ 수수료 ${tq("pf")}</span><b class="num">${xMult(r.pf)}</b><span class="tiny muted">${r.vsSec ? `섹터 중앙값의 ${r.vsSec.toFixed(1)}배` : "섹터 비교 없음"}</span></div>
         </div>
         <div class="mr-two">
-          <div><div class="mini-h">돈의 흐름 (연)</div>${fun.map(([v, l, k]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-${k}" style="width:${v > 0 ? Math.max(1, v / r.F * 100).toFixed(1) : 0}%"></i></span><span class="num">${krUsd(v)}</span></div>`).join("")}</div>
-          <div><div class="mini-h">하루 평균 수수료 추세</div>${tr.map(([v, l]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-r" style="width:${v ? (v / tmax * 100).toFixed(1) : 0}%"></i></span><span class="num">${v ? krUsd(v) : "-"}</span></div>`).join("")}</div>
+          <div><div class="mini-h">돈의 흐름 (1년치) ${tq("ann")}</div>${fun.map(([v, l, k]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-${k}" style="width:${v > 0 ? Math.max(1, v / r.F * 100).toFixed(1) : 0}%"></i></span><span class="num">${krUsd(v)}</span></div>`).join("")}</div>
+          <div><div class="mini-h">하루 평균 수수료 추세 ${tq("growth")}</div>${tr.map(([v, l]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-r" style="width:${v ? (v / tmax * 100).toFixed(1) : 0}%"></i></span><span class="num">${v ? krUsd(v) : "-"}</span></div>`).join("")}</div>
         </div>
         <ul class="mr-v2">${moneyVerdict(r, secName).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
         ${cav.length ? `<div class="mr-cav">${cav.map(t => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
@@ -879,8 +926,43 @@
   }
   function loadMPref() { try { return Object.assign({ sort: "H", t150: false, up: false, major: false, sec: "" }, JSON.parse(localStorage.getItem("moneyPref") || "{}")); } catch (e) { return { sort: "H", t150: false, up: false, major: false, sec: "" }; } }
   function saveMPref(p) { try { localStorage.setItem("moneyPref", JSON.stringify(p)); } catch (e) {} }
+  // 실제 코인 하나로 수수료 → 매출 → 보유자 몫을 따라가는 예시
+  function moneyExample(MM) {
+    const pool = MM.rows.filter(r => r.H > 0 && r.mcap && !r.c.b.core);
+    const ex = pool.filter(r => r.H <= r.R * 1.05).sort((a, b) => b.H - a.H)[0] || pool.sort((a, b) => b.H - a.H)[0];
+    if (!ex) return "";
+    const nm = esc(ex.c.b.ko || ex.sym), share = ex.H / ex.F * 100;
+    return `<div class="mex panel">
+      <div class="mini-h">예시로 따라가 보기 — ${nm}</div>
+      <div class="mflow">
+        <div><span class="tiny muted">① 손님이 낸 돈</span><b class="num">${krUsd(ex.F)}</b><span class="tiny">수수료(사용자) ${tq("fee")}</span></div>
+        <i aria-hidden="true">→</i>
+        <div><span class="tiny muted">② 가게에 남은 돈</span><b class="num">${krUsd(ex.R)}</b><span class="tiny">매출(프로토콜) ${tq("rev")}</span></div>
+        <i aria-hidden="true">→</i>
+        <div class="hl"><span class="tiny muted">③ 주주에게 간 돈</span><b class="num">${krUsd(ex.H)}</b><span class="tiny">보유자 몫(토큰 주인) ${tq("hold")}</span></div>
+      </div>
+      <p class="small">${nm} 사용자가 1년에 낸 돈 중 <b>${pct0(share)}</b>가 토큰 보유자에게 돌아가요. 시가총액이 ${krUsd(ex.mcap)}라서 <b>보유자 수익률은 연 ${pct0(ex.yield)}</b> — <b>100만 원어치 들고 있으면 1년에 약 ${wonPer(ex.yield)}어치</b>가 바이백·소각·분배로 돌아오는 셈이에요(가격 변동은 빼고).${ex.fdv && ex.circ < 0.8 ? ` 다만 아직 안 풀린 토큰까지 치면 ${pct0(ex.fyield)}(100만 원당 ${wonPer(ex.fyield)})로 줄어요 ${tq("dil")}.` : ""}${ex.H > ex.R ? " (이 코인은 매출 밖 기금까지 바이백에 써서 보유자 몫이 매출보다 커요.)" : ""}</p></div>`;
+  }
+  // 같은 코인도 무엇으로 줄 세우느냐에 따라 순위가 크게 달라진다 — 수수료·매출·보유자 몫 상위 10 나란히
+  function moneyCompare(MM) {
+    const rk = key => { const m = {}; MM.rows.filter(r => r[key] > 0).sort((a, b) => b[key] - a[key]).forEach((r, i) => m[r.sym] = i + 1); return m; };
+    const RF = rk("F"), RR = rk("R"), RH = rk("H");
+    const col = (key, ttl, q, tk, other) => { const list = MM.rows.filter(r => r[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 10);
+      return `<div class="mcmp-c"><div class="mcmp-h"><b>${ttl}</b> ${tq(tk)}<span class="tiny muted">${q}</span></div><ol>${list.map(r => { const o = other(r);
+        return `<li><a href="/rank/${encodeURIComponent(r.sym)}">${esc(r.c.b.ko || r.sym)}</a><span class="num">${krUsd(r[key])}</span>${o ? `<span class="mcmp-o ${o[1]}">${esc(o[0])}</span>` : ""}</li>`; }).join("")}</ol></div>`; };
+    const hTag = r => RH[r.sym] ? [`보유자 ${RH[r.sym]}위`, RH[r.sym] > 15 ? "far" : ""] : ["보유자 몫 0", "far"];
+    const fTag = r => [`수수료 ${RF[r.sym] || "-"}위`, (RF[r.sym] || 99) - (RH[r.sym] || 99) >= 5 ? "up" : ""];
+    // 눈여겨볼 차이 자동 문장
+    const ins = [];
+    MM.rows.filter(r => RF[r.sym] <= 10 && (!RH[r.sym] || RH[r.sym] - RF[r.sym] >= 10)).sort((a, b) => RF[a.sym] - RF[b.sym]).slice(0, 3).forEach(r =>
+      ins.push(`<b>${esc(r.c.b.ko || r.sym)}</b>${eun(r.c.b.ko || r.sym)} 수수료 ${RF[r.sym]}위인데 보유자 몫은 ${RH[r.sym] ? RH[r.sym] + "위" : "없어요"} — ${r.arch === "pass" ? "수수료 대부분이 유동성 공급자·검증인 몫이에요." : r.arch === "vault" ? "번 돈을 금고에 쌓아 둬요(환원 결정이 나면 달라질 수 있어요)." : "쓰이는 만큼 토큰에 돈이 오지는 않아요."}`));
+    MM.rows.filter(r => RH[r.sym] <= 10 && (RF[r.sym] || 99) - RH[r.sym] >= 5).sort((a, b) => RH[a.sym] - RH[b.sym]).slice(0, 2).forEach(r =>
+      ins.push(`<b>${esc(r.c.b.ko || r.sym)}</b>${eun(r.c.b.ko || r.sym)} 수수료 ${RF[r.sym]}위지만 보유자 몫은 ${RH[r.sym]}위 — 버는 돈에 비해 아낌없이 돌려줘요${r.R > 0 ? (r.payout >= 1 ? "(매출보다 많이 — 기금까지 바이백에 써요)" : `(매출의 ${pct0(r.payout * 100)})`) : ""}.`));
+    return `<div class="mcmp">${col("F", "많이 쓰이는 곳", "수수료 순", "fee", hTag)}${col("R", "많이 버는 곳", "매출 순", "rev", hTag)}${col("H", "많이 돌려주는 곳", "보유자 몫 순", "hold", fTag)}</div>
+      ${ins.length ? `<div class="mins"><div class="mini-h">눈여겨볼 차이</div><ul>${ins.map(t => `<li>${t}</li>`).join("")}</ul></div>` : ""}`;
+  }
   async function moneyPage() {
-    nav("money"); setTitle("돈 버는 코인");
+    nav("money"); setTitle("돈 버는 코인"); bindTerms();
     const d = await get("/api/sectors");
     const M = sectorModel(d);
     const MM = moneyModel(M), secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
@@ -889,49 +971,60 @@
     const earners = MM.rows.filter(r => r.H > 0).length;
     const vault = MM.rows.filter(r => (r.arch === "vault" || (r.arch === "mix" && r.payout < 0.35)) && r.R > 0 && r.mcap && !r.c.b.core).filter(r => r.ryield >= 1).sort((a, b) => b.ryield - a.ryield).slice(0, 8);
     const archCount = Object.keys(ARCH).map(k => [k, MM.rows.filter(r => r.arch === k)]);
-    const pref = loadMPref();
+    const pref = loadMPref(); if (!MONEY_SORTS.some(x => x[0] === pref.sort)) pref.sort = "H";
     main().innerHTML = `<header class="head"><div class="eyebrow">돈 버는 코인</div><h1>웹3에서 실제로 돈을 버는 곳</h1>
       <p class="lead">스마트폰 시대의 돈은 결국 사람들이 매일 쓰는 앱이 벌었어요. 웹3도 같다고 보면, 봐야 할 건 세 가지예요 — <b>사람들이 실제로 돈을 내는가</b>(수수료), <b>그 돈을 프로토콜이 가져가는가</b>(매출), <b>그게 토큰을 가진 사람에게 돌아오는가</b>(보유자 몫).</p>
-      <div class="stamp">DefiLlama 수수료·매출·보유자 수익${M.feesAt ? ` · ${kst(M.feesAt)}` : ""} · 시세 코인마켓캡 · 모든 금액은 1년치로 환산</div></header>
+      <div class="stamp">DefiLlama 수수료·매출·보유자 수익${M.feesAt ? ` · ${kst(M.feesAt)}` : ""} · 시세 코인마켓캡 · 모든 금액은 1년치로 환산 ${tq("ann")}</div></header>
+      <section class="mguide panel"><div class="mini-h">처음이라면 이렇게 읽어요</div>
+        <ol><li><b>가게로 생각해요.</b> 코인(프로토콜)은 가게, 사용자는 손님, 토큰 보유자는 주주예요. 손님이 많이 와도(수수료) 주주에게 배당이 없으면(보유자 몫 0) 주식(토큰)값이 오를 이유가 약해요.</li>
+          <li><b><a href="#m-cmp">순위 비교</a></b>에서 "많이 쓰이는 곳"과 "많이 돌려주는 곳"이 얼마나 다른지 봐요.</li>
+          <li><b><a href="#m-map-s">지도</a></b>의 왼쪽 위 칸(싸고 성장하는 곳)에 있는 코인을 찾아요.</li>
+          <li><b><a href="#m-list-s">코인별 보기</a></b>에서 줄을 펼쳐 '주의할 점'(언락·유통 비율)까지 확인해요. 모르는 말은 <span class="tq-demo">?</span>를 누르면 풀이가 나와요.</li></ol></section>
+      ${moneyExample(MM)}
       <section class="mstats">
-        <div class="panel"><span class="tiny muted">추적 코인의 연 수수료</span><b class="num">${krUsd(T.F)}</b><span class="tiny muted">코인 ${MM.rows.length}개</span></div>
-        <div class="panel"><span class="tiny muted">그중 보유자에게 가는 몫</span><b class="num">${pct0(T.H / T.F * 100)}</b><span class="tiny muted">연 ${krUsd(T.H)} · ${earners}개 코인</span></div>
+        <div class="panel"><span class="tiny muted">추적 코인의 연 수수료 ${tq("fee")}</span><b class="num">${krUsd(T.F)}</b><span class="tiny muted">코인 ${MM.rows.length}개</span></div>
+        <div class="panel"><span class="tiny muted">그중 보유자에게 가는 몫 ${tq("hold")}</span><b class="num">${pct0(T.H / T.F * 100)}</b><span class="tiny muted">연 ${krUsd(T.H)} · ${earners}개 코인</span></div>
         <div class="panel"><span class="tiny muted">보유자 몫 상위 3개 비중</span><b class="num">${pct0(top3H / Math.max(T.H, 1) * 100)}</b><span class="tiny muted">${top3.map(r => esc(r.c.b.ko || r.sym)).join(" · ")}</span></div>
-        <div class="panel"><span class="tiny muted">전체 평균 보유자 수익률</span><b class="num">${pct0(T.H / Math.max(T.mcap, 1) * 100)}</b><span class="tiny muted">보유자 몫 합 ÷ 시총 합</span></div>
+        <div class="panel"><span class="tiny muted">전체 평균 보유자 수익률 ${tq("yield")}</span><b class="num">${pct0(T.H / Math.max(T.mcap, 1) * 100)}</b><span class="tiny muted">100만 원당 연 ${wonPer(T.H / Math.max(T.mcap, 1) * 100)}</span></div>
       </section>
+      <section class="section" id="m-cmp"><div class="sec-head"><h2>순위 비교 — 많이 쓰이는 곳 ≠ 많이 돌려주는 곳</h2><span class="sub">같은 코인도 기준에 따라 순위가 크게 달라요</span></div>
+        <div class="panel">${moneyCompare(MM)}
+        <p class="legend">왼쪽 두 줄의 오른쪽 작은 글씨는 그 코인의 '보유자 몫' 순위, 오른쪽 줄은 '수수료' 순위예요. 순위 차이가 크면 "쓰이는 것"과 "토큰에 돈이 오는 것"이 따로 놀고 있다는 뜻이에요.</p></div></section>
       <section class="section"><div class="sec-head"><h2>돈이 어디서 나오나 — 섹터별</h2><span class="sub">막대에 손가락·마우스를 올리면 자세히</span></div>
         <div class="panel mwrap" id="m-sec">${moneySecChart(MM, secName)}
-        <p class="legend">같은 막대 안에서 연한 부분이 사용자가 낸 수수료 전체, 중간이 프로토콜 매출, 진한 부분이 토큰 보유자에게 간 몫이에요. 수수료가 커도 진한 부분이 작으면 그 섹터는 "쓰이긴 하는데 토큰엔 돈이 잘 안 오는" 곳이에요.</p></div></section>
-      <section class="section"><div class="sec-head"><h2>돈이 토큰에 돌아오는 방식</h2><span class="sub">같은 수수료라도 구조에 따라 토큰 가치가 달라요</span></div>
+        <p class="legend">한 막대 안에서 연한 부분이 사용자가 낸 수수료 전체 ${tq("fee")}, 중간이 프로토콜 매출 ${tq("rev")}, 진한 부분이 토큰 보유자에게 간 몫 ${tq("hold")}이에요. 수수료가 커도 진한 부분이 작으면 그 섹터는 "쓰이긴 하는데 토큰엔 돈이 잘 안 오는" 곳이에요.</p></div></section>
+      <section class="section"><div class="sec-head"><h2>돈이 토큰에 돌아오는 방식 ${tq("arch")}</h2><span class="sub">같은 수수료라도 구조에 따라 토큰 가치가 달라요</span></div>
         <div class="march">${archCount.map(([k, list]) => `<div class="panel"><b>${ARCH[k][0]}</b> <span class="num muted">${list.length}개</span><p class="small muted">${esc(ARCH[k][1])}</p><div class="small">${list.sort((a, b) => b.F - a.F).slice(0, 4).map(r => esc(r.c.b.ko || r.sym)).join(" · ") || "-"}</div></div>`).join("")}</div></section>
-      <section class="section"><div class="sec-head"><h2>싸고 성장하는 코인 지도</h2><span class="sub">보유자 몫이 있는 코인만 · 점에 올리면 자세히</span></div>
+      <section class="section" id="m-map-s"><div class="sec-head"><h2>싸고 성장하는 코인 지도</h2><span class="sub">보유자 몫이 있는 코인만 · 점에 올리면 자세히</span></div>
         <div class="panel mwrap" id="m-map">${moneyScatter(MM) || '<div class="small muted">점을 찍을 코인이 아직 부족해요.</div>'}
-        <p class="legend">왼쪽으로 갈수록 시총에 비해 보유자 몫이 커서(수익 대비) 싸고, 위로 갈수록 최근 30일 수수료가 1년 평균보다 빠르게 늘고 있어요. 왼쪽 위 칸(시총 ÷ 보유자 몫 20배 이하 = 연 수익률 5% 이상, 수수료 성장 중)이 가장 매력적인 자리예요. 진한 점은 1군이에요. 이름은 보유자 몫이 큰 7개만 붙였어요.</p></div></section>
-      ${vault.length ? `<section class="section"><div class="sec-head"><h2>환원 결정이 나오면 달라질 코인</h2><span class="sub">매출은 큰데 보유자 몫이 작은 곳</span></div>
-        <div class="panel"><div class="mvault">${vault.map(r => `<a href="/rank/${encodeURIComponent(r.sym)}"><b>${esc(r.c.b.ko || r.sym)}</b><span class="tiny muted">${esc(secName[r.sec] || r.sec)}</span><span class="num">매출 ${krUsd(r.R)}</span><span class="small">다 돌려주면 연 <b class="num">${pct0(r.ryield)}</b><span class="tiny muted"> (지금 ${pct0(r.yield)})</span></span></a>`).join("")}</div>
+        <p class="legend">가로는 시총 ÷ 1년 보유자 몫 ${tq("pe")} — 왼쪽일수록 버는 돈에 비해 싸요. 세로는 수수료 성장 ${tq("growth")} — 위일수록 요즘 더 많이 쓰여요. 왼쪽 위 칸(20배 이하 = 수익률 연 5% 이상, 그리고 성장 중)이 가장 매력적인 자리예요. 진한 점은 1군, 이름은 보유자 몫이 큰 코인 몇 개만 붙였어요.</p></div></section>
+      ${vault.length ? `<section class="section"><div class="sec-head"><h2>환원 결정이 나오면 달라질 코인 ${tq("fswitch")}</h2><span class="sub">매출은 큰데 보유자 몫이 작은 곳</span></div>
+        <div class="panel"><div class="mvault">${vault.map(r => `<a href="/rank/${encodeURIComponent(r.sym)}"><b>${esc(r.c.b.ko || r.sym)}</b><span class="tiny muted">${esc(secName[r.sec] || r.sec)}</span><span class="num">매출 ${krUsd(r.R)}</span><span class="small">다 돌려주면 연 <b class="num">${pct0(r.ryield)}</b><span class="tiny muted"> (지금 ${pct0(r.yield)})</span></span><span class="tiny muted">100만 원당 ${wonPer(r.yield)} → ${wonPer(r.ryield)}</span></a>`).join("")}</div>
         <p class="legend">유니스왑의 '수수료 스위치'처럼, 프로토콜 매출을 바이백·분배로 돌리기로 결정되면 토큰의 수익률이 바로 바뀌어요. 이런 거버넌스 투표가 대표적인 급등 재료예요. 실제로 결정될지는 각 프로토콜 거버넌스를 확인해야 해요.</p></div></section>` : ""}
-      <section class="section"><div class="sec-head"><h2>코인별로 보기</h2><span class="sub">줄을 누르면 돈의 흐름·추세·주의할 점이 펼쳐져요</span></div>
-        <div class="ctl" id="m-ctl"><label class="sel">정렬 <select id="m-sort">${MONEY_SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
-          <label class="sel">섹터 <select id="m-sec-f"><option value="">전체</option>${MM.secs.map(s => `<option value="${esc(s.id)}">${esc(secName[s.id] || s.id)}</option>`).join("")}</select></label>
+      <section class="section" id="m-list-s"><div class="sec-head"><h2>코인별로 보기</h2><span class="sub">무엇으로 줄 세울지 고르고, 줄을 누르면 자세히 펼쳐져요</span></div>
+        <div class="msorts" role="group" aria-label="줄 세우는 기준">${MONEY_SORTS.map(([k, l]) => `<button type="button" class="fchip" data-ms="${k}">${l}</button>`).join("")}</div>
+        <div class="mq" id="m-q"></div>
+        <div class="ctl" id="m-ctl"><label class="sel">섹터 <select id="m-sec-f"><option value="">전체</option>${MM.secs.map(s => `<option value="${esc(s.id)}">${esc(secName[s.id] || s.id)}</option>`).join("")}</select></label>
           <label class="chk"><input type="checkbox" id="m-t150"> 150위까지만</label><label class="chk"><input type="checkbox" id="m-up"> 업비트 원화만</label><label class="chk"><input type="checkbox" id="m-major"> 1군만</label></div>
         <div class="panel" id="m-list"></div></section>
-      <details class="panel more"><summary>숫자 읽는 법 · 한계</summary><div class="more-body small">
-        <div><b>수수료</b>는 사용자가 그 서비스에 낸 돈 전체, <b>매출</b>은 그중 프로토콜이 가져간 몫, <b>보유자 몫</b>은 바이백·소각·분배로 토큰 보유자에게 간 몫이에요(DefiLlama 기준). 최근 30일 값을 1년으로 환산하되, 1년 실적의 절반보다 작으면 1년 실적을 써요.</div>
-        <div><b>보유자 수익률</b> = 연 보유자 몫 ÷ 시가총액. 주식의 배당+자사주 매입 수익률과 비슷해요. <b>희석 반영 수익률</b>은 아직 안 풀린 물량까지 다 풀렸다고 보고(완전 희석 시총) 다시 계산한 값 — 유통 비율이 낮은 코인은 이 숫자가 훨씬 낮아요.</div>
-        <div><b>시총 ÷ 보유자 몫</b>은 주식의 PER처럼 낮을수록 수익 대비 싸요. <b>섹터 중앙값</b>은 같은 섹터에서 수수료 데이터가 있는 코인 3개 이상일 때만 비교해요.</div>
-        <div><b>한계</b> — 거래소 토큰(BNB·OKB 등)의 바이백, 오프체인 매출은 잘 안 잡혀요. 체인 수수료 소각은 스테이킹 발행과 함께 봐야 실제 희석을 알 수 있어요. 수수료에는 인센티브로 되돌려 준 돈이 섞여 있을 수 있어요. 투자 권유가 아니에요.</div></div></details>`;
+      <details class="panel more" id="m-gloss"><summary>용어 풀이 전체 보기 (가게·주식으로 비유)</summary><div class="more-body small mgl">
+        ${Object.values(GLOSS).map(([t, x]) => `<div><b>${esc(t)}</b><p>${esc(x)}</p></div>`).join("")}
+        <div><b>한계</b><p>거래소 토큰(BNB·OKB 등)의 바이백, 오프체인 매출은 잘 안 잡혀요. 체인 수수료 소각은 스테이킹 발행과 함께 봐야 실제 희석을 알 수 있어요. 수수료에는 인센티브로 되돌려 준 돈이 섞여 있을 수 있어요. 바이백은 현금 배당이 아니라 토큰 가치로 돌아와요. 투자 권유가 아니에요.</p></div></div></details>`;
     const draw = () => {
-      $("m-sort").value = pref.sort; $("m-sec-f").value = pref.sec || ""; $("m-t150").checked = !!pref.t150; $("m-up").checked = !!pref.up; $("m-major").checked = !!pref.major;
-      const key = pref.sort, val = { H: r => r.H, yield: r => r.yield, fyield: r => r.fyield, pe: r => r.pe ? -r.pe : -1e15, growth: r => r.growth ?? -1e9, F: r => r.F, payout: r => r.R > 0 ? r.payout : -1 }[key] || (r => r.H);
+      $("m-sec-f").value = pref.sec || ""; $("m-t150").checked = !!pref.t150; $("m-up").checked = !!pref.up; $("m-major").checked = !!pref.major;
+      document.querySelectorAll("[data-ms]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ms === pref.sort)));
+      const S = MONEY_SORTS.find(x => x[0] === pref.sort) || MONEY_SORTS[2];
+      $("m-q").innerHTML = `<b>${esc(S[2])}</b> ${tq(S[4])}<span class="small muted">${esc(S[3])}</span>`;
+      const key = pref.sort, val = { H: r => r.H, R: r => r.R, yield: r => r.yield, fyield: r => r.fyield, pe: r => r.pe ? -r.pe : -1e15, growth: r => r.growth ?? -1e9, F: r => r.F, payout: r => r.R > 0 ? r.payout : -1 }[key] || (r => r.H);
       const list = MM.rows.filter(r => (!pref.sec || r.sec === pref.sec) && (!pref.t150 || (r.c.crank > 0 && r.c.crank <= 150)) && (!pref.up || r.c.ex.up) && (!pref.major || r.c.lg === 1))
-        .filter(r => key === "pe" || key === "yield" || key === "fyield" || key === "payout" ? r.H > 0 || key === "payout" : true).sort((a, b) => val(b) - val(a));
+        .filter(r => key === "pe" || key === "yield" || key === "fyield" ? r.H > 0 : key === "payout" ? r.R > 0 : key === "R" ? r.R > 0 : true).sort((a, b) => val(b) - val(a));
       $("m-list").innerHTML = list.length ? list.map((r, i) => moneyRow(r, i, key, secName)).join("") : '<div class="empty small">조건에 맞는 코인이 없어요.</div>';
       saveMPref(pref);
     };
-    $("m-sort").addEventListener("change", e => { pref.sort = e.target.value; draw(); });
+    document.querySelectorAll("[data-ms]").forEach(b => b.addEventListener("click", () => { pref.sort = b.dataset.ms; draw(); }));
     $("m-sec-f").addEventListener("change", e => { pref.sec = e.target.value; draw(); });
     [["m-t150", "t150"], ["m-up", "up"], ["m-major", "major"]].forEach(([id, k]) => $(id).addEventListener("change", e => { pref[k] = e.target.checked; draw(); }));
-    draw(); moneyTip($("m-sec")); if ($("m-map")) moneyTip($("m-map"));
+    draw(); moneyTip($("m-sec")); if ($("m-map")) moneyTip($("m-map")); openHash();
   }
 
   async function route() {

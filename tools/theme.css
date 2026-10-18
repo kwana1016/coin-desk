@@ -549,3 +549,40 @@ table.money td.num{text-align:right}
 .mteaser{display:flex;flex-direction:column;gap:8px;color:var(--ink);text-decoration:none}
 .mteaser:hover{border-color:var(--accent)}
 .mt-list{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
+/* 돈 버는 코인 — 처음 보는 사람용 풀이 */
+.tq{display:inline-grid;place-items:center;width:17px;height:17px;padding:0;margin:0 1px;border-radius:50%;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font:700 11px/1 var(--font-body);cursor:pointer;vertical-align:1px;flex:none}
+.tq:hover,.tq:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.tq-demo{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--line-strong);font-size:11px;font-weight:700;color:var(--muted)}
+.tq-pop{position:absolute;z-index:50;background:var(--paper);color:var(--ink);border:1px solid var(--line-strong);border-radius:12px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.18);font-size:13px;line-height:1.6}
+.tq-pop b{display:block;font-size:14px;margin-bottom:2px}
+.tq-pop p{margin:0;color:var(--ink)}
+.mguide ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.6}
+.mex{display:flex;flex-direction:column;gap:10px}
+.mex p{margin:0;line-height:1.7}
+.mflow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}
+.mflow>div{background:var(--sunk);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.mflow>div.hl{background:var(--accent-soft)}
+.mflow b{font-size:18px}
+.mflow>i{font-style:normal;color:var(--muted);font-size:18px}
+@media (max-width:640px){.mflow{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.mflow>i{display:none}.mflow>div{padding:8px}.mflow b{font-size:15px}}
+.mex p,.mins li,.mguide li,.mq,.mgl p{word-break:keep-all;overflow-wrap:anywhere}
+.mcmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.mcmp{grid-template-columns:repeat(3,minmax(250px,1fr));overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}.mcmp-c{scroll-snap-align:start}}
+.mcmp-c{min-width:0}
+.mcmp-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;margin-bottom:6px}
+.mcmp-h .tiny{width:100%}
+.mcmp ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.mcmp li{padding-left:2px}
+.mcmp li a{color:var(--ink);font-weight:600;text-decoration:none;margin-right:6px}
+.mcmp li a:hover{text-decoration:underline}
+.mcmp li .num{color:var(--muted);font-size:12px}
+.mcmp-o{display:inline-block;margin-left:6px;font-size:11px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:6px;padding:0 5px}
+.mcmp-o.far{color:var(--warn);border-color:var(--warn)}
+.mcmp-o.up{color:var(--accent);border-color:var(--accent)}
+.mins{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.mins ul{margin:4px 0 0;padding-left:18px;font-size:14px;line-height:1.7}
+.msorts{display:flex;flex-wrap:wrap;gap:6px}
+.mq{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;background:var(--sunk);border-radius:12px;padding:10px 12px;font-size:15px}
+.mq .small{width:100%}
+.mgl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 16px}
+.mgl p{margin:2px 0 0;line-height:1.6;color:var(--ink)}
