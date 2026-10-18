@@ -133,7 +133,8 @@ export async function watchUnlocks(env, now = Date.now()) {
       cur.m[sym] = [date && date > now ? date : null, circ > 0 && amt > 0 ? Math.round(amt / circ * 1e4) / 100 : null, Math.round(Number(nx.tokenAmountUsd) || 0),
         maxS > 0 ? Math.round((Number(x.tokenLockedAmount) || 0) / maxS * 1000) / 10 : null, d0.vestingType || null, rk, now];
     }
-    if (part.length < 100 || (cur.total && start * 100 >= cur.total)) { end = true; start += 1; break; }
+    // 쪽마다 100개가 꼭 차지는 않는다(2쪽이 98개 등) — 빈 쪽이 오거나 전체 개수를 넘었을 때만 한 바퀴 끝
+    if (!part.length || (cur.total && start * 100 >= cur.total)) { end = true; start += 1; break; }
   }
   if (end) { // 한 바퀴 끝: 이번 바퀴에 안 나온 코인은 지운다
     for (const [s, v] of Object.entries(cur.m)) if ((v[6] || 0) < cur.pass) delete cur.m[s];
