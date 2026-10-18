@@ -80,6 +80,20 @@ async function api(url, env) {
     const { results } = await db.prepare("SELECT id, ts, kind, json FROM alerts WHERE ts > ?1 AND kind NOT IN ('rejected', 'cand') ORDER BY ts DESC LIMIT 12").bind(since).all();
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
+  // 임시 진단: 허용된 데이터 API 응답 일부를 kv 'probe'에 저장 (키는 D1에만 있음)
+  if (p === "/api/_probe") {
+    const key = await db.prepare("SELECT v FROM kv WHERE k = 'probe_key'").first();
+    if (!key || url.searchParams.get("k") !== key.v) return json('{"error":"forbidden"}', 403);
+    const u = url.searchParams.get("u") || "";
+    const host = new URL(u).hostname;
+    if (!["api.llama.fi", "yields.llama.fi", "coins.llama.fi", "api.coingecko.com", "api.coinmarketcap.com", "api.upbit.com", "api.bithumb.com"].includes(host)) return json('{"error":"host"}', 400);
+    const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
+    const t = await r.text();
+    const f = url.searchParams.get("f"); const n = Math.min(Number(url.searchParams.get("n") || 8000), 60000);
+    const off = f ? Math.max(0, t.indexOf(f)) : Number(url.searchParams.get("o") || 0);
+    await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify({ u, status: r.status, len: t.length, off, head: t.slice(off, off + n) }), Date.now()).run();
+    return json(JSON.stringify({ status: r.status, len: t.length }));
+  }
   if (p === "/api/sectors") return json(await apiSectors(db));
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
