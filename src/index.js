@@ -7,6 +7,7 @@
 import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
 import { watchMarket, watchBithumb, watchBinance, maybeRanks, maybeSeed, rankNow, apiSectors, apiSectorCoin } from "./sectors.js";
 import { snapPerf, apiPerf, watchFees, watchUnlocks } from "./extra.js";
+import { watchMarketX } from "./upbitx.js";
 
 // 두 번째 cron (섹터 순위판용): 5분마다 3·8·13…분에 한 가지씩 — 첫 번째 cron과 CPU 한도를 나눠 쓰지 않는다
 const CRON2 = "3-58/5 * * * *";
@@ -110,7 +111,7 @@ async function watchUpbit(env) {
   for (const x of krw) {
     const ev = x.market_event || {};
     const warn = ev.warning === true || x.market_warning === "CAUTION";
-    cur[x.market] = { n: x.korean_name || x.market, w: warn ? 1 : 0 };
+    cur[x.market] = { n: x.korean_name || x.market, e: x.english_name || "", w: warn ? 1 : 0 };
   }
   const prevRow = await env.DB.prepare("SELECT v FROM kv WHERE k = 'upbit_krw'").first();
   const now = Date.now();
@@ -166,10 +167,10 @@ export default {
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
     if (event.cron === CRON2) {
-      // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8분: 초기 데이터(버전이 바뀌었을 때만) 아니면 언락 일정(12시간마다)
+      // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때), 없으면 300위 밖 업비트 코인 시세(kv cpx) · 8분: 초기 데이터(버전이 바뀌었을 때만) 아니면 언락 일정(12시간마다)
       // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 28·58분: 실제 수익(DefiLlama, 6시간 지난 코인 10개씩) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12;
-      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : (t === 4) ? watchBinance(env)
+      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env).then(done => done || watchMarketX(env)) : (t === 4) ? watchBinance(env)
         : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env).then(done => done || watchUnlocks(env));
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;

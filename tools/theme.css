@@ -366,6 +366,17 @@ footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-dir
 .sv-bar{display:flex;gap:2px;height:8px}
 .sv-bar i{background:var(--neutral-soft);border-radius:2px;position:relative;overflow:hidden}
 .sv-bar em{position:absolute;left:0;top:0;bottom:0;background:var(--accent);opacity:.85}
+/* 생존 점수 6항목: 막대마다 위에 이름·점수 (좁은 화면은 3칸×2줄) */
+.sv{align-items:end}
+.sv-parts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px 8px;min-width:0}
+.sv-p{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sv-k{display:flex;justify-content:space-between;align-items:baseline;gap:4px;font-size:11px;line-height:1.2;color:var(--muted);min-width:0}
+.sv-kn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sv-kv{color:var(--ink);font-weight:600;white-space:nowrap}
+.sv-kv small{color:var(--muted);font-weight:400;font-size:10px}
+.sv-p i{display:block;height:7px;background:var(--neutral-soft);border-radius:3px;position:relative;overflow:hidden}
+.sv-p em{position:absolute;left:0;top:0;bottom:0;background:var(--accent);opacity:.85;border-radius:3px}
+@media (max-width:640px){.sv{grid-template-columns:auto auto minmax(0,1fr);align-items:center}.sv-parts{grid-column:1/-1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:2px}}
 .sv-n{font-weight:700;font-size:14px}
 .sv-l{font-size:12px;color:var(--muted)}
 .rk-h{display:grid;grid-template-columns:26px minmax(0,1fr) 64px 150px;gap:8px;font-size:11px;color:var(--muted);font-weight:600;padding:0 2px}
@@ -461,3 +472,8 @@ table.money td.mn a{display:block;font-weight:600}
 table.money td.mn .tiny{display:block;line-height:1.3;word-break:keep-all}
 table.money td.num{text-align:right}
 @media (max-width:520px){.fz-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.qd{margin-left:0}}
+/* 150위까지만 체크 · 150위 밖 순위 표시 */
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 12px;cursor:pointer;user-select:none}
+.chk input{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
+.chk:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.tag.xr{background:transparent;color:var(--muted);border-style:dashed}

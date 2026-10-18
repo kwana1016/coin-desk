@@ -7,7 +7,7 @@
 //   1군(3대장): 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속이면 교체 (뉴스 점수 +10 이상이면 바로 승격)
 //   2군(마이너리그): 매 갱신 점수순
 
-export const RULES = { cap: 150, liq: 0.001, margin: 3, need: 2, fast: 10, nmax: 20,
+export const RULES = { cap: 150, cap2: 300, liq: 0.001, margin: 3, need: 2, fast: 10, nmax: 20,
   hl: { short: 3, normal: 10, structural: 45 }, w: [0.6, 0.25, 0.15], keep: 12, warn: 8 };
 
 const DAY = 86400e3;
@@ -38,7 +38,7 @@ const put = (db, k, v, now) => db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) 
 // kv 'ath' = {심볼: 역대 최고가$} — 코인게코가 될 때마다 채우고, 코인로어 때는 이것으로 고점 대비를 계산(새 고점이면 올림)
 const CG_MARKETS = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&price_change_percentage=7d,30d";
 const CL_TICKERS = "https://api.coinlore.net/api/tickers/?start=";
-const CMC_LIST = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=200&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=ath,cmc_rank,max_supply,circulating_supply,total_supply,self_reported_circulating_supply,self_reported_market_cap";
+const CMC_LIST = "https://api.coinmarketcap.com/data-api/v3/cryptocurrency/listing?start=1&limit=300&sortBy=market_cap&sortType=desc&convert=USD&cryptoType=all&tagType=all&audited=false&aux=ath,cmc_rank,max_supply,circulating_supply,total_supply,self_reported_circulating_supply,self_reported_market_cap";
 async function getJson(url, limit) {
   const res = await fetch(url, { headers: UA });
   if (!res.ok) { try { res.body && res.body.cancel(); } catch (e) {} return { code: res.status, j: null, bytes: 0 }; }
@@ -47,7 +47,7 @@ async function getJson(url, limit) {
 }
 export async function watchMarket(env, now = Date.now()) {
   const db = env.DB;
-  const kq = await db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'ath', 'weeks')").all();
+  const kq = await db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'ath', 'weeks', 'cpx')").all();
   const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
   const ath = parse(kv.ath, {}); const prev = parse(kv.cp, {}).m || {};
   const prevBySym = {}; for (const a of Object.values(prev)) if (a && a[1] && !(a[1] in prevBySym)) prevBySym[a[1]] = a;
@@ -123,6 +123,13 @@ export async function watchMarket(env, now = Date.now()) {
   status.w4 = w4;
   status.n = Object.keys(m).length; status.code = status.src === "cmc" ? status.cmc : status.src === "cg" ? status.cg : (status.cl0 || status.cg);
   if (status.n < 100) { await put(db, "cp_status", status, now).run(); return status; }
+  // 300위 밖 업비트 원화 코인 시세(kv cpx, 30분마다 따로 받음)를 합친다 — 3시간 넘게 묵었으면 쓰지 않는다
+  const cpx = parse(kv.cpx, null); let nx = 0;
+  if (cpx && cpx.m && now - Number(cpx.t || 0) < 3 * HOUR) {
+    const have = new Set(Object.values(m).map(a => String(a[1] || "").toUpperCase()));
+    for (const [k, a] of Object.entries(cpx.m)) if (!m[k] && !have.has(String(a[1] || "").toUpperCase())) { m[k] = a; nx++; }
+  }
+  status.nx = nx;
   const writes = [put(db, "cp", { t: now, src: status.src, m }, now), put(db, "cp_status", status, now)];
   if (athChanged) writes.push(put(db, "ath", ath, now));
   await db.batch(writes);
@@ -298,7 +305,7 @@ export function dataScores(list) {
 
 // ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
 // coins: [{sym, sector, cp, q:[5], core, off}], news: [{sym, ts, impact, kind, t, u, pub}], cp: {id: arr}, sectors: {id: score}, prev: 직전 스냅숏
-export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlocks, supply }) {
+export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlocks, supply, upbit, bnf }) {
   const R = RULES;
   const nsum = {}, ntop = {};
   for (const x of news || []) {
@@ -329,14 +336,20 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
     const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv, qd: NO_FEE_SECTORS.has(b.sector) ? null : qd };
     rows[b.sym] = row;
     if (b.core) row.why = "core";
-    if (!m) { row.why = row.why || "nodata"; continue; }
-    const rank = Number(m[0]), mcap = Number(m[3]) || 0, vol = Number(m[4]) || 0;
+    // 업비트 원화마켓 코인은 모두, 바이낸스 상장 코인은 시총 300위까지 마이너리그(2군) 후보 — 1군은 지금처럼 시총 150위 안·거래량 기준
+    const onUp = !!upbit && (upbit.has(String(b.kr || b.sym).toUpperCase()) || upbit.has(String(b.sym).toUpperCase()));
+    const onBn = !!bnf && (bnf.has(b.sym) || (!!b.kr && bnf.has(b.kr)));
+    if (!m && !(onUp && !b.core)) { row.why = row.why || "nodata"; continue; }
+    const rank = m ? Number(m[0]) : 0, mcap = m ? Number(m[3]) || 0 : 0, vol = m ? Number(m[4]) || 0 : 0;
     const S = mcap > 0 ? clamp((Math.log10(mcap) - 8) / 3 * 100, 0, 100) : 0;
-    row.S = r1(S); row.rank = rank;
+    row.S = r1(S); row.rank = rank || null;
     row.score = r1(R.w[0] * Q + R.w[1] * S + R.w[2] * (Number(sectors[b.sector]) || 50) + N);
     if (b.core) continue;
-    if (!(rank > 0 && rank <= R.cap)) { row.why = "rank"; continue; }
-    if (!(mcap > 0 && vol / mcap >= R.liq)) { row.why = "liq"; continue; }
+    const inTop = rank > 0 && rank <= R.cap, liqOk = mcap > 0 && vol / mcap >= R.liq;
+    if (!(inTop && liqOk)) {
+      if (!(onUp || (onBn && rank > 0 && rank <= R.cap2))) { row.why = inTop ? "liq" : "rank"; continue; }
+      row.ext = 1; // 마이너리그만 (1군 후보 아님)
+    }
     row.el = true;
     (bySec[b.sector] = bySec[b.sector] || []).push(row);
   }
@@ -353,15 +366,16 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
   for (const [sym, d] of Object.entries(DS)) rows[sym].ds = d;
   const via = {};
   for (const [sec, arr] of Object.entries(bySec)) {
-    arr.sort((a, b) => b.score - a.score || a.rank - b.rank);
-    const maj = new Set(prev ? arr.filter(x => pc[x.sym] && pc[x.sym][0] === sec && pc[x.sym][2] === 1).map(x => x.sym) : arr.slice(0, 3).map(x => x.sym));
-    for (const x of arr) { if (maj.size >= 3) break; if (!maj.has(x.sym)) { maj.add(x.sym); if (prev) via[x.sym] = "fill"; } }
-    while (maj.size > 3) { const lo = arr.filter(x => maj.has(x.sym)).pop(); maj.delete(lo.sym); }
+    arr.sort((a, b) => b.score - a.score || (a.rank || 1e9) - (b.rank || 1e9));
+    const arrM = arr.filter(x => !x.ext); // 1군이 될 수 있는 코인 (시총 150위 안·거래량 기준)
+    const maj = new Set(prev ? arrM.filter(x => pc[x.sym] && pc[x.sym][0] === sec && pc[x.sym][2] === 1).map(x => x.sym) : arrM.slice(0, 3).map(x => x.sym));
+    for (const x of arrM) { if (maj.size >= 3) break; if (!maj.has(x.sym)) { maj.add(x.sym); if (prev) via[x.sym] = "fill"; } }
+    while (maj.size > 3) { const lo = arrM.filter(x => maj.has(x.sym)).pop(); maj.delete(lo.sym); }
     // 도전: 2군 1등 vs 1군 꼴찌
     for (let g = 0; g < 3; g++) {
       const majors = arr.filter(x => maj.has(x.sym)); if (majors.length < 3) break;
       const weak = majors.reduce((a, b) => (b.score < a.score ? b : a));
-      const cand = arr.find(x => !maj.has(x.sym)); if (!cand) break;
+      const cand = arrM.find(x => !maj.has(x.sym)); if (!cand) break;
       if (cand.score - weak.score < R.margin) break;
       const streak = pchal(cand.sym) + 1;
       if (streak >= R.need || cand.N >= R.fast) { maj.delete(weak.sym); maj.add(cand.sym); via[cand.sym] = streak >= R.need ? "chal" : "fast"; continue; }
@@ -370,28 +384,30 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
     const majors = arr.filter(x => maj.has(x.sym)), minors = arr.filter(x => !maj.has(x.sym));
     const weak = majors.length >= 3 ? majors.reduce((a, b) => (b.score < a.score ? b : a)) : null;
     majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
-    minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
+    minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (!x.ext && weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
   }
   // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null), 품질에 섞은 수익 데이터[실사용, 가치 포착](없으면 null),
-  //   데이터 점수(0~100, 없으면 null), 데이터 항목[성장, 실질 보유자 수익, 밸류, 점유율 추세, 공급 건전성], 실제 공급 증가율(연 %, 기록이 쌓이기 전엔 null)]
+  //   데이터 점수(0~100, 없으면 null), 데이터 항목[성장, 실질 보유자 수익, 밸류, 점유율 추세, 공급 건전성], 실제 공급 증가율(연 %, 기록이 쌓이기 전엔 null),
+  //   마이너리그 전용(1=업비트 원화·바이낸스 300위 안이라 들어온 코인, 1군 후보 아님 / 아니면 null)]
   const c = {}, trail = {}, moves = [], top = {};
   for (const x of Object.values(rows)) {
-    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null, x.ds ? x.ds[0] : null, x.ds ? x.ds[1] : null, x.ds ? x.ds[2] : null];
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null, x.ds ? x.ds[0] : null, x.ds ? x.ds[1] : null, x.ds ? x.ds[2] : null, x.ext || null];
     const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
     if (t.some(Boolean)) trail[x.sym] = t;
     const p = pc[x.sym];
     const pl = p ? p[2] : 0, pp = p ? p[1] : 0;
     if (pl === 2 && x.lg === 1) moves.push(["promo", x.sym, x.sec, pp, x.pos, via[x.sym] || ""]);
     else if (pl === 1 && x.lg === 2) moves.push(["demo", x.sym, x.sec, pp, x.pos, ""]);
-    else if (prev && !pl && x.lg) moves.push(["in", x.sym, x.sec, 0, x.pos, x.lg === 1 ? (via[x.sym] || "") : ""]);
-    else if (pl && !x.lg) moves.push(["out", x.sym, x.sec, pp, 0, x.why]);
-    else if (pl && x.lg && p[0] === x.sec && pp !== x.pos) moves.push([pp > x.pos ? "up" : "down", x.sym, x.sec, pp, x.pos, ""]);
+    // 마이너리그 전용 코인의 들고 남, 2군 안 자리바꿈은 너무 많아 변동 목록에 넣지 않는다 (1군 변화만)
+    else if (prev && !pl && x.lg && !x.ext) moves.push(["in", x.sym, x.sec, 0, x.pos, x.lg === 1 ? (via[x.sym] || "") : ""]);
+    else if (pl && !x.lg && !(p && p[15])) moves.push(["out", x.sym, x.sec, pp, 0, x.why]);
+    else if (pl === 1 && x.lg === 1 && p[0] === x.sec && pp !== x.pos) moves.push([pp > x.pos ? "up" : "down", x.sym, x.sec, pp, x.pos, ""]);
     if (x.warn && !(p && p[10])) moves.push(["warn", x.sym, x.sec, pp, x.pos, x.warn]);
     else if (!x.warn && p && p[10]) moves.push(["unwarn", x.sym, x.sec, pp, x.pos, p[10]]);
     const nt = (ntop[x.sym] || []).filter(n => Math.abs(n[2]) >= 0.3).sort((a, b) => Math.abs(b[2]) - Math.abs(a[2])).slice(0, 3);
     if (nt.length) top[x.sym] = nt;
   }
-  return { v: 1, ts: now, id: kstId(now), c, trail, moves, news: top, rules: { cap: R.cap, liq: R.liq, margin: R.margin, need: R.need, fast: R.fast, w: R.w, hl: R.hl } };
+  return { v: 1, ts: now, id: kstId(now), c, trail, moves, news: top, rules: { cap: R.cap, cap2: R.cap2, liq: R.liq, margin: R.margin, need: R.need, fast: R.fast, w: R.w, hl: R.hl } };
 }
 
 // 성적표 기록 c[sym][5] = 그날 유통량 → 지금 유통량과 비교해 연 증가율(%) — 소수점 처리·집계 방식이 바뀐 듯한 큰 값(±300% 넘음)은 버린다
@@ -415,16 +431,18 @@ export async function computeRanks(env, now = Date.now()) {
     db.prepare("SELECT sym, ts, impact, kind, json_extract(json,'$.title') AS t, json_extract(json,'$.url') AS u, json_extract(json,'$.pub') AS pub FROM coin_news WHERE ts > ?1").bind(now - 240 * DAY).all(),
     db.prepare("SELECT v, ts FROM kv WHERE k = 'cp'").all(),
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn', 'fees', 'unlocks')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn', 'fees', 'unlocks', 'bnf')").all(),
   ]);
   // 실제 공급 증가율: 28일~400일 전 성적표 기록의 유통량과 지금 유통량(시총÷가격)을 비교해 연환산
   const old = await db.prepare("SELECT ts, json FROM perf WHERE ts <= ?1 AND ts >= ?2 ORDER BY ts ASC LIMIT 1").bind(now - 28 * DAY, now - 400 * DAY).first().catch(() => null);
   const cpRow = (kq.results || [])[0]; if (!cpRow) return null;
   const warn = {};
-  let fees = null, unlocks = null;
+  let fees = null, unlocks = null, upbit = null, bnf = null;
   for (const r of (wq.results || [])) {
     if (r.k === "fees") { fees = parse(r.v, {}).m || null; continue; }
     if (r.k === "unlocks") { unlocks = parse(r.v, {}).m || null; continue; }
+    if (r.k === "bnf") { const a = parse(r.v, []); bnf = new Set(Array.isArray(a) ? a.map(x => String(x).toUpperCase()) : []); continue; }
+    if (r.k === "upbit_krw") upbit = new Set(Object.keys(parse(r.v, {})).map(k => k.replace(/^KRW-/, "").toUpperCase()));
     if (r.k === "upbit_krw") for (const [mkt, v] of Object.entries(parse(r.v, {}))) { if (v && v.w) { const k = mkt.replace(/^KRW-/, ""); warn[k] = warn[k] ? "업비트·" + warn[k] : "업비트"; } }
     else for (const sym of parse(r.v, [])) warn[sym] = warn[sym] ? warn[sym] + "·빗썸" : "빗썸";
   }
@@ -433,7 +451,7 @@ export async function computeRanks(env, now = Date.now()) {
   const coins = (bq.results || []).map(r => ({ sym: r.sym, sector: r.sector, cg: r.cg, kr: r.kr, q: parse(r.q, []), core: !!r.core, off: !!r.off }));
   const prevRow = (pq.results || [])[0];
   const supply = old ? supplyGrowth(parse(old.json, {}), Number(old.ts), cp, coins, now) : null;
-  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn, fees, unlocks, supply });
+  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn, fees, unlocks, supply, upbit, bnf });
   snap.cp_at = Number(cpRow.ts) || null;
   await db.batch([
     db.prepare("INSERT OR REPLACE INTO rankings (id, ts, json) VALUES (?1, ?2, ?3)").bind(snap.id, now, JSON.stringify(snap)),

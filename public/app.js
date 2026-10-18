@@ -376,7 +376,8 @@
   const QN = ["실사용·수익", "토큰 가치 포착", "경쟁우위", "공급 건전성", "생존 이력"];
   const GRADE = s => s >= 80 ? ["A", "핵심"] : s >= 65 ? ["B", "성장"] : s >= 50 ? ["C", "순환"] : ["D", "회피"];
   const SPARTS = [["실수익", 25], ["사용 추세", 20], ["기관 채택", 15], ["규제 내구성", 15], ["대체 불가능성", 15], ["사이클 생존", 10]];
-  const WHY = { rank: "시총 150위 밖", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
+  const SPS = ["실수익", "사용 추세", "기관 채택", "규제 내구성", "대체 불가", "사이클 생존"]; // 막대 위 짧은 이름
+  const WHY = { rank: "시총 150위 밖(업비트 원화·바이낸스 300위 안 아님)", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
   const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락", warn: "유의 종목 지정", unwarn: "유의 해제" };
   const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움" };
   const pp = x => { x = n(x); return x == null ? "-" : (x > 0 ? "+" : "") + x.toFixed(Math.abs(x) >= 100 ? 0 : 1) + "%"; };
@@ -443,7 +444,7 @@
         warn: c[10] || null, mk, fund: fundInfo(fundM[b.sym] || fundM[kr]), unl: unlM[b.sym] || null,
         flags: flagsOf(mk).concat(c[10] ? ["warn"] : []).concat(fundFlag(fundM[b.sym] || fundM[kr])).concat(unlFlag(unlM[b.sym])), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk),
-        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null };
+        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null, ext: c[15] === 1 };
     });
     // 섹터 안 수수료 점유율: 30일 기준과 최근 7일 기준을 비교
     const secSum = {};
@@ -452,11 +453,15 @@
     const exId = new Map(), exSym = new Map();
     (d.kv.ex || []).forEach(([id, why, sym]) => { exId.set(id, why); if (sym) exSym.set(String(sym).toUpperCase(), why); });
     const exRows = [], pending = [];
-    Object.entries(cp).forEach(([id, m]) => { if (!(m[0] > 0 && m[0] <= 150) || baseCp.has(id)) return;
-      const why = exId.get(id) || exSym.get(String(m[1] || "").toUpperCase());
-      if (why) exRows.push({ id, sym: m[1], rank: m[0], why, mcap: m[3] });
-      else pending.push({ id, sym: m[1], rank: m[0], mcap: m[3] }); });
-    exRows.sort((a, b) => a.rank - b.rank); pending.sort((a, b) => a.rank - b.rank);
+    const baseSyms = new Set(); (d.coins || []).forEach(b => { baseSyms.add(String(b.sym).toUpperCase()); if (b.kr) baseSyms.add(String(b.kr).toUpperCase()); });
+    Object.entries(cp).forEach(([id, m]) => { const sy = String(m[1] || "").toUpperCase(); if (baseCp.has(id) || baseSyms.has(sy)) return;
+      const r = m[0] > 0 ? m[0] : 1e9, why = exId.get(id) || exSym.get(sy);
+      if (r <= 150 && why) { exRows.push({ id, sym: m[1], rank: m[0], why, mcap: m[3] }); return; }
+      if (why) return;
+      // 분류 대기: 시총 150위 안 · 업비트 원화 · 바이낸스 300위 안인데 아직 섹터가 없는 코인
+      if (r <= 150 || upbit.has(sy) || (bnf.has(sy) && r <= 300)) pending.push({ id, sym: m[1], rank: m[0], mcap: m[3], up: upbit.has(sy) }); });
+    upbit.forEach(sy => { if (!baseSyms.has(sy) && !exSym.has(sy) && !pending.some(p => String(p.sym).toUpperCase() === sy) && !Object.values(cp).some(m => String(m[1] || "").toUpperCase() === sy)) pending.push({ id: "up:" + sy, sym: sy, rank: null, mcap: null, up: true }); });
+    exRows.sort((a, b) => a.rank - b.rank); pending.sort((a, b) => (a.rank || 1e9) - (b.rank || 1e9));
     return { feesAt: d.kv.fees && d.kv.fees.t, fundAt: d.kv.fund && d.kv.fund.t, unlAt: d.kv.unlocks && d.kv.unlocks.t, rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
   }
   function exBadges(c) { return `${c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}${c.ex.bt ? '<span class="xb bt" title="빗썸 원화마켓">빗</span>' : ""}${c.ex.bf ? '<span class="xb bf" title="바이낸스 USDⓈ-M 선물">바선</span>' : ""}`; }
@@ -480,7 +485,7 @@
     const newsMark = c.N && Math.abs(c.N) >= 1 ? `<span class="nw ${c.N > 0 ? "rise" : "fall"}" title="뉴스 점수">뉴스 ${c.N > 0 ? "+" : ""}${c.N.toFixed(1)}</span>` : "";
     return `<a class="rk-row${c.lg === 1 ? " major" : ""}" href="/rank/${encodeURIComponent(c.sym)}">
       <span class="rk-no num">${opt.no != null ? opt.no : (c.pos || "-")}</span>
-      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}</span>
+      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}${c.ext ? `<span class="tag xr" title="시총 150위 밖이라 1군 후보는 아니고 마이너리그에만 들어가요">${c.crank ? c.crank + "위" : "순위 밖"}</span>` : ""}</span>
         <span class="rk-s">${exBadges(c)}${flagBadges(c)}${chal}${newsMark}</span></span>
       <span class="rk-sc"><span class="num">${c.score != null ? c.score.toFixed(1) : "-"}</span>${opt.noMove ? "" : moveMark(c)}</span>
       <span class="rk-px"><span class="num">${usd(mk[2])}</span><span class="rk-cg">7일 <b class="num ${ppc(mk[6])}">${pp(mk[6])}</b> · 고점 <b class="num ${ppc(mk[9])}">${pp(mk[9])}</b></span></span></a>`;
@@ -488,7 +493,7 @@
   function survival(s) {
     const [g, gl] = GRADE(s.score); const parts = s.parts || [];
     return `<div class="sv" title="${esc(SPARTS.map(([k, mx], i) => `${k} ${parts[i] ?? "-"}/${mx}`).join(" · "))}"><span class="sv-g g-${g}">${g}</span>
-      <span class="sv-bar" role="img" aria-label="생존 점수 ${s.score}/100">${SPARTS.map(([k, mx], i) => `<i style="flex:${mx}"><em style="width:${Math.round((parts[i] || 0) / mx * 100)}%"></em></i>`).join("")}</span>
+      <span class="sv-parts" role="img" aria-label="생존 점수 ${s.score}/100 — ${esc(SPARTS.map(([k, mx], i) => `${k} ${parts[i] ?? "-"}/${mx}`).join(", "))}">${SPARTS.map(([k, mx], i) => `<span class="sv-p"><span class="sv-k"><span class="sv-kn">${SPS[i]}</span><span class="sv-kv num">${parts[i] ?? "-"}<small>/${mx}</small></span></span><i><em style="width:${Math.round((parts[i] || 0) / mx * 100)}%"></em></i></span>`).join("")}</span>
       <span class="sv-n num">${s.score}</span><span class="sv-l">${gl}</span></div>`;
   }
   function sectorCard(s, M, F) {
@@ -500,7 +505,7 @@
       ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>
       <div class="rk-h"><span>1군 · 3대장</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div>
       <div class="rk-list">${majors.length ? majors.map(c => coinRow(c)).join("") : `<div class="empty small">후보가 아직 없어요 (시총 150위 안·거래량 기준)</div>`}</div>
-      ${minors.length ? `<details class="minor"><summary>마이너리그 ${minors.length}개</summary><div class="rk-list">${minors.map(c => coinRow(c)).join("")}</div></details>` : ""}
+      ${minors.length ? `<details class="minor"><summary>마이너리그 ${minors.length}개${minors.some(c => c.ext) ? ` <span class="tiny muted">(150위 밖 ${minors.filter(c => c.ext).length}개 포함)</span>` : ""}</summary><div class="rk-list">${minors.map(c => coinRow(c)).join("")}</div></details>` : ""}
       <details class="more"><summary>섹터 설명 · 급등 재료 · 위험</summary><div class="more-body">
         <div><div class="mini-h">웹2로 치면</div>${esc(s.web2 || "")}</div>
         <div><div class="mini-h">끝까지 남을까</div>${esc(s.why || "")}</div>
@@ -597,7 +602,7 @@
       <div><b>심층 점검</b>은 AI가 코인마다 10가지 체크리스트(누가 돈을 내나 · 토큰에 돌아오나 · 공급 · 사용자 · 경쟁 · 팀·개발 · 리스크 · 밸류 · 일정 · 반대 논리)를 근거 링크와 함께 채우고, 기준표에 맞춰 품질 점수를 고쳐요. 하루 3번 몇 개씩 차례로 돌아요.</div>
       <div><b>뉴스</b>는 하루 3번 AI가 코인별로 -10~+10을 매기고, 시간이 지나면 줄어들어요(단기 3일·보통 10일·구조적 변화 45일마다 절반). 큰 코인은 웬만한 뉴스로는 순위가 잘 안 바뀌어요.</div>
       <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
-      <div><b>후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
+      <div><b>1군 후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. <b>마이너리그</b>에는 여기에 더해 업비트 원화마켓 코인 전부와 바이낸스(선물 포함) 상장 코인 중 시총 300위 안 코인이 들어가요 — 이 코인들은 순위 옆에 시총 순위가 붙고 1군 후보는 아니에요. '150위까지만'을 체크하면 예전처럼 150위 안 코인만 보여요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
       <div><b>과열</b> = 30일 +40% 이상 또는 7일 +25% 이상. <b>과대낙폭</b> = 고점 대비 -90% 이하 또는 30일 -30% 이하. 둘 다 거르거나 그 순서로 볼 수 있어요.</div>
       <div><b>섹터 생존 점수</b>(0~100) = ${SPARTS.map(([k, mx]) => `${k} ${mx}`).join(" · ")}. A 80+ 핵심 · B 65+ 성장 · C 50+ 순환 · D 50 미만 회피.</div></div></details>`;
     main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>섹터별 3대장과 마이너리그</h1>
@@ -607,14 +612,15 @@
       ${perfSection(perfCalc(perf, M), M, secName)}
       ${moneySection(M, secName)}
       <section class="section"><div class="lvl" id="sec-view" role="group" aria-label="보기"><button type="button" data-v="sec">섹터별</button><button type="button" data-v="all">전체 순위</button></div>
-        <div class="ctl" id="sec-ctl"><label class="sel">정렬 <select id="sec-sort">${SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
+        <div class="ctl" id="sec-ctl"><label class="chk"><input type="checkbox" id="t150"> 150위까지만</label><label class="sel">정렬 <select id="sec-sort">${SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
         <div class="fchips">${FILTERS.map(([k, l]) => `<button type="button" class="fchip" data-f="${k}" aria-pressed="false">${l}</button>`).join("")}</div></div>
         <div id="sec-body"></div></section>
-      ${M.pending.length ? `<section class="section"><div class="sec-head"><h2>분류 대기 ${M.pending.length}개</h2><span class="sub">시총 150위 안에 새로 들어와 아직 섹터를 정하지 않은 코인</span></div><div class="panel small">${M.pending.map(p => `<span class="pend">${esc(p.sym)} <span class="tiny muted">${p.rank}위</span></span>`).join(" ")}</div></section>` : ""}
+      ${M.pending.length ? `<section class="section"><div class="sec-head"><h2>분류 대기 ${M.pending.length}개</h2><span class="sub">시총 150위 안 · 업비트 원화 · 바이낸스 300위 안에 새로 들어와 아직 섹터를 정하지 않은 코인 (하루 3번 AI가 분류)</span></div><div class="panel small">${M.pending.map(p => `<span class="pend">${esc(p.sym)} <span class="tiny muted">${p.rank ? p.rank + "위" : "순위 없음"}${p.up ? " · 업" : ""}</span></span>`).join(" ")}</div></section>` : ""}
       <details class="panel exl"><summary>시총 150위 안에서 뺀 토큰 ${M.exRows.length}개 — 스테이블코인·래핑·스테이킹 파생·금 토큰 등</summary><div class="exl-body">${M.exRows.map(x => `<div><span class="num tiny muted">${x.rank}위</span> <b>${esc(x.sym)}</b> <span class="muted small">${esc(x.why)}</span></div>`).join("") || '<div class="small muted">시세를 받은 뒤 표시돼요.</div>'}</div></details>
       <p class="legend">점수와 섹터 생존 점수는 공개 데이터를 바탕으로 한 AI 판단 점수이며 확률 예측이나 투자 권유가 아니에요. 시세: 코인마켓캡·코인게코·코인로어 중 받아진 곳(달러) · 거래소 표시: 업비트·빗썸 원화마켓, 바이낸스 USDⓈ-M 선물 목록.</p>`;
     const F = c => {
       const f = pref.f || [];
+      if (pref.t150 && !(c.crank > 0 && c.crank <= 150)) return false;
       if (f.includes("nohot") && c.flags.includes("hot")) return false;
       if (f.includes("nodeep") && c.flags.includes("deep")) return false;
       if (f.includes("up") && !c.ex.up) return false;
@@ -625,7 +631,7 @@
     const draw = () => {
       document.querySelectorAll("#sec-view button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === pref.view)));
       document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.setAttribute("aria-pressed", String((pref.f || []).includes(b.dataset.f))));
-      $("sec-sort").value = pref.sort; $("sec-sort").closest(".sel").hidden = pref.view !== "all";
+      $("sec-sort").value = pref.sort; $("sec-sort").closest(".sel").hidden = pref.view !== "all"; $("t150").checked = !!pref.t150;
       const box = $("sec-body");
       if (pref.view === "sec") {
         box.innerHTML = M.groups.map(g => { const ss = Object.values(M.sec).filter(s => s.group === g).sort((a, b) => b.score - a.score || a.ord - b.ord);
@@ -644,6 +650,7 @@
     document.querySelectorAll("#sec-view button").forEach(b => b.addEventListener("click", () => { pref.view = b.dataset.v; draw(); }));
     document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.addEventListener("click", () => { const f = new Set(pref.f || []); f.has(b.dataset.f) ? f.delete(b.dataset.f) : f.add(b.dataset.f); pref.f = [...f]; draw(); }));
     $("sec-sort").addEventListener("change", e => { pref.sort = e.target.value; draw(); });
+    $("t150").addEventListener("change", e => { pref.t150 = e.target.checked; draw(); });
     draw(); openHash();
   }
   const DN = ["성장", "실질 수익률", "밸류", "점유율 추세", "공급 건전성"];
@@ -676,7 +683,7 @@
     setTitle(`${b.ko || sym} 섹터 순위`);
     const R = (d.rank && d.rank.rules) || { w: [0.6, 0.25, 0.15] }, w = R.w || [0.6, 0.25, 0.15];
     const parts = [["코인 품질", (c.Q || 0) * w[0], `${c.Q ?? "-"}/100 × ${w[0]}`], ["규모(시총)", (c.S || 0) * w[1], `${c.S ?? "-"}/100 × ${w[1]}`], ["섹터 생존", (s.score || 0) * w[2], `${s.score ?? "-"}/100 × ${w[2]}`], ["뉴스", c.N || 0, "-20~+20"]];
-    const lgName = c.lg === 1 ? `1군 ${c.pos}위` : c.lg === 2 ? `마이너리그 ${c.pos}위` : (WHY[c.why] || "후보 아님");
+    const lgName = c.lg === 1 ? `1군 ${c.pos}위` : c.lg === 2 ? `마이너리그 ${c.pos}위${c.ext ? " (150위 밖 — 1군 후보 아님)" : ""}` : (WHY[c.why] || "후보 아님");
     const hist = (h.hist || []).map(([ts, x]) => [ts, x]).sort((a, b) => a[0] - b[0]);
     const posPts = hist.filter(([, x]) => x && x[1]).map(([ts, x]) => [ts, -x[1], `${kst(ts)} · ${x[2] === 1 ? "1군" : "2군"} ${x[1]}위 · ${n(x[3]) != null ? n(x[3]).toFixed(1) : "-"}점`]);
     const newsRows = (h.news || []).map(x => { const nn = x.n || {}; const u = safeUrl(nn.url); const hl = { short: 3, normal: 10, structural: 45 }[x.kind] || 10;
