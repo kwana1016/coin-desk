@@ -1,5 +1,5 @@
 // 업비트 원화마켓 코인 중 코인마켓캡 상위 300위 목록(kv cp)에 없는 코인의 시세를 따로 받는다 → kv cpx
-// 13·43분 칸에서 순위 계산이 없을 때만 돈다 (무료 요금제 CPU 10ms — 한 번에 요청 2개 이하).
+// 13·43분 칸에서 순위 계산이 없을 때만 돈다 (무료 요금제 CPU 10ms — 목록 1쪽 + 시세 50개씩 몇 번).
 //  1) 코인마켓캡 id 찾기: 301위부터 500개씩 한 쪽(page)을 받아 업비트 영문명과 이름이 맞는 코인을 찾는다 (kv cmc_ids)
 //     이름이 맞는 코인은 바로 쓰고, 심볼만 맞는 코인은 모든 쪽을 다 본 뒤 시총이 가장 큰 것으로 정한다.
 //  2) 시세: 찾은 id를 한 번에 quote/latest로 받아 cp와 같은 모양으로 kv cpx에 쓴다. watchMarket이 cp를 만들 때 합친다.
@@ -79,9 +79,16 @@ export async function watchMarketX(env, now = Date.now()) {
   const m = {};
   if (use.length) {
     const idList = [...new Set(use.map(s => ids.m[s][0]))].slice(0, 400);
-    const r = await getText(QUOTE(idList.join(","))); st.quote = r.code;
-    const d = r.t ? parse(r.t, null) : null; const arr = (d && Array.isArray(d.data)) ? d.data : [];
-    const byId = new Map(arr.map(x => [Number(x.id), x]));
+    // 한 번에 너무 많이 보내면 빈 응답이 오므로 50개씩 나눠 받는다 (요청 최대 8개)
+    const byId = new Map(); st.quote = []; st.got = 0;
+    for (let i = 0; i < idList.length; i += 50) {
+      const r = await getText(QUOTE(idList.slice(i, i + 50).join(","))); st.quote.push(r.code);
+      const d = r.t ? parse(r.t, null) : null;
+      const arr = d && Array.isArray(d.data) ? d.data : d && d.data && typeof d.data === "object" ? Object.values(d.data) : [];
+      for (const x of arr) if (x && x.id != null) byId.set(Number(x.id), x);
+      if (!arr.length && r.t && !st.head) st.head = r.t.slice(0, 240);
+    }
+    st.got = byId.size;
     for (const s of use) {
       const x = byId.get(Number(ids.m[s][0])); if (!x) continue;
       const q = (x.quotes || []).find(z => z && z.name === "USD") || (x.quotes || [])[0] || {};
