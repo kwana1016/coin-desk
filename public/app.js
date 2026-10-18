@@ -466,13 +466,69 @@
         ${others.length ? `<div><div class="mini-h">지금 후보가 아닌 코인</div>${others.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="tiny muted">${esc(WHY[c.why] || c.why || "")}</span>`).join(" · ")}</div>` : ""}
       </div></details></section>`;
   }
+  // ── 성적표: 매일 9시 이후 저장한 1군·2군 가격을 이어 붙여 '매일 동일 비중으로 다시 맞춘' 수익률을 계산 ──
+  function perfCalc(snaps, M) {
+    if (!snaps || !snaps.length) return null;
+    const nowPx = sym => { const c = M.coins[sym]; return c && c.mk ? n(c.mk[2]) : null; };
+    const pts = [...snaps.map(x => ({ t: x.s.t, day: x.day, c: x.s.c || {}, btc: n(x.s.btc) })), { t: M.cpAt || Date.now(), now: true, c: null, btc: nowPx("BTC") }];
+    const G = [["g1", c => c[0] === 1], ["g2", c => c[0] === 2], ["ga", () => true]];
+    const V = { g1: 1, g2: 1, ga: 1, btc: 1 }, series = [{ t: pts[0].t, ...V }];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const pxB = sym => b.now ? nowPx(sym) : (b.c[sym] ? n(b.c[sym][3]) : null);
+      for (const [g, pick] of G) {
+        const rs = Object.entries(a.c).filter(([, c]) => pick(c)).map(([sym, c]) => { const p1 = pxB(sym), p0 = n(c[3]); return p1 && p0 ? p1 / p0 - 1 : null; }).filter(x => x != null && isFinite(x));
+        if (rs.length) V[g] *= 1 + rs.reduce((s, x) => s + x, 0) / rs.length;
+      }
+      if (a.btc && b.btc) V.btc *= b.btc / a.btc;
+      series.push({ t: b.t, ...V });
+    }
+    // 1군에 새로 들어온 코인: 들어온 날 가격부터 지금까지 (비트코인과 비교)
+    const promos = [];
+    for (let i = 1; i < pts.length - 1; i++) for (const [sym, c] of Object.entries(pts[i].c)) {
+      if (c[0] !== 1 || (pts[i - 1].c[sym] && pts[i - 1].c[sym][0] === 1)) continue;
+      const p1 = nowPx(sym), p0 = n(c[3]); const b0 = pts[i].btc, b1 = nowPx("BTC");
+      if (p1 && p0) promos.push({ sym, sec: c[1], t: pts[i].t, r: (p1 / p0 - 1) * 100, vb: b0 && b1 ? (p1 / p0 - b1 / b0) * 100 : null });
+    }
+    promos.sort((x, y) => y.t - x.t);
+    return { series, start: pts[0].t, days: snaps.length, promos };
+  }
+  function multiLine(series, keys, label) {
+    if (series.length < 2) return "";
+    const W = 420, H = 210, L = 52, R = 10, T = 14, B = 26;
+    const xs = series.map(p => p.t); const all = series.flatMap(p => keys.map(([k]) => (p[k] - 1) * 100));
+    let lo = Math.min(0, ...all), hi = Math.max(0, ...all); const pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const X = v => L + (v - x0) / ((x1 - x0) || 1) * (W - L - R), Y = v => T + (hi - v) / ((hi - lo) || 1) * (H - T - B);
+    let grid = ""; for (let i = 0; i < 4; i++) { const v = lo + (hi - lo) * i / 3, y = Y(v); grid += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="axis" x="${L - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end">${(v > 0 ? "+" : "") + v.toFixed(Math.abs(hi - lo) < 6 ? 1 : 0)}%</text>`; }
+    grid += `<line class="zero" x1="${L}" x2="${W - R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+    const xl = `<text class="axis" x="${L}" y="${H - 6}" text-anchor="start">${kstDate(x0)}</text><text class="axis" x="${W - R}" y="${H - 6}" text-anchor="end">${kstDate(x1)}</text>`;
+    const lines = keys.map(([k, , cls]) => `<path class="pl ${cls}" d="${series.map((p, i) => `${i ? "L" : "M"}${X(p.t).toFixed(1)},${Y((p[k] - 1) * 100).toFixed(1)}`).join(" ")}"/>`).join("");
+    return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${xl}${lines}</svg></div>`;
+  }
+  function perfSection(P, M, secName) {
+    const head = `<div class="sec-head"><h2>성적표</h2><span class="sub">${P ? `${kstDate(P.start)}부터 · 매일 9시 기록` : "매일 9시 이후 첫 기록부터 쌓여요"}</span></div>`;
+    if (!P) return `<section class="section">${head}<div class="empty small">아직 기록이 없어요. 오늘 9시 이후 첫 저장부터 1군·2군·전체 후보의 수익률을 비트코인과 비교해 보여드려요.</div></section>`;
+    const last = P.series[P.series.length - 1];
+    const K = [["g1", "1군(3대장) 동일 비중", "pl-g1"], ["g2", "2군(마이너리그)", "pl-g2"], ["ga", "전체 후보", "pl-ga"], ["btc", "비트코인", "pl-btc"]];
+    const r = k => (last[k] - 1) * 100;
+    const edge = r("g1") - r("ga"), vsb = r("g1") - r("btc");
+    const verdict = P.series.length < 3 ? "기록이 쌓이는 중이에요. 2~4주는 지나야 의미 있는 차이가 보여요."
+      : `1군이 전체 후보보다 ${edge >= 0 ? "+" : ""}${edge.toFixed(1)}%p, 비트코인보다 ${vsb >= 0 ? "+" : ""}${vsb.toFixed(1)}%p ${edge >= 0 ? "앞서요" : "뒤처져요"}.`;
+    return `<section class="section">${head}<div class="panel pf-card">
+      <div class="pf-verdict">${esc(verdict)}</div>
+      <div class="pf-grid">${K.map(([k, l, cls]) => `<div class="pf-t"><span class="pf-k"><i class="sw ${cls}"></i>${l}</span><b class="num ${ppc(r(k))}">${pp(r(k))}</b></div>`).join("")}</div>
+      ${multiLine(P.series, K, "1군·2군·전체 후보·비트코인 누적 수익률")}
+      ${P.promos.length ? `<div class="mini-h">1군에 새로 들어온 뒤 성적</div><div class="pf-pr">${P.promos.slice(0, 10).map(x => `<div><a href="/rank/${encodeURIComponent(x.sym)}">${esc((M.coins[x.sym] && M.coins[x.sym].b.ko) || x.sym)}</a> <span class="tiny muted">${esc(secName[x.sec] || x.sec)} · ${kstDate(x.t)} 승격</span> <b class="num ${ppc(x.r)}">${pp(x.r)}</b>${x.vb != null ? ` <span class="tiny muted">BTC 대비 ${pp(x.vb)}p</span>` : ""}</div>`).join("")}</div>` : ""}
+      <p class="legend">매일 그날의 1군·2군 코인을 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. 1군이 전체 후보를 꾸준히 앞서야 순위가 쓸모 있다는 뜻이에요.</p></div></section>`;
+  }
   const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"]];
   const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"]];
   function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
   function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
   async function sectorsPage() {
     nav("sectors"); setTitle("섹터 순위판");
-    const d = await get("/api/sectors");
+    const [d, perf] = await Promise.all([get("/api/sectors"), get("/api/perf").catch(() => [])]);
     const M = sectorModel(d), R = M.rank;
     const pref = loadPref();
     const secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
@@ -493,6 +549,7 @@
       <div class="stamp">${R.ts ? `순위 계산 ${kst(R.ts)}` : "첫 순위 계산 전이에요"}${M.cpAt ? ` · 시세 ${kst(M.cpAt)}` : ""} · 뉴스 반영 하루 3번</div>${intro}</header>
       ${core.length ? `<section class="section"><div class="sec-head"><h2>기준 코인</h2><span class="sub">순위에서 빼고 시장 기준으로만 봐요</span></div><div class="core-strip">${core.map(c => { const mk = c.mk || []; return `<a class="core-c" href="/rank/${encodeURIComponent(c.sym)}"><b>${esc(c.b.ko || c.sym)}</b><span class="num">${usd(mk[2])}</span><span class="num ${ppc(mk[6])}">7일 ${pp(mk[6])}</span><span class="num tiny muted">고점 ${pp(mk[9])}</span></a>`; }).join("")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>이번 순위 변동</h2><span class="sub">${R.ts ? kst(R.ts) : ""}</span></div><div class="panel mvf-list">${moveHtml}</div></section>
+      ${perfSection(perfCalc(perf, M), M, secName)}
       <section class="section"><div class="lvl" id="sec-view" role="group" aria-label="보기"><button type="button" data-v="sec">섹터별</button><button type="button" data-v="all">전체 순위</button></div>
         <div class="ctl" id="sec-ctl"><label class="sel">정렬 <select id="sec-sort">${SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
         <div class="fchips">${FILTERS.map(([k, l]) => `<button type="button" class="fchip" data-f="${k}" aria-pressed="false">${l}</button>`).join("")}</div></div>

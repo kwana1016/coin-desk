@@ -6,6 +6,7 @@
 
 import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
 import { watchMarket, watchBithumb, watchBinance, maybeRanks, maybeSeed, rankNow, apiSectors, apiSectorCoin } from "./sectors.js";
+import { snapPerf, apiPerf } from "./extra.js";
 
 // 두 번째 cron (섹터 순위판용): 5분마다 3·8·13…분에 한 가지씩 — 첫 번째 cron과 CPU 한도를 나눠 쓰지 않는다
 const CRON2 = "3-58/5 * * * *";
@@ -106,6 +107,7 @@ async function api(url, env, ctx) {
     return json(JSON.stringify({ queued: u }));
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
+  if (p === "/api/perf") return json(await apiPerf(db));
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
@@ -188,11 +190,11 @@ export default {
   async scheduled(event, env, ctx) {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
     if (event.cron === CRON2) {
-      // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8·28·38·58분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
-      // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 53분: 빗썸 목록
+      // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8·28·58분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
+      // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12;
       const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : (t === 4) ? watchBinance(env)
-        : t === 10 ? watchBithumb(env) : maybeSeed(env);
+        : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env) : maybeSeed(env);
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }
