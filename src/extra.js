@@ -10,8 +10,9 @@ const sig = x => (x == null || !isFinite(x)) ? null : Number(Number(x).toPrecisi
 export const kstDay = ms => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, "");
 
 // ── 성적표: 매일 한국 시각 9시 이후 첫 칸에서 그날의 1군·2군과 가격을 한 번 저장한다 ──
-// perf.json = {t, rank_at, btc, eth, c: {심볼: [리그(1·2), 섹터, 섹터 안 순위, 가격$]}}
-// 화면은 스냅숏을 이어 붙여 '매일 동일 비중으로 다시 맞춘' 수익률을 계산한다 (1군 vs 2군 vs 전체 후보 vs 비트코인).
+// perf.json = {t, rank_at, btc, eth, c: {심볼: [리그(1·2), 섹터, 섹터 안 순위, 가격$, 시총 순위, 유통량, 데이터 점수]}}
+// 화면은 스냅숏을 이어 붙여 '매일 동일 비중으로 다시 맞춘' 수익률을 계산한다 (1군 vs 2군 vs 전체 후보 vs 섹터 시총 상위 3 vs 데이터 점수 상위 3 vs 비트코인).
+// 유통량은 28일 뒤부터 순위 계산이 '실제 공급 증가율'로 쓴다.
 export async function snapPerf(env, now = Date.now()) {
   const db = env.DB;
   const day = kstDay(now);
@@ -34,8 +35,9 @@ export async function snapPerf(env, now = Date.now()) {
   for (const [sym, a] of Object.entries(snap.c)) {
     const lg = Number(a[2]);
     if (lg !== 1 && lg !== 2) continue;
-    const px = priceOf(sym, base[sym]);
-    if (px && px > 0) c[sym] = [lg, a[0], Number(a[1]) || 0, px];
+    const k = marketKey(idx, base[sym] || { sym }), mk = k ? m[k] : null;
+    const px = mk ? sig(Number(mk[2])) : null;
+    if (px && px > 0) c[sym] = [lg, a[0], Number(a[1]) || 0, px, Number(a[8]) || Number(mk[0]) || null, Number(mk[3]) > 0 ? sig(Number(mk[3]) / Number(mk[2])) : null, a[12] != null ? a[12] : null];
   }
   const out = { t: now, cp_at: Number(cp.t) || null, rank_at: Number(rk.ts) || null, btc: priceOf("BTC"), eth: priceOf("ETH"), c };
   if (!out.btc || Object.keys(c).length < 20) return false;

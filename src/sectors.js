@@ -251,9 +251,54 @@ export function feeScore(f, mcap) {
   return [d0 == null ? null : r1(d0), d1 == null ? null : r1(d1)];
 }
 
+// ── 데이터 점수 (0~100): 사람 판단 없이 숫자로만 매긴다. 아직 종합 점수에는 넣지 않고 성적표로 효과를 검증한다 ──
+// 5항목 각 0~20 (3항목 이상 있을 때만 점수, 나머지는 항목만 보여줌)
+//   ① 성장: 최근 30일 수수료(연환산) ÷ 지난 1년 수수료 — 같으면 10, 2배면 20, 절반이면 0
+//   ② 실질 보유자 수익: 보유자 몫(보유자 수익, 없으면 매출의 절반)÷시총 − 실제 공급 증가율 — 0%=8, +5%=20, −10%=0
+//   ③ 밸류: 시총 ÷ 연 수수료를 같은 섹터 중앙값과 비교 — 같으면 10, 4배 싸면 20, 4배 비싸면 0 (섹터에 3개 미만이면 10배=20 · 1만 배=0)
+//   ④ 점유율 추세: 섹터 수수료 점유율(최근 30일 − 1년) — %p당 1점, 10에서 시작
+//   ⑤ 공급 건전성: 유통 비율×20 (실제 공급 증가율이 쌓이면 20 − 2×연 증가율%와 반반), 30일 안 언락은 유통량 1%당 −2 (최대 −8)
+// PoW·프라이버시는 수수료가 채굴자에게 가므로 ②③은 빼고 매긴다.
+export function dataScores(list) {
+  const yr = (d30, y1) => Math.max(d30 != null ? d30 * 365 / 30 : 0, y1 != null ? y1 * 0.5 : 0);
+  const pfs = {}, secT = {};
+  for (const x of list) {
+    const f = x.f; const F = f ? yr(f[0], f[2]) : 0;
+    x.pf = F > 0 && x.mcap > 0 ? x.mcap / F : null;
+    if (x.pf && !NO_FEE_SECTORS.has(x.sec)) (pfs[x.sec] = pfs[x.sec] || []).push(Math.log10(x.pf));
+    if (f && f[0] > 0 && f[2] > 0) { const t = secT[x.sec] = secT[x.sec] || [0, 0, 0]; t[0] += f[0]; t[1] += f[2]; t[2]++; }
+  }
+  const med = a => { const v = a.slice().sort((p, q) => p - q), k = v.length >> 1; return v.length % 2 ? v[k] : (v[k - 1] + v[k]) / 2; };
+  const secMed = {}; for (const [k, a] of Object.entries(pfs)) if (a.length >= 3) secMed[k] = med(a);
+  const out = {};
+  for (const x of list) {
+    const f = x.f, p = [null, null, null, null, null], noFee = NO_FEE_SECTORS.has(x.sec);
+    if (f && f[0] > 0 && f[2] > 0) p[0] = clamp(10 + 10 * Math.log2((f[0] * 365 / 30) / f[2]), 0, 20);
+    if (!noFee && f && x.mcap > 0 && (f[3] != null || f[4] != null || f[5] != null || f[6] != null)) {
+      const C = Math.max(yr(f[5], f[6]), yr(f[3], f[4]) * 0.5);
+      const y = C / x.mcap * 100 - (x.sg != null ? x.sg : 0);
+      p[1] = y >= 0 ? clamp(8 + 2.4 * y, 0, 20) : clamp(8 + 0.8 * y, 0, 20);
+    }
+    if (!noFee && x.pf) p[2] = secMed[x.sec] != null ? clamp(10 - 5 * (Math.log10(x.pf) - secMed[x.sec]) / Math.log10(2), 0, 20)
+      : clamp(20 - 20 / 3 * (Math.log10(x.pf) - 1), 0, 20);
+    const t = secT[x.sec];
+    if (t && t[2] >= 2 && f && f[0] > 0 && f[2] > 0) p[3] = clamp(10 + (f[0] / t[0] - f[2] / t[1]) * 100, 0, 20);
+    if (x.circ != null || x.sg != null) {
+      const a = x.circ != null ? 20 * clamp(x.circ, 0, 1) : null, b = x.sg != null ? clamp(20 - 2 * Math.max(0, x.sg), 0, 20) : null;
+      let v = a != null && b != null ? (a + b) / 2 : (a != null ? a : b);
+      if (x.unl30 != null) v -= Math.min(8, Math.max(0, x.unl30) * 2);
+      p[4] = clamp(v, 0, 20);
+    }
+    const have = p.filter(v => v != null);
+    if (!have.length) continue;
+    out[x.sym] = [have.length >= 3 ? r1(have.reduce((a, b) => a + b, 0) / (have.length * 20) * 100) : null, p.map(v => v == null ? null : r1(v)), x.sg != null ? r1(x.sg) : null];
+  }
+  return out;
+}
+
 // ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
 // coins: [{sym, sector, cp, q:[5], core, off}], news: [{sym, ts, impact, kind, t, u, pub}], cp: {id: arr}, sectors: {id: score}, prev: 직전 스냅숏
-export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
+export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlocks, supply }) {
   const R = RULES;
   const nsum = {}, ntop = {};
   for (const x of news || []) {
@@ -295,6 +340,17 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
     row.el = true;
     (bySec[b.sector] = bySec[b.sector] || []).push(row);
   }
+  // 데이터 점수: 시세가 있는 코인 전부 (종합 점수에는 아직 안 넣음)
+  const dl = [];
+  for (const b of coins) {
+    const row = rows[b.sym]; if (!row || b.off) continue;
+    const mk = marketKey(idx, b), m = mk ? cp[mk] : null; if (!m) continue;
+    const u = unlocks ? unlocks[b.sym] : null;
+    dl.push({ sym: b.sym, sec: b.sector, f: fees ? fees[b.sym] : null, mcap: Number(m[3]) || 0, circ: m[11] != null ? Number(m[11]) : null,
+      unl30: u && u[0] && u[0] - now < 30 * DAY && u[1] != null ? Number(u[1]) : null, sg: supply && supply[b.sym] != null ? supply[b.sym] : null });
+  }
+  const DS = dataScores(dl);
+  for (const [sym, d] of Object.entries(DS)) rows[sym].ds = d;
   const via = {};
   for (const [sec, arr] of Object.entries(bySec)) {
     arr.sort((a, b) => b.score - a.score || a.rank - b.rank);
@@ -316,10 +372,11 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
     majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
     minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
   }
-  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null), 데이터 점수[실사용, 가치 포착](없으면 null)]
+  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null), 품질에 섞은 수익 데이터[실사용, 가치 포착](없으면 null),
+  //   데이터 점수(0~100, 없으면 null), 데이터 항목[성장, 실질 보유자 수익, 밸류, 점유율 추세, 공급 건전성], 실제 공급 증가율(연 %, 기록이 쌓이기 전엔 null)]
   const c = {}, trail = {}, moves = [], top = {};
   for (const x of Object.values(rows)) {
-    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null];
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null, x.ds ? x.ds[0] : null, x.ds ? x.ds[1] : null, x.ds ? x.ds[2] : null];
     const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
     if (t.some(Boolean)) trail[x.sym] = t;
     const p = pc[x.sym];
@@ -337,6 +394,19 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
   return { v: 1, ts: now, id: kstId(now), c, trail, moves, news: top, rules: { cap: R.cap, liq: R.liq, margin: R.margin, need: R.need, fast: R.fast, w: R.w, hl: R.hl } };
 }
 
+// 성적표 기록 c[sym][5] = 그날 유통량 → 지금 유통량과 비교해 연 증가율(%) — 소수점 처리·집계 방식이 바뀐 듯한 큰 값(±300% 넘음)은 버린다
+export function supplyGrowth(snap, ts, cp, coins, now) {
+  const idx = marketIndex(cp); const out = {}; const days = (now - ts) / DAY; if (!(days >= 28)) return out;
+  for (const b of coins) {
+    const a = snap && snap.c && snap.c[b.sym]; if (!a || !(Number(a[5]) > 0)) continue;
+    const k = marketKey(idx, b), m = k ? cp[k] : null; if (!m || !(Number(m[2]) > 0)) continue;
+    const s1 = Number(m[3]) / Number(m[2]); if (!(s1 > 0)) continue;
+    const g = (Math.pow(s1 / Number(a[5]), 365 / days) - 1) * 100;
+    if (isFinite(g) && Math.abs(g) <= 300) out[b.sym] = Math.round(g * 10) / 10;
+  }
+  return out;
+}
+
 export async function computeRanks(env, now = Date.now()) {
   const db = env.DB;
   const [sq, bq, nq, kq, pq, wq] = await Promise.all([
@@ -345,13 +415,16 @@ export async function computeRanks(env, now = Date.now()) {
     db.prepare("SELECT sym, ts, impact, kind, json_extract(json,'$.title') AS t, json_extract(json,'$.url') AS u, json_extract(json,'$.pub') AS pub FROM coin_news WHERE ts > ?1").bind(now - 240 * DAY).all(),
     db.prepare("SELECT v, ts FROM kv WHERE k = 'cp'").all(),
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn', 'fees')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn', 'fees', 'unlocks')").all(),
   ]);
+  // 실제 공급 증가율: 28일~400일 전 성적표 기록의 유통량과 지금 유통량(시총÷가격)을 비교해 연환산
+  const old = await db.prepare("SELECT ts, json FROM perf WHERE ts <= ?1 AND ts >= ?2 ORDER BY ts ASC LIMIT 1").bind(now - 28 * DAY, now - 400 * DAY).first().catch(() => null);
   const cpRow = (kq.results || [])[0]; if (!cpRow) return null;
   const warn = {};
-  let fees = null;
+  let fees = null, unlocks = null;
   for (const r of (wq.results || [])) {
     if (r.k === "fees") { fees = parse(r.v, {}).m || null; continue; }
+    if (r.k === "unlocks") { unlocks = parse(r.v, {}).m || null; continue; }
     if (r.k === "upbit_krw") for (const [mkt, v] of Object.entries(parse(r.v, {}))) { if (v && v.w) { const k = mkt.replace(/^KRW-/, ""); warn[k] = warn[k] ? "업비트·" + warn[k] : "업비트"; } }
     else for (const sym of parse(r.v, [])) warn[sym] = warn[sym] ? warn[sym] + "·빗썸" : "빗썸";
   }
@@ -359,7 +432,8 @@ export async function computeRanks(env, now = Date.now()) {
   const sectors = Object.fromEntries((sq.results || []).map(r => [r.id, Number(r.score) || 50]));
   const coins = (bq.results || []).map(r => ({ sym: r.sym, sector: r.sector, cg: r.cg, kr: r.kr, q: parse(r.q, []), core: !!r.core, off: !!r.off }));
   const prevRow = (pq.results || [])[0];
-  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn, fees });
+  const supply = old ? supplyGrowth(parse(old.json, {}), Number(old.ts), cp, coins, now) : null;
+  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn, fees, unlocks, supply });
   snap.cp_at = Number(cpRow.ts) || null;
   await db.batch([
     db.prepare("INSERT OR REPLACE INTO rankings (id, ts, json) VALUES (?1, ?2, ?3)").bind(snap.id, now, JSON.stringify(snap)),

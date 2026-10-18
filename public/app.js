@@ -442,7 +442,8 @@
       coins[b.sym] = { b, sym: b.sym, sec: c[0], pos: c[1], lg: c[2], score: n(c[3]), Q: n(c[4]), S: n(c[5]), N: n(c[6]), chal: c[7], crank: c[8], why: c[9],
         warn: c[10] || null, mk, fund: fundInfo(fundM[b.sym] || fundM[kr]), unl: unlM[b.sym] || null,
         flags: flagsOf(mk).concat(c[10] ? ["warn"] : []).concat(fundFlag(fundM[b.sym] || fundM[kr])).concat(unlFlag(unlM[b.sym])), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
-        trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk) };
+        trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk),
+        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null };
     });
     // 섹터 안 수수료 점유율: 30일 기준과 최근 7일 기준을 비교
     const secSum = {};
@@ -517,14 +518,18 @@
     // 마지막 기록 뒤에 받은 시세가 있으면 '지금' 점을 하나 더 붙인다
     const nowT = M.cpAt || Date.now();
     if (nowT > pts[pts.length - 1].t + 60e3) pts.push({ t: nowT, now: true, c: null, btc: nowPx("BTC") });
-    const G = [["g1", c => c[0] === 1], ["g2", c => c[0] === 2], ["ga", () => true]];
-    const V = { g1: 1, g2: 1, ga: 1, btc: 1 }, series = [{ t: pts[0].t, ...V }];
+    // 기준선: 섹터마다 시총 상위 3개(c[4] 시총 순위) · 데이터 점수 상위 3개(c[6])
+    const top3 = (c, key, asc) => { const by = {}; Object.entries(c).forEach(([sym, x]) => { const v = n(x[key]); if (v == null) return; (by[x[1]] = by[x[1]] || []).push([sym, v]); });
+      const out = new Set(); Object.values(by).forEach(arr => arr.sort((p, q) => asc ? p[1] - q[1] : q[1] - p[1]).slice(0, 3).forEach(([sym]) => out.add(sym))); return out; };
+    const G = [["g1", (c) => c[0] === 1], ["g2", (c) => c[0] === 2], ["ga", () => true], ["cap3", (c, sym, a) => a.cap3.has(sym)], ["d3", (c, sym, a) => a.d3.has(sym)]];
+    pts.forEach(p => { if (p.c) { p.cap3 = top3(p.c, 4, true); p.d3 = top3(p.c, 6, false); } });
+    const V = { g1: 1, g2: 1, ga: 1, cap3: 1, d3: 1, btc: 1 }, series = [{ t: pts[0].t, ...V }], has = { cap3: false, d3: false };
     for (let i = 0; i + 1 < pts.length; i++) {
       const a = pts[i], b = pts[i + 1];
       const pxB = sym => b.now ? nowPx(sym) : (b.c[sym] ? n(b.c[sym][3]) : null);
       for (const [g, pick] of G) {
-        const rs = Object.entries(a.c).filter(([, c]) => pick(c)).map(([sym, c]) => { const p1 = pxB(sym), p0 = n(c[3]); return p1 && p0 ? p1 / p0 - 1 : null; }).filter(x => x != null && isFinite(x));
-        if (rs.length) V[g] *= 1 + rs.reduce((s, x) => s + x, 0) / rs.length;
+        const rs = Object.entries(a.c).filter(([sym, c]) => pick(c, sym, a)).map(([sym, c]) => { const p1 = pxB(sym), p0 = n(c[3]); return p1 && p0 ? p1 / p0 - 1 : null; }).filter(x => x != null && isFinite(x));
+        if (rs.length) { V[g] *= 1 + rs.reduce((s, x) => s + x, 0) / rs.length; if (g in has) has[g] = true; }
       }
       if (a.btc && b.btc) V.btc *= b.btc / a.btc;
       series.push({ t: b.t, ...V });
@@ -537,7 +542,7 @@
       if (p1 && p0) promos.push({ sym, sec: c[1], t: pts[i].t, r: (p1 / p0 - 1) * 100, vb: b0 && b1 ? (p1 / p0 - b1 / b0) * 100 : null });
     }
     promos.sort((x, y) => y.t - x.t);
-    return { series, start: pts[0].t, days: snaps.length, promos };
+    return { series, start: pts[0].t, days: snaps.length, promos, has };
   }
   function multiLine(series, keys, label) {
     if (series.length < 2) return "";
@@ -556,19 +561,20 @@
     const head = `<div class="sec-head"><h2>성적표</h2><span class="sub">${P ? `${kstDate(P.start)}부터 · 매일 9시 기록` : "매일 9시 이후 첫 기록부터 쌓여요"}</span></div>`;
     if (!P) return `<section class="section">${head}<div class="empty small">아직 기록이 없어요. 오늘 9시 이후 첫 저장부터 1군·2군·전체 후보의 수익률을 비트코인과 비교해 보여드려요.</div></section>`;
     const last = P.series[P.series.length - 1];
-    const K = [["g1", "1군(3대장) 동일 비중", "pl-g1"], ["g2", "2군(마이너리그)", "pl-g2"], ["ga", "전체 후보", "pl-ga"], ["btc", "비트코인", "pl-btc"]];
+    const K = [["g1", "1군(3대장) 동일 비중", "pl-g1"], ["cap3", "섹터 시총 상위 3", "pl-cap"], ["d3", "데이터 점수 상위 3", "pl-d3"], ["g2", "2군(마이너리그)", "pl-g2"], ["ga", "전체 후보", "pl-ga"], ["btc", "비트코인", "pl-btc"]]
+      .filter(([k]) => !(k in P.has) || P.has[k]);
     const r = k => (last[k] - 1) * 100;
-    const edge = r("g1") - r("ga"), vsb = r("g1") - r("btc");
+    const sg = x => `${x >= 0 ? "+" : ""}${x.toFixed(1)}%p`;
     const verdict = P.series.length < 3 ? "기록이 쌓이는 중이에요. 2~4주는 지나야 의미 있는 차이가 보여요."
-      : `1군이 전체 후보보다 ${edge >= 0 ? "+" : ""}${edge.toFixed(1)}%p, 비트코인보다 ${vsb >= 0 ? "+" : ""}${vsb.toFixed(1)}%p ${edge >= 0 ? "앞서요" : "뒤처져요"}.`;
+      : `1군이 섹터 시총 상위 3보다 ${sg(r("g1") - r("cap3"))}, 전체 후보보다 ${sg(r("g1") - r("ga"))}, 비트코인보다 ${sg(r("g1") - r("btc"))}${P.has.d3 ? ` · 데이터 점수 상위 3은 시총 상위 3보다 ${sg(r("d3") - r("cap3"))}` : ""}.`;
     return `<section class="section">${head}<div class="panel pf-card">
       <div class="pf-verdict">${esc(verdict)}</div>
       <div class="pf-grid">${K.map(([k, l, cls]) => `<div class="pf-t"><span class="pf-k"><i class="sw ${cls}"></i>${l}</span><b class="num ${ppc(r(k))}">${pp(r(k))}</b></div>`).join("")}</div>
       ${multiLine(P.series, K, "1군·2군·전체 후보·비트코인 누적 수익률")}
       ${P.promos.length ? `<div class="mini-h">1군에 새로 들어온 뒤 성적</div><div class="pf-pr">${P.promos.slice(0, 10).map(x => `<div><a href="/rank/${encodeURIComponent(x.sym)}">${esc((M.coins[x.sym] && M.coins[x.sym].b.ko) || x.sym)}</a> <span class="tiny muted">${esc(secName[x.sec] || x.sec)} · ${kstDate(x.t)} 승격</span> <b class="num ${ppc(x.r)}">${pp(x.r)}</b>${x.vb != null ? ` <span class="tiny muted">BTC 대비 ${pp(x.vb)}p</span>` : ""}</div>`).join("")}</div>` : ""}
-      <p class="legend">매일 그날의 1군·2군 코인을 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. 1군이 전체 후보를 꾸준히 앞서야 순위가 쓸모 있다는 뜻이에요.</p></div></section>`;
+      <p class="legend">매일 그날의 바구니를 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. <b>섹터 시총 상위 3</b>은 점수 없이 각 섹터에서 시총이 가장 큰 3개만 고른 단순 기준선이에요 — 1군이 이걸 꾸준히 앞서야 점수가 값을 하는 거예요. <b>데이터 점수 상위 3</b>은 사람 판단 없이 숫자로만 고른 바구니로, 종합 점수에 넣을지 판단하려고 따로 재고 있어요.</p></div></section>`;
   }
-  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 안 언락 큰 순"]];
+  const SORTS = [["score", "종합 점수"], ["data", "데이터 점수(검증 중)"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 안 언락 큰 순"]];
   const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"], ["nounl", "큰 언락 빼기"]];
   function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
   function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
@@ -587,6 +593,8 @@
     const intro = `<details class="more rules"><summary>순위는 이렇게 정해요</summary><div class="more-body">
       <div><b>점수</b> = 코인 품질×0.6 + 규모×0.25 + 섹터 생존 점수×0.15 + 뉴스 점수. 품질은 ${QN.join("·")} 5항목(각 20점), 규모는 시총 1억 달러=0 ~ 1,000억 달러=100, 뉴스 점수는 -20~+20이에요.</div>
       <div><b>실제 수익</b> — DefiLlama에서 수수료·매출·보유자 수익을 받는 코인은 '실사용·수익'(연 수수료 100만 달러=4 ~ 100억 달러=20)과 '토큰 가치 포착'(보유자 몫÷시총 1%=8 ~ 30%=20)을 AI 판단 점수와 반반 섞어요. PoW·프라이버시 코인은 화폐 성격이라 보여주기만 해요. <b>유의 종목</b>은 지정이 풀릴 때까지 뉴스 점수에서 8점을 빼요.</div>
+      <div><b>데이터 점수</b>(0~100, 검증 중 · 종합 점수에는 아직 안 들어감) = 성장(최근 30일 수수료 ÷ 1년) · 실질 보유자 수익(보유자 몫÷시총 − 실제 공급 증가율) · 밸류(시총÷연 수수료, 섹터 중앙값과 비교) · 점유율 추세(섹터 수수료 점유율 30일 − 1년) · 공급 건전성(유통 비율, 30일 안 언락) 5항목 각 20점이에요. 3항목 이상 있는 코인만 점수가 나와요. 실제 공급 증가율은 매일 기록한 유통량이 28일 넘게 쌓이면 자동으로 들어가요.</div>
+      <div><b>심층 점검</b>은 AI가 코인마다 10가지 체크리스트(누가 돈을 내나 · 토큰에 돌아오나 · 공급 · 사용자 · 경쟁 · 팀·개발 · 리스크 · 밸류 · 일정 · 반대 논리)를 근거 링크와 함께 채우고, 기준표에 맞춰 품질 점수를 고쳐요. 하루 3번 몇 개씩 차례로 돌아요.</div>
       <div><b>뉴스</b>는 하루 3번 AI가 코인별로 -10~+10을 매기고, 시간이 지나면 줄어들어요(단기 3일·보통 10일·구조적 변화 45일마다 절반). 큰 코인은 웬만한 뉴스로는 순위가 잘 안 바뀌어요.</div>
       <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
       <div><b>후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
@@ -626,7 +634,7 @@
         const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0,
           hold: c => c.fz ? c.fz.H : -1, cheap: c => c.fz && c.fz.mult ? -c.fz.mult : -1e15, ftrend: c => c.fz && c.fz.trend != null ? c.fz.trend : -1e9,
-          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => unlSoon(c.unl) ?? -1 }[pref.sort] || (c => c.score);
+          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => unlSoon(c.unl) ?? -1, data: c => c.ds ?? -1 }[pref.sort] || (c => c.score);
         const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
         box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
           <p class="legend">1군은 진한 표시예요. 30일 변동은 시세 소스에 없으면 업비트 주봉 4주 변동으로 채우고, 둘 다 없으면 비워요.</p></div>`;
@@ -637,6 +645,28 @@
     document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.addEventListener("click", () => { const f = new Set(pref.f || []); f.has(b.dataset.f) ? f.delete(b.dataset.f) : f.add(b.dataset.f); pref.f = [...f]; draw(); }));
     $("sec-sort").addEventListener("change", e => { pref.sort = e.target.value; draw(); });
     draw(); openHash();
+  }
+  const DN = ["성장", "실질 수익률", "밸류", "점유율 추세", "공급 건전성"];
+  const DH = ["최근 30일 수수료(연환산) ÷ 지난 1년 수수료 — 같으면 10, 2배면 20", "보유자 몫 ÷ 시총 − 실제 공급 증가율 — 0%면 8, +5%면 20", "시총 ÷ 연 수수료가 섹터 중앙값보다 4배 싸면 20, 4배 비싸면 0", "섹터 수수료 점유율이 1년 평균보다 늘면 %p당 +1", "유통 비율×20, 30일 안 언락 유통량 1%당 −2"];
+  function dataPanel(c) {
+    if (!c.dp) return "";
+    return `<section class="panel section"><div class="sec-head"><h2>데이터 점수 <span class="tiny muted">검증 중</span></h2><span class="sub">${c.ds != null ? `<b class="num" style="font-size:18px;color:var(--ink)">${c.ds.toFixed(0)}</b>/100` : "항목이 3개 미만이라 점수 없음"}</span></div>
+      ${DN.map((k, i) => { const v = c.dp[i]; return `<div class="bar-row" title="${esc(DH[i])}"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${v == null ? 0 : v / 20 * 100}%"></div></div><span class="num small">${v == null ? "-" : v.toFixed(0) + "/20"}</span></div>`; }).join("")}
+      <p class="legend">사람 판단 없이 숫자로만 매긴 점수예요(DefiLlama 수수료·매출, 코인마켓캡 유통량·언락). 아직 종합 점수에는 넣지 않고, 성적표에서 '데이터 점수 상위 3' 바구니가 시총 상위 3보다 나은지 4주 이상 지켜본 뒤 반영 여부를 정해요.${c.sg != null ? ` 실제 공급 증가율 연 ${c.sg > 0 ? "+" : ""}${c.sg.toFixed(1)}%.` : " 실제 공급 증가율은 기록이 28일 쌓이면 들어가요."}</p></section>`;
+  }
+  const DDK = { pay: "누가 돈을 내나", accrue: "토큰에 돌아오나", supply: "공급·희석", users: "사용자·활동", moat: "경쟁", team: "팀·개발", risk: "리스크", value: "밸류에이션", catalyst: "일정·촉매", against: "반대 논리" };
+  function deepPanel(b) {
+    const d = b.dd;
+    if (!d || !Array.isArray(d.items)) return `<section class="panel section"><div class="sec-head"><h2>심층 점검</h2><span class="sub">아직 전</span></div><div class="small muted">AI가 하루 3번 몇 개씩 차례로 10가지 체크리스트를 근거 링크와 함께 채워요. 1군·내 코인부터 해요.</div></section>`;
+    const dots = v => { v = Math.max(0, Math.min(5, Math.round(n(v) || 0))); return `<span class="dd-dots" aria-label="${v}/5">${"●".repeat(v)}<i>${"●".repeat(5 - v)}</i></span>`; };
+    const qn = d.q && Array.isArray(d.q.from) && Array.isArray(d.q.to) ? QN.map((k, i) => d.q.from[i] !== d.q.to[i] ? `${k} ${d.q.from[i]}→${d.q.to[i]}` : "").filter(Boolean) : [];
+    return `<section class="panel section dd"><div class="sec-head"><h2>심층 점검</h2><span class="sub">${d.at ? kst(d.at) : ""} · AI 조사</span></div>
+      ${d.v ? `<p class="dd-v">${esc(d.v)}</p>` : ""}
+      <div class="dd-list">${d.items.map(x => { const srcs = (x.src || []).map(sx => { const u = safeUrl(sx.u); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(sx.t || "출처")}</a>` : ""; }).filter(Boolean);
+        return `<div class="dd-row"><div class="dd-h"><b>${esc(DDK[x.k] || x.t || x.k)}</b>${dots(x.s)}</div><div class="small">${esc(x.n || "")}</div>${srcs.length ? `<div class="tiny muted dd-src">${srcs.join(" · ")}</div>` : ""}</div>`; }).join("")}</div>
+      ${d.kill ? `<div class="dd-kill"><b>틀리면 버릴 조건</b> ${esc(d.kill)}</div>` : ""}
+      ${qn.length ? `<div class="tiny muted">이 점검으로 품질 점수 변경: ${esc(qn.join(" · "))}${d.q.why ? " — " + esc(d.q.why) : ""}</div>` : ""}
+      <p class="legend">점은 5점 만점(리스크·반대 논리는 점이 많을수록 안전). AI가 공개 자료로 조사한 내용이라 틀릴 수 있어요 — 출처를 직접 확인해 주세요.</p></section>`;
   }
   async function rankCoinPage(sym) {
     nav("sectors");
@@ -666,6 +696,8 @@
         <div class="mini-h">코인 품질 5항목 (각 20점)</div>${QN.map((k, i) => { const man = (b.q || [])[i], dv = i < 2 && c.qd ? c.qd[i] : null, used = dv != null && man != null ? Math.round((man + dv) / 2) : man;
           return `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(used || 0) / 20 * 100}%"></div></div><span class="num small">${used ?? "-"}/20</span></div>${dv != null ? `<div class="tiny muted qd">AI 판단 ${man} · 실제 수익 데이터 ${dv.toFixed(1)} → 반반 섞어 ${used}</div>` : ""}`; }).join("")}
         ${b.qnote ? `<p class="small muted">${esc(b.qnote)}</p>` : ""}</section>
+      ${dataPanel(c)}
+      ${deepPanel(b)}
       ${c.fz ? `<section class="panel section"><div class="sec-head"><h2>실제 수익</h2><span class="sub">DefiLlama${c.fz.at ? " · " + kst(c.fz.at) : ""}${c.fz.chain ? " · 체인 수수료" : ""}</span></div>
         <div class="fz-grid">
           <div><span class="tiny muted">수수료 30일</span><b class="num">${krUsd(c.fz.f30)}</b><span class="tiny muted">연 ${krUsd(c.fz.F)}</span></div>
