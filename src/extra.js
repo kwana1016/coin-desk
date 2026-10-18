@@ -47,3 +47,53 @@ export async function apiPerf(db) {
   const { results } = await db.prepare("SELECT day, json FROM perf ORDER BY day DESC LIMIT 400").all();
   return "[" + (results || []).reverse().map(r => `{"day":${JSON.stringify(r.day)},"s":${r.json}}`).join(",") + "]";
 }
+
+// ── 실제 수익 데이터 (DefiLlama) ──
+// coin_base.json.ll = DefiLlama 프로토콜 이름(슬러그). 한 번에 6개 코인 × 3종류(수수료·매출·보유자 수익)를 받아 kv 'fees'에 쌓는다.
+// kv 'fees' = {t, m: {심볼: [수수료30일, 수수료7일, 수수료1년, 매출30일, 매출1년, 보유자수익30일, 보유자수익1년, 종류(1=프로토콜 2=체인), 받은 시각]}}
+// 6시간 지난 코인부터 차례로 갱신 (28·58분 칸) — 응답 앞부분에서 맨 처음 나오는 합계만 읽는다.
+const LL_TYPES = [["dailyFees", 0], ["dailyRevenue", 3], ["dailyHoldersRevenue", 5]];
+async function llTotals(slug, dataType) {
+  const r = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?dataType=${dataType}&excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`,
+    { headers: { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0)", accept: "application/json" } });
+  if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} return { code: r.status }; }
+  let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
+  // 합계는 childProtocols 다음에 나온다 — "total24h"가 나오고 조금 더 읽을 때까지만 받는다
+  let found = -1;
+  while (t.length < 400000) {
+    const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true });
+    if (found < 0) found = t.indexOf('"total24h"'); if (found >= 0 && t.length > found + 600) break;
+  }
+  try { await rd.cancel(); } catch (e) {}
+  const pt = (t.match(/"protocolType":"(\w+)"/) || [])[1] || null;
+  if (found < 0) return { code: 200, none: true, pt };
+  const seg = t.slice(found, found + 600);
+  const g = k => { const m = seg.match(new RegExp('"' + k + '":(-?[0-9.eE+-]+|null)')); return m && m[1] !== "null" ? Number(m[1]) : null; };
+  return { code: 200, d30: g("total30d"), d7: g("total7d"), y1: g("total1y"), pt };
+}
+export async function watchFees(env, now = Date.now()) {
+  const db = env.DB;
+  const [bq, fq] = await Promise.all([
+    db.prepare("SELECT sym, json_extract(json,'$.ll') AS ll FROM coin_base WHERE json_extract(json,'$.ll') IS NOT NULL").all(),
+    db.prepare("SELECT v FROM kv WHERE k = 'fees'").first(),
+  ]);
+  const cur = parse(fq && fq.v, { m: {} }); cur.m = cur.m || {};
+  const due = (bq.results || []).filter(r => !cur.m[r.sym] || now - (cur.m[r.sym][8] || 0) > 6 * 3600e3)
+    .sort((a, b) => ((cur.m[a.sym] || [])[8] || 0) - ((cur.m[b.sym] || [])[8] || 0)).slice(0, 6);
+  if (!due.length) return false;
+  const res = await Promise.all(due.map(async r => {
+    const out = Array(9).fill(null); let pt = null, ok = false;
+    for (const [dt, at] of LL_TYPES) {
+      try {
+        const x = await llTotals(r.ll, dt); pt = pt || x.pt;
+        if (x.code === 200 && !x.none) { ok = true; if (at === 0) { out[0] = x.d30; out[1] = x.d7; out[2] = x.y1; } else { out[at] = x.d30; out[at + 1] = x.y1; } }
+      } catch (e) {}
+    }
+    out[7] = pt === "chain" ? 2 : 1; out[8] = now;
+    return [r.sym, ok ? out : null];
+  }));
+  for (const [sym, v] of res) { if (v) cur.m[sym] = v; else if (cur.m[sym]) cur.m[sym][8] = now; else cur.m[sym] = [null, null, null, null, null, null, null, 0, now]; }
+  cur.t = now;
+  await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('fees', ?1, ?2)").bind(JSON.stringify(cur), now).run();
+  return true;
+}

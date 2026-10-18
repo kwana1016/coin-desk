@@ -170,10 +170,15 @@ export async function maybeSeed(env, now = Date.now()) {
 
 // ── 빗썸 원화마켓 목록 (1시간마다) ──
 export async function watchBithumb(env, now = Date.now()) {
-  let syms = null, code = 0;
+  let syms = null, code = 0, warn = null;
   try {
-    const r = await fetch("https://api.bithumb.com/v1/market/all", { headers: UA }); code = r.status;
-    if (r.ok) { const a = await r.json(); if (Array.isArray(a)) syms = a.map(x => String(x.market || "")).filter(s => s.startsWith("KRW-")).map(s => s.slice(4)); }
+    // isDetails=true면 유의 종목(market_warning: CAUTION)도 함께 온다
+    const r = await fetch("https://api.bithumb.com/v1/market/all?isDetails=true", { headers: UA }); code = r.status;
+    if (r.ok) { const a = await r.json(); if (Array.isArray(a)) {
+      const krw = a.filter(x => String(x.market || "").startsWith("KRW-"));
+      syms = krw.map(x => x.market.slice(4));
+      warn = krw.filter(x => x.market_warning === "CAUTION" || (x.market_event && x.market_event.warning === true)).map(x => x.market.slice(4));
+    } }
     else { try { r.body && r.body.cancel(); } catch (e) {} }
   } catch (e) {}
   if (!syms || syms.length < 50) {
@@ -183,7 +188,7 @@ export async function watchBithumb(env, now = Date.now()) {
     } catch (e) {}
   }
   if (!syms || syms.length < 50) { await put(env.DB, "bithumb_status", { code, at: now }, now).run(); return; }
-  await put(env.DB, "bithumb_krw", syms, now).run();
+  await env.DB.batch([put(env.DB, "bithumb_krw", syms, now), ...(warn ? [put(env.DB, "bithumb_warn", warn, now)] : [])]);
 }
 
 // ── 바이낸스 USDⓈ-M 무기한 선물 목록 (6시간마다) — fapi.binance.com은 Cloudflare 위치에서 403이라 코인게코 파생상품 정보로 받는다 ──
@@ -216,9 +221,23 @@ export async function watchBinance(env, now = Date.now()) {
   await put(env.DB, "bnf_status", st, now).run();
 }
 
+// 실제 수익 데이터(DefiLlama) → 품질 점수 두 항목의 데이터 점수 (각 0~20)
+//   실사용·수익: 연환산 수수료 F — 100만 달러=4 · 1,000만=8 · 1억=12 · 10억=16 · 100억 달러=20
+//   토큰 가치 포착: 보유자 몫 C = max(보유자 수익, 매출의 절반)을 시총으로 나눈 비율 — 1%=8 · 3%≈12 · 10%=16 · 30%≈20, 없으면 2
+//   (30일 값을 1년으로 환산하되, 30일이 비었으면 1년 합계의 절반을 바닥으로 쓴다)
+export function feeScore(f, mcap) {
+  if (!f || (f[0] == null && f[3] == null && f[5] == null)) return null;
+  const yr = (d30, y1) => Math.max(d30 != null ? d30 * 365 / 30 : 0, y1 != null ? y1 * 0.5 : 0);
+  const F = yr(f[0], f[2]), R = yr(f[3], f[4]), H = yr(f[5], f[6]);
+  const d0 = f[0] == null && f[2] == null ? null : (F > 0 ? clamp(4 * Math.log10(F / 1e6) + 4, 0, 20) : 0);
+  const C = Math.max(H, R * 0.5);
+  const d1 = !(mcap > 0) ? null : C > 0 ? clamp(8 + 8 * Math.log10(C / mcap / 0.01), 0, 20) : 2;
+  return [d0 == null ? null : r1(d0), d1 == null ? null : r1(d1)];
+}
+
 // ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
 // coins: [{sym, sector, cp, q:[5], core, off}], news: [{sym, ts, impact, kind, t, u, pub}], cp: {id: arr}, sectors: {id: score}, prev: 직전 스냅숏
-export function rankCore({ now, sectors, coins, news, cp, prev, warn }) {
+export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
   const R = RULES;
   const nsum = {}, ntop = {};
   for (const x of news || []) {
@@ -235,13 +254,17 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn }) {
   const rows = {}, bySec = {};
   for (const b of coins) {
     if (b.off) continue;
-    const q = Array.isArray(b.q) ? b.q : [];
+    const mk0 = marketKey(idx, b), m0 = mk0 ? cp[mk0] : null;
+    const q = Array.isArray(b.q) ? b.q.slice() : [];
+    const qd = feeScore(fees && fees[b.sym], m0 ? Number(m0[3]) || 0 : 0);
+    // 실제 수익 데이터가 있으면 '실사용·수익'과 '토큰 가치 포착'을 수동 점수와 반반 섞는다
+    if (qd && q.length === 5) { if (qd[0] != null) q[0] = Math.round(((Number(q[0]) || 0) + qd[0]) / 2); if (qd[1] != null) q[1] = Math.round(((Number(q[1]) || 0) + qd[1]) / 2); }
     const Q = q.reduce((s, x) => s + (Number(x) || 0), 0);
     // 업비트·빗썸 유의 종목이면 지정이 풀릴 때까지 뉴스 점수에서 8점을 뺀다
     const wv = warn ? (warn[b.kr || b.sym] || warn[b.sym] || null) : null;
     const N = clamp((nsum[b.sym] || 0) - (wv ? R.warn : 0), -R.nmax, R.nmax);
-    const mk = marketKey(idx, b), m = mk ? cp[mk] : null;
-    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv };
+    const m = m0;
+    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv, qd };
     rows[b.sym] = row;
     if (b.core) row.why = "core";
     if (!m) { row.why = row.why || "nodata"; continue; }
@@ -276,10 +299,10 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn }) {
     majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
     minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
   }
-  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null)]
+  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null), 데이터 점수[실사용, 가치 포착](없으면 null)]
   const c = {}, trail = {}, moves = [], top = {};
   for (const x of Object.values(rows)) {
-    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null];
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null];
     const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
     if (t.some(Boolean)) trail[x.sym] = t;
     const p = pc[x.sym];
@@ -305,11 +328,13 @@ export async function computeRanks(env, now = Date.now()) {
     db.prepare("SELECT sym, ts, impact, kind, json_extract(json,'$.title') AS t, json_extract(json,'$.url') AS u, json_extract(json,'$.pub') AS pub FROM coin_news WHERE ts > ?1").bind(now - 240 * DAY).all(),
     db.prepare("SELECT v, ts FROM kv WHERE k = 'cp'").all(),
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn', 'fees')").all(),
   ]);
   const cpRow = (kq.results || [])[0]; if (!cpRow) return null;
   const warn = {};
+  let fees = null;
   for (const r of (wq.results || [])) {
+    if (r.k === "fees") { fees = parse(r.v, {}).m || null; continue; }
     if (r.k === "upbit_krw") for (const [mkt, v] of Object.entries(parse(r.v, {}))) { if (v && v.w) { const k = mkt.replace(/^KRW-/, ""); warn[k] = warn[k] ? "업비트·" + warn[k] : "업비트"; } }
     else for (const sym of parse(r.v, [])) warn[sym] = warn[sym] ? warn[sym] + "·빗썸" : "빗썸";
   }
@@ -317,7 +342,7 @@ export async function computeRanks(env, now = Date.now()) {
   const sectors = Object.fromEntries((sq.results || []).map(r => [r.id, Number(r.score) || 50]));
   const coins = (bq.results || []).map(r => ({ sym: r.sym, sector: r.sector, cg: r.cg, kr: r.kr, q: parse(r.q, []), core: !!r.core, off: !!r.off }));
   const prevRow = (pq.results || [])[0];
-  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn });
+  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn, fees });
   snap.cp_at = Number(cpRow.ts) || null;
   await db.batch([
     db.prepare("INSERT OR REPLACE INTO rankings (id, ts, json) VALUES (?1, ?2, ?3)").bind(snap.id, now, JSON.stringify(snap)),
@@ -355,7 +380,7 @@ export async function rankNow(env, now = Date.now()) {
 export async function apiSectors(db) {
   const [rq, kq, sq, bq] = await Promise.all([
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'bithumb_krw', 'bnf', 'sector_excluded', 'sector_groups', 'mine')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'bithumb_krw', 'bnf', 'sector_excluded', 'sector_groups', 'mine', 'fees', 'fund', 'unlocks')").all(),
     db.prepare("SELECT json FROM sectors ORDER BY ord").all(),
     db.prepare("SELECT json FROM coin_base").all(),
   ]);
@@ -363,7 +388,7 @@ export async function apiSectors(db) {
   const v = k => kv[k] || "null";
   const r = (rq.results || [])[0];
   return `{"rank":${r ? r.json : "null"},"sectors":[${(sq.results || []).map(x => x.json).join(",")}],"coins":[${(bq.results || []).map(x => x.json).join(",")}],` +
-    `"kv":{"cp":${v("cp")},"upbit":${v("upbit_krw")},"bithumb":${v("bithumb_krw")},"bnf":${v("bnf")},"ex":${v("sector_excluded")},"groups":${v("sector_groups")},"mine":${v("mine")}}}`;
+    `"kv":{"cp":${v("cp")},"upbit":${v("upbit_krw")},"bithumb":${v("bithumb_krw")},"bnf":${v("bnf")},"ex":${v("sector_excluded")},"groups":${v("sector_groups")},"mine":${v("mine")},"fees":${v("fees")},"fund":${v("fund")},"unlocks":${v("unlocks")}}}`;
 }
 
 export async function apiSectorCoin(db, sym) {
