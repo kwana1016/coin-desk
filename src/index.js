@@ -81,31 +81,7 @@ async function api(url, env, ctx) {
     const { results } = await db.prepare("SELECT id, ts, kind, json FROM alerts WHERE ts > ?1 AND kind NOT IN ('rejected', 'cand') ORDER BY ts DESC LIMIT 12").bind(since).all();
     return json("[" + results.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"kind":${JSON.stringify(x.kind)},"a":${x.json}}`).join(",") + "]");
   }
-  // 임시 진단: 허용된 데이터 API 응답 일부를 kv 'probe'에 저장 (키는 D1에만 있음). 항상 200으로 답한다.
-  if (p === "/api/_probe") {
-    const key = await db.prepare("SELECT v FROM kv WHERE k = 'probe_key'").first();
-    if (!key || url.searchParams.get("k") !== key.v) return json('{"error":"forbidden"}');
-    const H = { ll: "api.llama.fi", lly: "yields.llama.fi", llc: "coins.llama.fi", cg: "api.coingecko.com", cmc: "api.coinmarketcap.com", up: "api.upbit.com", bt: "api.bithumb.com" };
-    const qs = (url.searchParams.get("q") || "").split(",").filter(Boolean).map(x => x.split(":")).map(([a, b]) => encodeURIComponent(a) + "=" + encodeURIComponent(b || "")).join("&");
-    const u = "https://" + (H[url.searchParams.get("h")] || "x") + "/" + (url.searchParams.get("p") || "") + (qs ? "?" + qs : "");
-    const f = url.searchParams.get("f"), n = Math.min(Number(url.searchParams.get("n") || 8000), 60000), o = Number(url.searchParams.get("o") || 0);
-    const lim = Math.min(Number(url.searchParams.get("lim") || 200000), 1500000);
-    // 응답이 느린 API도 있어서, 바로 답하고 받는 일은 뒤에서 마저 한다
-    const work = (async () => {
-      const out = { at: Date.now(), u };
-      try {
-        const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
-        out.status = r.status; out.clen = r.headers.get("content-length"); out.ms = Date.now() - out.at;
-        let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
-        while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
-        try { await rd.cancel(); } catch (e) {}
-        out.len = t.length; out.off = f ? Math.max(0, t.indexOf(f)) : o; out.head = t.slice(out.off, out.off + n);
-      } catch (e) { out.err = String(e && e.message || e).slice(0, 300); }
-      await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify(out), Date.now()).run();
-    })();
-    ctx.waitUntil(work.catch(() => {}));
-    return json(JSON.stringify({ queued: u }));
-  }
+
   if (p === "/api/sectors") return json(await apiSectors(db));
   if (p === "/api/perf") return json(await apiPerf(db));
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -173,45 +149,6 @@ async function watchUpbit(env) {
 }
 
 
-// 임시 진단: kv 'probe_req' = {h, p, q, f, n, o, lim} 이 있으면 1분 cron이 그 주소를 받아 kv 'probe'에 앞부분을 남긴다
-async function runProbe(env, req) {
-  const H = { ll: "api.llama.fi", lly: "yields.llama.fi", llc: "coins.llama.fi", cg: "api.coingecko.com", cmc: "api.coinmarketcap.com", up: "api.upbit.com", bt: "api.bithumb.com" };
-  const u = "https://" + (H[req.h] || "x") + "/" + (req.p || "") + (req.q ? "?" + req.q : "");
-  const out = { at: Date.now(), u };
-  try {
-    const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
-    out.status = r.status; out.clen = r.headers.get("content-length"); out.ms = Date.now() - out.at;
-    const lim = Math.min(Number(req.lim || 200000), 1500000), n = Math.min(Number(req.n || 8000), 60000);
-    let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
-    while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
-    try { await rd.cancel(); } catch (e) {}
-    out.len = t.length; out.off = req.f ? Math.max(0, t.indexOf(req.f)) : Number(req.o || 0); out.head = t.slice(out.off, out.off + n);
-  } catch (e) { out.err = String(e && e.message || e).slice(0, 300); }
-  await env.DB.batch([env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify(out), Date.now()),
-    env.DB.prepare("DELETE FROM kv WHERE k = 'probe_req'")]);
-}
-
-// 임시: DefiLlama 프로토콜 이름 확인 — kv 'llmap_req' = [[심볼, 슬러그], ...] 를 30개씩 summary 앞부분만 받아 kv 'llmap_res'에 쌓는다
-async function runLlmap(env, list) {
-  const batch = list.slice(0, 30), rest = list.slice(30);
-  const got = await Promise.all(batch.map(async ([sym, slug]) => {
-    try {
-      const r = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
-      if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} return [sym, slug, r.status]; }
-      let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
-      while (t.length < 60000) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
-      try { await rd.cancel(); } catch (e) {}
-      const g = k => { const m = t.match(new RegExp('"' + k + '":("([^"]*)"|-?[0-9.eE+-]+|null)')); return m ? (m[2] !== undefined ? m[2] : Number(m[1])) : undefined; };
-      return [sym, slug, r.status, g("name"), g("protocolType"), g("total30d"), g("parentProtocol"), t.length];
-    } catch (e) { return [sym, slug, "err:" + String(e).slice(0, 60)]; }
-  }));
-  const prev = await env.DB.prepare("SELECT v FROM kv WHERE k = 'llmap_res'").first();
-  const res = (prev ? JSON.parse(prev.v) : []).concat(got);
-  const st = [env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('llmap_res', ?1, ?2)").bind(JSON.stringify(res), Date.now())];
-  st.push(rest.length ? env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('llmap_req', ?1, ?2)").bind(JSON.stringify(rest), Date.now()) : env.DB.prepare("DELETE FROM kv WHERE k = 'llmap_req'"));
-  await env.DB.batch(st);
-}
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -237,8 +174,6 @@ export default {
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }
-    const pr = await env.DB.prepare("SELECT k, v FROM kv WHERE k IN ('probe_req', 'llmap_req') LIMIT 1").first().catch(() => null);
-    if (pr) { ctx.waitUntil((pr.k === "probe_req" ? runProbe(env, JSON.parse(pr.v)) : runLlmap(env, JSON.parse(pr.v))).catch(e => console.error("probe", e))); return; }
     // 0: 업비트 목록 · 1·3: 뉴스(3곳씩) · 2: 전체 시세·급변 · 4: 주봉·공포탐욕
     const k = min % 5;
     const job = k === 0 ? watchUpbit(env) : k === 2 ? watchPrices(env) : k === 4 ? watchWeeks(env, min) : watchNews(env, min);
