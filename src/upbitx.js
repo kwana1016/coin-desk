@@ -29,16 +29,25 @@ async function getText(url) {
 export async function watchMarketX(env, now = Date.now()) {
   const db = env.DB;
   const [kq, bq] = await Promise.all([
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'cmc_ids', 'sector_excluded', 'ath')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('cp', 'upbit_krw', 'cmc_ids', 'sector_excluded', 'ath', 'tickers')").all(),
     db.prepare("SELECT sym, json_extract(json,'$.kr') AS kr FROM coin_base").all(),
   ]);
   const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
   const cp = parse(kv.cp, {}).m || {}, up = parse(kv.upbit_krw, {}), ath = parse(kv.ath, {});
   const ids = parse(kv.cmc_ids, {}); ids.m = ids.m || {}; ids.cand = ids.cand || {}; if (ids.page == null) ids.page = 0;
   const exSyms = new Set(parse(kv.sector_excluded, []).map(e => String(e[2] || "").toUpperCase()).filter(Boolean));
-  // 300위 목록에 이미 있는 심볼 (cpx에서 합쳐진 x: 항목은 빼고)
-  const top = new Set(); for (const [k, a] of Object.entries(cp)) if (!k.startsWith("x:")) top.add(String(a[1] || "").toUpperCase());
-  const covered = s => top.has(s) || (baseSym(s) && top.has(baseSym(s)));
+  // 300위 목록에 이미 있는 심볼 (cpx에서 합쳐진 x: 항목은 빼고) — 같은 심볼의 다른 코인일 수 있어 업비트 원화 가격과 비교한다
+  const tk = (parse(kv.tickers, {}).m) || {}, usdt = tk.USDT ? Number(tk.USDT[0]) : 0;
+  const top = new Map(); for (const [k, a] of Object.entries(cp)) { if (k.startsWith("x:")) continue; const sy = String(a[1] || "").toUpperCase(); (top.get(sy) || top.set(sy, []).get(sy)).push([k, a]); }
+  for (const l of top.values()) l.sort((p, q) => Number(q[1][3]) - Number(p[1][3]));
+  const sameCoin = (s, a) => { const krw = tk[s] ? Number(tk[s][0]) : 0; if (!(krw > 0 && usdt > 0 && Number(a[2]) > 0)) return true; const r = Number(a[2]) / (krw / usdt); return r > 0.6 && r < 1.6; };
+  const collided = new Set(), fixTop = {};
+  const covered = s => { for (const t of [s, baseSym(s)]) { if (!t || !top.has(t)) continue; const l = top.get(t);
+      if (!up["KRW-" + s]) return true;
+      const i = l.findIndex(([, a]) => sameCoin(s, a)); if (i === 0) return true;
+      if (i > 0) { fixTop[s] = l[i][0]; return true; } // 같은 심볼 중 시총이 작은 쪽이 업비트 코인
+      collided.add(s); return false; }
+    return false; };
   const want = {};
   for (const [mkt, v] of Object.entries(up)) { const s = mkt.replace(/^KRW-/, ""); if (!exSyms.has(s) && !covered(s)) want[s] = (v && v.e) || ""; }
   for (const r of (bq.results || [])) { const s = String(r.kr || r.sym).toUpperCase(); if (!(s in want) && !covered(s) && !covered(String(r.sym).toUpperCase())) want[s] = ""; }
@@ -104,7 +113,12 @@ export async function watchMarketX(env, now = Date.now()) {
     st.n = Object.keys(m).length;
   }
   st.miss = (ids.miss || []).length; st.page = ids.page;
-  const w = [db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('cmc_ids', ?1, ?2)").bind(JSON.stringify(ids), now),
+  // 300위 안 다른 코인과 심볼이 겹치는 업비트 코인은 coin_base.cg에 이 시세 id를 적어 심볼로 잘못 찾지 않게 한다
+  const fix = [];
+  for (const [s2, k] of Object.entries(fixTop)) fix.push(db.prepare("UPDATE coin_base SET json = json_set(json, '$.cg', ?2) WHERE upper(coalesce(json_extract(json, '$.kr'), sym)) = ?1 AND coalesce(json_extract(json, '$.cg'), '') <> ?2").bind(s2, k));
+  for (const [k, a] of Object.entries(m)) if (collided.has(a[1])) fix.push(db.prepare("UPDATE coin_base SET json = json_set(json, '$.cg', ?2) WHERE upper(coalesce(json_extract(json, '$.kr'), sym)) = ?1 AND coalesce(json_extract(json, '$.cg'), '') <> ?2").bind(a[1], k));
+  st.fix = fix.length;
+  const w = [...fix, db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('cmc_ids', ?1, ?2)").bind(JSON.stringify(ids), now),
     db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('cpx_status', ?1, ?2)").bind(JSON.stringify(st), now)];
   if (Object.keys(m).length) w.push(db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('cpx', ?1, ?2)").bind(JSON.stringify({ t: now, m }), now));
   await db.batch(w);

@@ -126,8 +126,8 @@ export async function watchMarket(env, now = Date.now()) {
   // 300위 밖 업비트 원화 코인 시세(kv cpx, 30분마다 따로 받음)를 합친다 — 3시간 넘게 묵었으면 쓰지 않는다
   const cpx = parse(kv.cpx, null); let nx = 0;
   if (cpx && cpx.m && now - Number(cpx.t || 0) < 3 * HOUR) {
-    const have = new Set(Object.values(m).map(a => String(a[1] || "").toUpperCase()));
-    for (const [k, a] of Object.entries(cpx.m)) if (!m[k] && !have.has(String(a[1] || "").toUpperCase())) { m[k] = a; nx++; }
+    // 같은 심볼이 300위 안에 있어도 합친다 (심볼이 겹치는 다른 코인 — coin_base.cg로 정확히 찾는다)
+    for (const [k, a] of Object.entries(cpx.m)) if (!m[k]) { m[k] = a; nx++; }
   }
   status.nx = nx;
   const writes = [put(db, "cp", { t: now, src: status.src, m }, now), put(db, "cp_status", status, now)];
