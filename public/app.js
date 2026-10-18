@@ -377,7 +377,7 @@
   const GRADE = s => s >= 80 ? ["A", "핵심"] : s >= 65 ? ["B", "성장"] : s >= 50 ? ["C", "순환"] : ["D", "회피"];
   const SPARTS = [["실수익", 25], ["사용 추세", 20], ["기관 채택", 15], ["규제 내구성", 15], ["대체 불가능성", 15], ["사이클 생존", 10]];
   const WHY = { rank: "시총 150위 밖", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
-  const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락" };
+  const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락", warn: "유의 종목 지정", unwarn: "유의 해제" };
   const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움" };
   const pp = x => { x = n(x); return x == null ? "-" : (x > 0 ? "+" : "") + x.toFixed(Math.abs(x) >= 100 ? 0 : 1) + "%"; };
   const ppc = x => { x = n(x); return x == null ? "" : x > 0 ? "rise" : x < 0 ? "fall" : ""; };
@@ -391,7 +391,7 @@
     if ((ath != null && ath <= -90) || (d30 != null && d30 <= -30)) f.push("deep");
     return f;
   }
-  const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"] };
+  const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"], warn: ["유의", "국내 거래소 유의 종목 — 지정이 풀릴 때까지 점수 -8"] };
   function sectorModel(d) {
     const rank = d.rank || { c: {}, moves: [], news: {}, trail: {} };
     const cp = (d.kv.cp && d.kv.cp.m) || {};
@@ -407,7 +407,7 @@
       const c = rank.c[b.sym] || [b.sector, 0, 0, null, (b.q || []).reduce((a, x) => a + x, 0), 0, 0, 0, null, ""];
       const mk = key ? cp[key] : null, kr = b.kr || b.sym;
       coins[b.sym] = { b, sym: b.sym, sec: c[0], pos: c[1], lg: c[2], score: n(c[3]), Q: n(c[4]), S: n(c[5]), N: n(c[6]), chal: c[7], crank: c[8], why: c[9],
-        mk, flags: flagsOf(mk), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
+        warn: c[10] || null, mk, flags: flagsOf(mk).concat(c[10] ? ["warn"] : []), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [] };
     });
     const exId = new Map(), exSym = new Map();
@@ -421,7 +421,7 @@
     return { rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
   }
   function exBadges(c) { return `${c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}${c.ex.bt ? '<span class="xb bt" title="빗썸 원화마켓">빗</span>' : ""}${c.ex.bf ? '<span class="xb bf" title="바이낸스 USDⓈ-M 선물">바선</span>' : ""}`; }
-  function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(FLAG[f][1])}">${FLAG[f][0]}</span>`).join(""); }
+  function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(f === "warn" ? `${c.warn} 유의 종목 — 지정이 풀릴 때까지 점수 -8` : FLAG[f][1])}">${FLAG[f][0]}</span>`).join(""); }
   function moveMark(c) {
     const t = c.trail || [], cur = c.pos, prev = t.length > 1 ? t[t.length - 2] : null;
     if (!cur) return "";
@@ -533,7 +533,7 @@
     const pref = loadPref();
     const secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
     const core = Object.values(M.coins).filter(c => c.why === "core" || c.b.core).sort((a, b) => (a.crank || 99) - (b.crank || 99));
-    const moves = (R.moves || []).filter(m => m[0] === "promo" || m[0] === "demo" || m[0] === "in" || m[0] === "out");
+    const moves = (R.moves || []).filter(m => ["promo", "demo", "in", "out", "warn", "unwarn"].includes(m[0]));
     const ups = (R.moves || []).filter(m => m[0] === "up" || m[0] === "down");
     const nm = s => esc((M.coins[s] && M.coins[s].b.ko) || s);
     const moveHtml = moves.length ? moves.slice(0, 12).map(m => `<div class="mvf mvf-${m[0]}"><b>${esc(MOVE[m[0]])}</b><a href="/rank/${encodeURIComponent(m[1])}">${nm(m[1])}</a><span class="muted">${esc(secName[m[2]] || m[2])}${m[3] ? ` ${m[3]}위` : ""}${m[4] ? ` → ${m[4]}위` : ""}${m[5] ? " · " + esc(VIA[m[5]] || WHY[m[5]] || m[5]) : ""}</span></div>`).join("")

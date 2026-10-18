@@ -8,7 +8,7 @@
 //   2군(마이너리그): 매 갱신 점수순
 
 export const RULES = { cap: 150, liq: 0.001, margin: 3, need: 2, fast: 10, nmax: 20,
-  hl: { short: 3, normal: 10, structural: 45 }, w: [0.6, 0.25, 0.15], keep: 12 };
+  hl: { short: 3, normal: 10, structural: 45 }, w: [0.6, 0.25, 0.15], keep: 12, warn: 8 };
 
 const DAY = 86400e3;
 const HOUR = 3600000;
@@ -218,7 +218,7 @@ export async function watchBinance(env, now = Date.now()) {
 
 // ── 순위 계산 (순수 함수: 테스트용으로 따로 둔다) ──
 // coins: [{sym, sector, cp, q:[5], core, off}], news: [{sym, ts, impact, kind, t, u, pub}], cp: {id: arr}, sectors: {id: score}, prev: 직전 스냅숏
-export function rankCore({ now, sectors, coins, news, cp, prev }) {
+export function rankCore({ now, sectors, coins, news, cp, prev, warn }) {
   const R = RULES;
   const nsum = {}, ntop = {};
   for (const x of news || []) {
@@ -237,9 +237,11 @@ export function rankCore({ now, sectors, coins, news, cp, prev }) {
     if (b.off) continue;
     const q = Array.isArray(b.q) ? b.q : [];
     const Q = q.reduce((s, x) => s + (Number(x) || 0), 0);
-    const N = clamp(nsum[b.sym] || 0, -R.nmax, R.nmax);
+    // 업비트·빗썸 유의 종목이면 지정이 풀릴 때까지 뉴스 점수에서 8점을 뺀다
+    const wv = warn ? (warn[b.kr || b.sym] || warn[b.sym] || null) : null;
+    const N = clamp((nsum[b.sym] || 0) - (wv ? R.warn : 0), -R.nmax, R.nmax);
     const mk = marketKey(idx, b), m = mk ? cp[mk] : null;
-    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0 };
+    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv };
     rows[b.sym] = row;
     if (b.core) row.why = "core";
     if (!m) { row.why = row.why || "nodata"; continue; }
@@ -274,10 +276,10 @@ export function rankCore({ now, sectors, coins, news, cp, prev }) {
     majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
     minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
   }
-  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유]
+  // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null)]
   const c = {}, trail = {}, moves = [], top = {};
   for (const x of Object.values(rows)) {
-    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why];
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null];
     const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
     if (t.some(Boolean)) trail[x.sym] = t;
     const p = pc[x.sym];
@@ -287,6 +289,8 @@ export function rankCore({ now, sectors, coins, news, cp, prev }) {
     else if (prev && !pl && x.lg) moves.push(["in", x.sym, x.sec, 0, x.pos, x.lg === 1 ? (via[x.sym] || "") : ""]);
     else if (pl && !x.lg) moves.push(["out", x.sym, x.sec, pp, 0, x.why]);
     else if (pl && x.lg && p[0] === x.sec && pp !== x.pos) moves.push([pp > x.pos ? "up" : "down", x.sym, x.sec, pp, x.pos, ""]);
+    if (x.warn && !(p && p[10])) moves.push(["warn", x.sym, x.sec, pp, x.pos, x.warn]);
+    else if (!x.warn && p && p[10]) moves.push(["unwarn", x.sym, x.sec, pp, x.pos, p[10]]);
     const nt = (ntop[x.sym] || []).filter(n => Math.abs(n[2]) >= 0.3).sort((a, b) => Math.abs(b[2]) - Math.abs(a[2])).slice(0, 3);
     if (nt.length) top[x.sym] = nt;
   }
@@ -295,19 +299,25 @@ export function rankCore({ now, sectors, coins, news, cp, prev }) {
 
 export async function computeRanks(env, now = Date.now()) {
   const db = env.DB;
-  const [sq, bq, nq, kq, pq] = await Promise.all([
+  const [sq, bq, nq, kq, pq, wq] = await Promise.all([
     db.prepare("SELECT id, json_extract(json,'$.score') AS score FROM sectors").all(),
     db.prepare("SELECT sym, sector, json_extract(json,'$.cg') AS cg, json_extract(json,'$.kr') AS kr, json_extract(json,'$.q') AS q, json_extract(json,'$.core') AS core, json_extract(json,'$.off') AS off FROM coin_base").all(),
     db.prepare("SELECT sym, ts, impact, kind, json_extract(json,'$.title') AS t, json_extract(json,'$.url') AS u, json_extract(json,'$.pub') AS pub FROM coin_news WHERE ts > ?1").bind(now - 240 * DAY).all(),
     db.prepare("SELECT v, ts FROM kv WHERE k = 'cp'").all(),
     db.prepare("SELECT json FROM rankings ORDER BY ts DESC LIMIT 1").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('upbit_krw', 'bithumb_warn')").all(),
   ]);
   const cpRow = (kq.results || [])[0]; if (!cpRow) return null;
+  const warn = {};
+  for (const r of (wq.results || [])) {
+    if (r.k === "upbit_krw") for (const [mkt, v] of Object.entries(parse(r.v, {}))) { if (v && v.w) { const k = mkt.replace(/^KRW-/, ""); warn[k] = warn[k] ? "업비트·" + warn[k] : "업비트"; } }
+    else for (const sym of parse(r.v, [])) warn[sym] = warn[sym] ? warn[sym] + "·빗썸" : "빗썸";
+  }
   const cp = parse(cpRow.v, {}).m || {};
   const sectors = Object.fromEntries((sq.results || []).map(r => [r.id, Number(r.score) || 50]));
   const coins = (bq.results || []).map(r => ({ sym: r.sym, sector: r.sector, cg: r.cg, kr: r.kr, q: parse(r.q, []), core: !!r.core, off: !!r.off }));
   const prevRow = (pq.results || [])[0];
-  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null });
+  const snap = rankCore({ now, sectors, coins, news: nq.results || [], cp, prev: prevRow ? parse(prevRow.json, null) : null, warn });
   snap.cp_at = Number(cpRow.ts) || null;
   await db.batch([
     db.prepare("INSERT OR REPLACE INTO rankings (id, ts, json) VALUES (?1, ?2, ?3)").bind(snap.id, now, JSON.stringify(snap)),

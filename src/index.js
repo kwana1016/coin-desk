@@ -191,6 +191,27 @@ async function runProbe(env, req) {
     env.DB.prepare("DELETE FROM kv WHERE k = 'probe_req'")]);
 }
 
+// 임시: DefiLlama 프로토콜 이름 확인 — kv 'llmap_req' = [[심볼, 슬러그], ...] 를 30개씩 summary 앞부분만 받아 kv 'llmap_res'에 쌓는다
+async function runLlmap(env, list) {
+  const batch = list.slice(0, 30), rest = list.slice(30);
+  const got = await Promise.all(batch.map(async ([sym, slug]) => {
+    try {
+      const r = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
+      if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} return [sym, slug, r.status]; }
+      let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
+      while (t.length < 60000) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
+      try { await rd.cancel(); } catch (e) {}
+      const g = k => { const m = t.match(new RegExp('"' + k + '":("([^"]*)"|-?[0-9.eE+-]+|null)')); return m ? (m[2] !== undefined ? m[2] : Number(m[1])) : undefined; };
+      return [sym, slug, r.status, g("name"), g("protocolType"), g("total30d"), g("parentProtocol"), t.length];
+    } catch (e) { return [sym, slug, "err:" + String(e).slice(0, 60)]; }
+  }));
+  const prev = await env.DB.prepare("SELECT v FROM kv WHERE k = 'llmap_res'").first();
+  const res = (prev ? JSON.parse(prev.v) : []).concat(got);
+  const st = [env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('llmap_res', ?1, ?2)").bind(JSON.stringify(res), Date.now())];
+  st.push(rest.length ? env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('llmap_req', ?1, ?2)").bind(JSON.stringify(rest), Date.now()) : env.DB.prepare("DELETE FROM kv WHERE k = 'llmap_req'"));
+  await env.DB.batch(st);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -216,8 +237,8 @@ export default {
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }
-    const pr = await env.DB.prepare("SELECT v FROM kv WHERE k = 'probe_req'").first().catch(() => null);
-    if (pr) { ctx.waitUntil(runProbe(env, JSON.parse(pr.v)).catch(e => console.error("probe", e))); return; }
+    const pr = await env.DB.prepare("SELECT k, v FROM kv WHERE k IN ('probe_req', 'llmap_req') LIMIT 1").first().catch(() => null);
+    if (pr) { ctx.waitUntil((pr.k === "probe_req" ? runProbe(env, JSON.parse(pr.v)) : runLlmap(env, JSON.parse(pr.v))).catch(e => console.error("probe", e))); return; }
     // 0: 업비트 목록 · 1·3: 뉴스(3곳씩) · 2: 전체 시세·급변 · 4: 주봉·공포탐욕
     const k = min % 5;
     const job = k === 0 ? watchUpbit(env) : k === 2 ? watchPrices(env) : k === 4 ? watchWeeks(env, min) : watchNews(env, min);
