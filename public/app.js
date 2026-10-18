@@ -393,7 +393,7 @@
   }
   const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"], warn: ["유의", "국내 거래소 유의 종목 — 지정이 풀릴 때까지 점수 -8"],
     fhi: ["펀딩↑", "바이낸스 선물 펀딩비가 연 30% 이상(롱이 내는 비용) — 선물로 오래 들고 있으면 비용이 커요"], fneg: ["펀딩↓", "펀딩비가 음수 — 숏이 몰려 롱이 펀딩비를 받아요"],
-    unl: ["언락", "30일 안에 유통량의 2% 이상이 풀려요"] };
+    unl: ["언락", "2주 안에 유통량의 1% 이상이 풀려요"] };
   // DefiLlama 수익 데이터 → 화면용 숫자. f = [수수료30일, 수수료7일, 수수료1년, 매출30일, 매출1년, 보유자수익30일, 보유자수익1년, 종류, 받은 시각]
   function feeInfo(f, mk) {
     if (!f || (f[0] == null && f[3] == null && f[5] == null)) return null;
@@ -421,8 +421,9 @@
   // 바이낸스 선물 펀딩비: f = [1회 펀딩비 %, 미결제약정 $] — 연환산은 8시간마다 낸다고 보고 계산 (일부 코인은 4시간·1시간 주기라 더 클 수 있음)
   function fundInfo(f) { if (!f || f[0] == null) return null; return { rate: f[0], yr: f[0] * 3 * 365, oi: f[1] }; }
   function fundFlag(f) { const x = fundInfo(f); return !x ? [] : x.yr >= 30 ? ["fhi"] : x.yr <= -15 ? ["fneg"] : []; }
-  // 언락: u = [다음 언락 시각, 그때 풀리는 비율(유통량 대비 %), 30일 안 합계 %, 이름]
-  function unlFlag(u) { return u && u[2] != null && u[2] >= 2 ? ["unl"] : []; }
+  // 언락: u = [다음 언락 시각, 유통량 대비 %, 금액$, 아직 잠긴 비율 %(최대 공급 대비), 방식] — 코인마켓캡
+  const unlSoon = u => u && u[0] && u[0] - Date.now() < 30 * 86400e3 && u[1] != null ? u[1] : null;
+  function unlFlag(u) { return u && u[0] && u[0] - Date.now() < 14 * 86400e3 && u[1] != null && u[1] >= 1 ? ["unl"] : []; }
   function sectorModel(d) {
     const rank = d.rank || { c: {}, moves: [], news: {}, trail: {} };
     const cp = (d.kv.cp && d.kv.cp.m) || {};
@@ -461,7 +462,7 @@
   function flagTitle(c, f) {
     if (f === "warn") return `${c.warn} 유의 종목 — 지정이 풀릴 때까지 점수 -8`;
     if ((f === "fhi" || f === "fneg") && c.fund) return `바이낸스 선물 펀딩비 ${c.fund.rate > 0 ? "+" : ""}${c.fund.rate.toFixed(4)}%/회 · 연환산 약 ${c.fund.yr.toFixed(0)}%`;
-    if (f === "unl" && c.unl) return `30일 안 언락 유통량의 ${c.unl[2].toFixed(1)}%${c.unl[0] ? ` · 다음 ${kstDate(c.unl[0])} ${c.unl[1] != null ? c.unl[1].toFixed(1) + "%" : ""}` : ""}`;
+    if (f === "unl" && c.unl) return `다음 언락 ${kstDate(c.unl[0])} · 유통량의 ${c.unl[1].toFixed(1)}% (${krUsd(c.unl[2])})`;
     return FLAG[f][1]; }
   function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(flagTitle(c, f))}">${FLAG[f][0]}</span>`).join(""); }
   function moveMark(c) {
@@ -567,7 +568,7 @@
       ${P.promos.length ? `<div class="mini-h">1군에 새로 들어온 뒤 성적</div><div class="pf-pr">${P.promos.slice(0, 10).map(x => `<div><a href="/rank/${encodeURIComponent(x.sym)}">${esc((M.coins[x.sym] && M.coins[x.sym].b.ko) || x.sym)}</a> <span class="tiny muted">${esc(secName[x.sec] || x.sec)} · ${kstDate(x.t)} 승격</span> <b class="num ${ppc(x.r)}">${pp(x.r)}</b>${x.vb != null ? ` <span class="tiny muted">BTC 대비 ${pp(x.vb)}p</span>` : ""}</div>`).join("")}</div>` : ""}
       <p class="legend">매일 그날의 1군·2군 코인을 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. 1군이 전체 후보를 꾸준히 앞서야 순위가 쓸모 있다는 뜻이에요.</p></div></section>`;
   }
-  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 언락 많은 순"]];
+  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 안 언락 큰 순"]];
   const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"], ["nounl", "큰 언락 빼기"]];
   function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
   function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
@@ -625,7 +626,7 @@
         const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0,
           hold: c => c.fz ? c.fz.H : -1, cheap: c => c.fz && c.fz.mult ? -c.fz.mult : -1e15, ftrend: c => c.fz && c.fz.trend != null ? c.fz.trend : -1e9,
-          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => c.unl && c.unl[2] != null ? c.unl[2] : -1 }[pref.sort] || (c => c.score);
+          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => unlSoon(c.unl) ?? -1 }[pref.sort] || (c => c.score);
         const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
         box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
           <p class="legend">1군은 진한 표시예요. 30일 변동은 시세 소스에 없으면 업비트 주봉 4주 변동으로 채우고, 둘 다 없으면 비워요.</p></div>`;
@@ -681,10 +682,10 @@
       ${c.fund || c.unl ? `<section class="panel section"><h2>보유 비용 · 공급 일정</h2><div class="fz-grid">
         ${c.fund ? `<div><span class="tiny muted">바이낸스 선물 펀딩비(1회)</span><b class="num ${c.fund.rate > 0 ? "rise" : c.fund.rate < 0 ? "fall" : ""}">${c.fund.rate > 0 ? "+" : ""}${c.fund.rate.toFixed(4)}%</b><span class="tiny muted">연환산 약 ${c.fund.yr > 0 ? "+" : ""}${c.fund.yr.toFixed(1)}%</span></div>
           <div><span class="tiny muted">미결제약정</span><b class="num">${krUsd(c.fund.oi)}</b><span class="tiny muted">${M.fundAt ? kst(M.fundAt) : ""}</span></div>` : ""}
-        ${c.unl ? `<div><span class="tiny muted">30일 안 언락</span><b class="num ${c.unl[2] >= 2 ? "rise" : ""}">${c.unl[2] != null ? c.unl[2].toFixed(1) + "%" : "-"}</b><span class="tiny muted">유통량 대비</span></div>
-          <div><span class="tiny muted">다음 언락</span><b class="num">${c.unl[0] ? kstDate(c.unl[0]) : "-"}</b><span class="tiny muted">${c.unl[1] != null ? "유통량의 " + c.unl[1].toFixed(2) + "%" : ""}</span></div>` : ""}</div>
+        ${c.unl ? `<div><span class="tiny muted">다음 언락</span><b class="num ${unlSoon(c.unl) >= 1 ? "rise" : ""}">${c.unl[0] ? kstDate(c.unl[0]) : "예정 없음"}</b><span class="tiny muted">${c.unl[1] != null ? `유통량의 ${c.unl[1].toFixed(2)}% · ${krUsd(c.unl[2])}` : ""}${/linear/i.test(c.unl[4] || "") ? " · 조금씩 풀림" : ""}</span></div>
+          <div><span class="tiny muted">아직 잠긴 물량</span><b class="num">${c.unl[3] != null ? c.unl[3].toFixed(1) + "%" : "-"}</b><span class="tiny muted">최대 공급 대비</span></div>` : ""}</div>
         ${c.fund ? `<p class="small" style="margin:0">${c.fund.yr >= 30 ? "롱이 많이 몰려 선물로 들고 있는 비용이 커요. 오래 들고 갈 거라면 현물이 더 유리할 수 있어요." : c.fund.yr <= -15 ? "펀딩비가 음수라 롱 포지션은 오히려 펀딩비를 받고 있어요(숏이 몰린 상태)." : "펀딩비는 보통 수준이에요."}</p>` : ""}
-        <p class="legend">펀딩비는 롱이 숏에게 주는 돈(음수면 반대)이에요. 연환산은 8시간마다 낸다고 보고 계산했어요 — 바이낸스는 일부 코인을 4시간·1시간마다 정산해 실제로는 더 클 수 있어요. 언락은 DefiLlama 일정 기준이에요.</p></section>` : ""}
+        <p class="legend">펀딩비는 롱이 숏에게 주는 돈(음수면 반대)이에요. 연환산은 8시간마다 낸다고 보고 계산했어요 — 바이낸스는 일부 코인을 4시간·1시간마다 정산해 실제로는 더 클 수 있어요. 언락은 코인마켓캡 일정 기준이에요(다음 한 번만 보여요).</p></section>` : ""}
       ${posPts.length > 1 ? `<section class="section"><div class="sec-head"><h2>섹터 안 순위 흐름</h2><span class="sub">위로 갈수록 높은 순위</span></div><div class="panel">${lineChart(posPts, v => Math.round(-v) + "위", false, "섹터 안 순위")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>순위에 반영된 뉴스</h2><span class="sub">AI가 매긴 영향(-10~+10), 시간이 지나면 줄어요</span></div><div class="panel cn-list">${newsRows || '<div class="small muted">아직 반영된 뉴스가 없어요.</div>'}</div></section>
       <p class="legend"><a href="/sectors">섹터 순위판으로</a> · 점수는 AI 판단 점수이며 투자 권유가 아니에요.</p>`;

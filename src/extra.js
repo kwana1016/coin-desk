@@ -97,3 +97,47 @@ export async function watchFees(env, now = Date.now()) {
   await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('fees', ?1, ?2)").bind(JSON.stringify(cur), now).run();
   return true;
 }
+
+// ── 언락 일정 (코인마켓캡 공개 데이터) — 목록(약 1,300개)이 시총 순으로 정렬되지 않아, 매시간 8분 칸에서 100개씩 3쪽을 받아 이어 붙인다 ──
+// 한 바퀴(약 5시간)를 다 돌면 12시간 쉬었다가 다시 돈다. 우리 코인(심볼·업비트 심볼)만 남기고, 같은 심볼이면 시총 순위가 높은 쪽을 쓴다.
+// kv 'unlocks' = {t: 마지막으로 한 바퀴를 끝낸 시각, pass: 지금 바퀴 시작, next: 다음에 받을 시작 번호(0=쉬는 중), total, m: {심볼: [다음 언락 시각, 유통량 대비 %, 금액$, 아직 잠긴 비율 %(최대 공급 대비), 방식, 시총 순위, 받은 시각]}}
+const CMC_UNLOCK = start => `https://api.coinmarketcap.com/data-api/v3/token-unlock/listing?start=${start}&limit=100&sort=cmc_rank&direction=asc&enableSmallUnlocks=true`;
+export async function watchUnlocks(env, now = Date.now()) {
+  const db = env.DB;
+  const row = await db.prepare("SELECT v FROM kv WHERE k = 'unlocks'").first().catch(() => null);
+  const cur = parse(row && row.v, {}); cur.m = cur.m || {};
+  if (!cur.next && cur.t && now - cur.t < 12 * 3600e3) return false;
+  if (!cur.next) { cur.next = 1; cur.pass = now; }
+  const bq = await db.prepare("SELECT sym, json_extract(json,'$.kr') AS kr FROM coin_base").all();
+  const want = new Map(); for (const r of (bq.results || [])) { want.set(r.sym.toUpperCase(), r.sym); if (r.kr) want.set(String(r.kr).toUpperCase(), r.sym); }
+  let code = 0, got = 0, end = false, start = cur.next;
+  for (let k = 0; k < 3; k++, start += 100) {
+    let part = null;
+    try {
+      const r = await fetch(CMC_UNLOCK(start), { headers: { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0)", accept: "application/json" } }); code = r.status;
+      if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} break; }
+      const j = JSON.parse(await r.text()); part = (j && j.data && j.data.tokenUnlockList) || [];
+      cur.total = Number(j && j.data && j.data.totalCount) || cur.total || 0;
+    } catch (e) { break; }
+    got += part.length;
+    for (const x of part) {
+      const sym = want.get(String(x.symbol || "").toUpperCase()); if (!sym) continue;
+      const rk = Number(x.cmcRank) || 1e9, old = cur.m[sym];
+      if (old && (old[6] || 0) >= cur.pass && (old[5] || 1e9) <= rk) continue; // 이번 바퀴에 이미 더 큰 코인으로 잡혔으면 그대로
+      const nx = x.nextUnlocked || {}; const circ = Number(x.circulatingSupply) || Number(x.selfReportedCirculatingSupply) || 0;
+      let date = Number(nx.date) || null; if (date && date < 1e12) date *= 1000;
+      const amt = Number(nx.tokenAmount) || 0, maxS = Number(x.maxSupply) || Number(x.totalSupply) || 0;
+      const d0 = (x.nextUnlockedDetail || [])[0] || {};
+      cur.m[sym] = [date && date > now ? date : null, circ > 0 && amt > 0 ? Math.round(amt / circ * 1e4) / 100 : null, Math.round(Number(nx.tokenAmountUsd) || 0),
+        maxS > 0 ? Math.round((Number(x.tokenLockedAmount) || 0) / maxS * 1000) / 10 : null, d0.vestingType || null, rk, now];
+    }
+    if (part.length < 100 || (cur.total && start + 100 > cur.total)) { end = true; break; }
+  }
+  if (end) { // 한 바퀴 끝: 이번 바퀴에 안 나온 코인은 지운다
+    for (const [s, v] of Object.entries(cur.m)) if ((v[6] || 0) < cur.pass) delete cur.m[s];
+    cur.t = now; cur.next = 0;
+  } else if (got) cur.next = start;
+  await db.batch([db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('unlocks', ?1, ?2)").bind(JSON.stringify(cur), now),
+    db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('unlocks_status', ?1, ?2)").bind(JSON.stringify({ code, at: now, got, next: cur.next, total: cur.total || null, n: Object.keys(cur.m).length }), now)]);
+  return true;
+}
