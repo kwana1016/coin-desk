@@ -193,27 +193,42 @@ export async function watchBithumb(env, now = Date.now()) {
 
 // ── 바이낸스 USDⓈ-M 무기한 선물 목록 (6시간마다) — fapi.binance.com은 Cloudflare 위치에서 403이라 코인게코 파생상품 정보로 받는다 ──
 export async function watchBinance(env, now = Date.now()) {
-  // 6시간마다 새로 받되, 실패하면 다음 시간에 다시 시도한다 (코인게코 → 코인마켓캡 순서)
+  // 바이낸스 USDⓈ-M 선물 목록 + 펀딩비·미결제약정. 2시간마다 새로 받되, 실패하면 다음 시간에 다시 시도한다 (코인게코 → 코인마켓캡 순서)
+  // kv 'bnf' = [심볼...] · kv 'fund' = {t, src, m: {심볼: [펀딩비 %(1회), 미결제약정 $]}}
   const last = await env.DB.prepare("SELECT ts FROM kv WHERE k = 'bnf'").first().catch(() => null);
-  if (last && now - Number(last.ts) < 6 * HOUR - 10 * 60000) return;
+  if (last && now - Number(last.ts) < 2 * HOUR - 10 * 60000) return;
   const ALIAS = { RAYSOL: "RAY", BEAMX: "BEAM", LUNA2: "LUNA" };
   const norm = x => { const s = x.toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, ""); return ALIAS[s] || s; };
+  const NB = '(?:(?!"base":|"baseSymbol":)[\\s\\S]){0,900}?';
+  const num = x => (x == null || x === "null") ? null : Number(x);
   const tries = [
     ["cg", "https://api.coingecko.com/api/v3/derivatives/exchanges/binance_futures?include_tickers=unexpired",
-      /"base":"([A-Za-z0-9]+)","target":"(USDT|USDC)"/g, m => m[1]],
+      new RegExp('"base":"([A-Za-z0-9]+)","target":"(USDT|USDC)"' + NB + '"funding_rate":(-?[0-9.eE+-]+|null)' + NB + '"open_interest_usd":(-?[0-9.eE+-]+|null)', "g"),
+      m => [m[1], m[2], num(m[3]), num(m[4])]],
     ["cmc", "https://api.coinmarketcap.com/data-api/v3/exchange/market-pairs/latest?slug=binance&category=perpetual&start=1&limit=1000",
-      /"category":"([a-z]+)"[^{}]*?"baseSymbol":"([^"]+)"[^{}]*?"quoteSymbol":"(USDT|USDC)"/g, m => m[1] === "spot" ? null : m[2]],
+      new RegExp('"category":"([a-z]+)"' + NB + '"baseSymbol":"([^"]+)"' + NB + '"quoteSymbol":"(USDT|USDC)"' + NB + '"openInterestUsd":(-?[0-9.eE+-]+|null)' + NB + '"fundingRate":(-?[0-9.eE+-]+|null)', "g"),
+      m => m[1] === "spot" ? null : [m[2], m[3], num(m[5]), num(m[4])]],
   ];
   const st = { at: now };
   for (const [name, url, re, pick] of tries) {
     try {
       const r = await fetch(url, { headers: UA }); st[name] = r.status;
       if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} continue; }
-      const t = await readHead(r, 2500000); const set = new Set(); let mt;
-      while ((mt = re.exec(t))) { const b = pick(mt); if (b) set.add(norm(b)); }
+      const t = await readHead(r, 2500000); const set = new Set(), fm = {}; let mt;
+      while ((mt = re.exec(t))) {
+        const x = pick(mt); if (!x) continue;
+        const sym = norm(x[0]); set.add(sym);
+        // 같은 코인이 USDT·USDC 둘 다 있으면 USDT 쪽 펀딩비를 쓴다
+        if (x[2] != null && isFinite(x[2]) && (!fm[sym] || x[1] === "USDT")) fm[sym] = [x[2], x[3] != null && isFinite(x[3]) ? Math.round(x[3]) : null];
+      }
+      // 단위 맞추기: 소스마다 0.0001(소수)·0.01(%)로 달라서, 중앙값이 0.001보다 작으면 소수로 보고 %로 바꾼다
+      const abs = Object.values(fm).map(v => Math.abs(v[0])).sort((a, b) => a - b), med = abs.length ? abs[abs.length >> 1] : 0;
+      const k = med > 0 && med < 0.001 ? 100 : 1;
+      for (const v of Object.values(fm)) v[0] = Math.round(v[0] * k * 1e5) / 1e5;
       if (set.size > 100) {
-        await put(env.DB, "bnf", [...set], now).run();
-        await put(env.DB, "bnf_status", { ...st, src: name, n: set.size, code: 200 }, now).run(); return;
+        await env.DB.batch([put(env.DB, "bnf", [...set], now), put(env.DB, "fund", { t: now, src: name, m: fm }, now),
+          put(env.DB, "bnf_status", { ...st, src: name, n: set.size, nf: Object.keys(fm).length, code: 200 }, now)]);
+        return;
       }
       st[name + "_n"] = set.size;
     } catch (e) { st[name + "_err"] = String(e).slice(0, 80); }

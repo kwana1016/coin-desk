@@ -396,7 +396,7 @@ footer{font-size:12px;color:var(--muted);text-align:center;display:flex;flex-dir
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .xb.up{color:#8ab4ff;border-color:#2b4466} :root:not([data-theme="light"]) .xb.bt{color:#f6a77a;border-color:#5b3424} :root:not([data-theme="light"]) .xb.bf{color:#e7c56b;border-color:#57461d}}
 :root[data-theme="dark"] .xb.up{color:#8ab4ff;border-color:#2b4466} :root[data-theme="dark"] .xb.bt{color:#f6a77a;border-color:#5b3424} :root[data-theme="dark"] .xb.bf{color:#e7c56b;border-color:#57461d}
 .fl{font-size:10px;font-weight:700;padding:0 6px;border-radius:5px;line-height:16px}
-.fl-hot{background:var(--rise-soft);color:var(--rise)} .fl-deep{background:var(--fall-soft);color:var(--fall)} .fl-warn{background:var(--warn-soft);color:var(--warn)}
+.fl-hot{background:var(--rise-soft);color:var(--rise)} .fl-deep{background:var(--fall-soft);color:var(--fall)} .fl-warn{background:var(--warn-soft);color:var(--warn)} .fl-fhi{background:var(--rise-soft);color:var(--rise)} .fl-fneg{background:var(--fall-soft);color:var(--fall)} .fl-unl{background:var(--warn-soft);color:var(--warn)}
 .chal{font-size:10px;font-weight:700;padding:0 6px;border-radius:5px;line-height:16px;background:var(--warn-soft);color:var(--warn)}
 .nw{font-size:10px;font-weight:700;font-family:var(--font-num)}
 .mv{font-size:11px;font-family:var(--font-num);font-weight:600}

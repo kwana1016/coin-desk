@@ -391,7 +391,9 @@
     if ((ath != null && ath <= -90) || (d30 != null && d30 <= -30)) f.push("deep");
     return f;
   }
-  const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"], warn: ["유의", "국내 거래소 유의 종목 — 지정이 풀릴 때까지 점수 -8"] };
+  const FLAG = { hot: ["과열", "최근 30일 +40% 이상 또는 7일 +25% 이상"], deep: ["과대낙폭", "고점 대비 -90% 이하 또는 최근 30일 -30% 이하"], warn: ["유의", "국내 거래소 유의 종목 — 지정이 풀릴 때까지 점수 -8"],
+    fhi: ["펀딩↑", "바이낸스 선물 펀딩비가 연 30% 이상(롱이 내는 비용) — 선물로 오래 들고 있으면 비용이 커요"], fneg: ["펀딩↓", "펀딩비가 음수 — 숏이 몰려 롱이 펀딩비를 받아요"],
+    unl: ["언락", "30일 안에 유통량의 2% 이상이 풀려요"] };
   // DefiLlama 수익 데이터 → 화면용 숫자. f = [수수료30일, 수수료7일, 수수료1년, 매출30일, 매출1년, 보유자수익30일, 보유자수익1년, 종류, 받은 시각]
   function feeInfo(f, mk) {
     if (!f || (f[0] == null && f[3] == null && f[5] == null)) return null;
@@ -416,6 +418,11 @@
         <td class="num">${c.fz.sh30 != null ? c.fz.sh30.toFixed(0) + "%" : "-"}${dsh(c) != null && Math.abs(dsh(c)) >= 1 ? ` <span class="tiny ${ppc(dsh(c))}">${dsh(c) > 0 ? "▲" : "▼"}${Math.abs(dsh(c)).toFixed(0)}p</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
       <p class="legend">보유자 수익 = 바이백·소각·분배로 토큰 보유자에게 간 몫. 시총 ÷ 연 보유자 수익은 주식의 PER처럼 낮을수록 수익 대비 싸다는 뜻이에요(30일 값을 1년으로 환산). 수수료 1주 추세 = 최근 7일 하루 평균이 30일 하루 평균보다 몇 % 많은지. 섹터 점유율 = 섹터 안 코인들 수수료 합에서 차지하는 몫(30일), ▲▼는 최근 7일 점유율과의 차이예요.</p></div></section>`;
   }
+  // 바이낸스 선물 펀딩비: f = [1회 펀딩비 %, 미결제약정 $] — 연환산은 8시간마다 낸다고 보고 계산 (일부 코인은 4시간·1시간 주기라 더 클 수 있음)
+  function fundInfo(f) { if (!f || f[0] == null) return null; return { rate: f[0], yr: f[0] * 3 * 365, oi: f[1] }; }
+  function fundFlag(f) { const x = fundInfo(f); return !x ? [] : x.yr >= 30 ? ["fhi"] : x.yr <= -15 ? ["fneg"] : []; }
+  // 언락: u = [다음 언락 시각, 그때 풀리는 비율(유통량 대비 %), 30일 안 합계 %, 이름]
+  function unlFlag(u) { return u && u[2] != null && u[2] >= 2 ? ["unl"] : []; }
   function sectorModel(d) {
     const rank = d.rank || { c: {}, moves: [], news: {}, trail: {} };
     const cp = (d.kv.cp && d.kv.cp.m) || {};
@@ -425,14 +432,15 @@
     // 시세 찾기: 코인게코 id(b.cg) → 심볼(같은 심볼이 여럿이면 시총이 가장 큰 것)
     const bySym = new Map(); Object.entries(cp).forEach(([id, a]) => { const s = String(a[1] || "").toUpperCase(), cur = bySym.get(s); if (!cur || (n(a[3]) || 0) > (n(cp[cur][3]) || 0)) bySym.set(s, id); });
     const keyOf = b => (b.cg && cp[b.cg]) ? b.cg : ([b.sym, b.kr].filter(Boolean).map(x => bySym.get(String(x).toUpperCase())).find(Boolean) || null);
-    const feesM = (d.kv.fees && d.kv.fees.m) || {};
+    const feesM = (d.kv.fees && d.kv.fees.m) || {}, fundM = (d.kv.fund && d.kv.fund.m) || {}, unlM = (d.kv.unlocks && d.kv.unlocks.m) || {};
     const coins = {}, baseCp = new Set();
     (d.coins || []).forEach(b => {
       const key = keyOf(b); if (key) baseCp.add(key);
       const c = rank.c[b.sym] || [b.sector, 0, 0, null, (b.q || []).reduce((a, x) => a + x, 0), 0, 0, 0, null, ""];
       const mk = key ? cp[key] : null, kr = b.kr || b.sym;
       coins[b.sym] = { b, sym: b.sym, sec: c[0], pos: c[1], lg: c[2], score: n(c[3]), Q: n(c[4]), S: n(c[5]), N: n(c[6]), chal: c[7], crank: c[8], why: c[9],
-        warn: c[10] || null, mk, flags: flagsOf(mk).concat(c[10] ? ["warn"] : []), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
+        warn: c[10] || null, mk, fund: fundInfo(fundM[b.sym] || fundM[kr]), unl: unlM[b.sym] || null,
+        flags: flagsOf(mk).concat(c[10] ? ["warn"] : []).concat(fundFlag(fundM[b.sym] || fundM[kr])).concat(unlFlag(unlM[b.sym])), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk) };
     });
     // 섹터 안 수수료 점유율: 30일 기준과 최근 7일 기준을 비교
@@ -447,10 +455,15 @@
       if (why) exRows.push({ id, sym: m[1], rank: m[0], why, mcap: m[3] });
       else pending.push({ id, sym: m[1], rank: m[0], mcap: m[3] }); });
     exRows.sort((a, b) => a.rank - b.rank); pending.sort((a, b) => a.rank - b.rank);
-    return { feesAt: d.kv.fees && d.kv.fees.t, rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
+    return { feesAt: d.kv.fees && d.kv.fees.t, fundAt: d.kv.fund && d.kv.fund.t, unlAt: d.kv.unlocks && d.kv.unlocks.t, rank, sec, coins, exRows, pending, groups: d.kv.groups || [...new Set((d.sectors || []).map(s => s.group))], cpAt: d.kv.cp && d.kv.cp.t };
   }
   function exBadges(c) { return `${c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}${c.ex.bt ? '<span class="xb bt" title="빗썸 원화마켓">빗</span>' : ""}${c.ex.bf ? '<span class="xb bf" title="바이낸스 USDⓈ-M 선물">바선</span>' : ""}`; }
-  function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(f === "warn" ? `${c.warn} 유의 종목 — 지정이 풀릴 때까지 점수 -8` : FLAG[f][1])}">${FLAG[f][0]}</span>`).join(""); }
+  function flagTitle(c, f) {
+    if (f === "warn") return `${c.warn} 유의 종목 — 지정이 풀릴 때까지 점수 -8`;
+    if ((f === "fhi" || f === "fneg") && c.fund) return `바이낸스 선물 펀딩비 ${c.fund.rate > 0 ? "+" : ""}${c.fund.rate.toFixed(4)}%/회 · 연환산 약 ${c.fund.yr.toFixed(0)}%`;
+    if (f === "unl" && c.unl) return `30일 안 언락 유통량의 ${c.unl[2].toFixed(1)}%${c.unl[0] ? ` · 다음 ${kstDate(c.unl[0])} ${c.unl[1] != null ? c.unl[1].toFixed(1) + "%" : ""}` : ""}`;
+    return FLAG[f][1]; }
+  function flagBadges(c) { return c.flags.map(f => `<span class="fl fl-${f}" title="${esc(flagTitle(c, f))}">${FLAG[f][0]}</span>`).join(""); }
   function moveMark(c) {
     const t = c.trail || [], cur = c.pos, prev = t.length > 1 ? t[t.length - 2] : null;
     if (!cur) return "";
@@ -551,8 +564,8 @@
       ${P.promos.length ? `<div class="mini-h">1군에 새로 들어온 뒤 성적</div><div class="pf-pr">${P.promos.slice(0, 10).map(x => `<div><a href="/rank/${encodeURIComponent(x.sym)}">${esc((M.coins[x.sym] && M.coins[x.sym].b.ko) || x.sym)}</a> <span class="tiny muted">${esc(secName[x.sec] || x.sec)} · ${kstDate(x.t)} 승격</span> <b class="num ${ppc(x.r)}">${pp(x.r)}</b>${x.vb != null ? ` <span class="tiny muted">BTC 대비 ${pp(x.vb)}p</span>` : ""}</div>`).join("")}</div>` : ""}
       <p class="legend">매일 그날의 1군·2군 코인을 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. 1군이 전체 후보를 꾸준히 앞서야 순위가 쓸모 있다는 뜻이에요.</p></div></section>`;
   }
-  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"]];
-  const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"]];
+  const SORTS = [["score", "종합 점수"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 언락 많은 순"]];
+  const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"], ["nounl", "큰 언락 빼기"]];
   function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
   function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
   async function sectorsPage() {
@@ -595,6 +608,7 @@
       if (f.includes("up") && !c.ex.up) return false;
       if (f.includes("bf") && !c.ex.bf) return false;
       if (f.includes("earn") && !(c.fz && c.fz.H > 0)) return false;
+      if (f.includes("nounl") && c.flags.includes("unl")) return false;
       return true; };
     const draw = () => {
       document.querySelectorAll("#sec-view button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === pref.view)));
@@ -607,7 +621,8 @@
       } else {
         const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0,
-          hold: c => c.fz ? c.fz.H : -1, cheap: c => c.fz && c.fz.mult ? -c.fz.mult : -1e15, ftrend: c => c.fz && c.fz.trend != null ? c.fz.trend : -1e9 }[pref.sort] || (c => c.score);
+          hold: c => c.fz ? c.fz.H : -1, cheap: c => c.fz && c.fz.mult ? -c.fz.mult : -1e15, ftrend: c => c.fz && c.fz.trend != null ? c.fz.trend : -1e9,
+          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => c.unl && c.unl[2] != null ? c.unl[2] : -1 }[pref.sort] || (c => c.score);
         const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
         box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
           <p class="legend">1군은 진한 표시예요. 30일 변동은 시세 소스에 없으면 업비트 주봉 4주 변동으로 채우고, 둘 다 없으면 비워요.</p></div>`;
@@ -660,6 +675,13 @@
       <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>
         <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}</div></section>
+      ${c.fund || c.unl ? `<section class="panel section"><h2>보유 비용 · 공급 일정</h2><div class="fz-grid">
+        ${c.fund ? `<div><span class="tiny muted">바이낸스 선물 펀딩비(1회)</span><b class="num ${c.fund.rate > 0 ? "rise" : c.fund.rate < 0 ? "fall" : ""}">${c.fund.rate > 0 ? "+" : ""}${c.fund.rate.toFixed(4)}%</b><span class="tiny muted">연환산 약 ${c.fund.yr > 0 ? "+" : ""}${c.fund.yr.toFixed(1)}%</span></div>
+          <div><span class="tiny muted">미결제약정</span><b class="num">${krUsd(c.fund.oi)}</b><span class="tiny muted">${M.fundAt ? kst(M.fundAt) : ""}</span></div>` : ""}
+        ${c.unl ? `<div><span class="tiny muted">30일 안 언락</span><b class="num ${c.unl[2] >= 2 ? "rise" : ""}">${c.unl[2] != null ? c.unl[2].toFixed(1) + "%" : "-"}</b><span class="tiny muted">유통량 대비</span></div>
+          <div><span class="tiny muted">다음 언락</span><b class="num">${c.unl[0] ? kstDate(c.unl[0]) : "-"}</b><span class="tiny muted">${c.unl[1] != null ? "유통량의 " + c.unl[1].toFixed(2) + "%" : ""}</span></div>` : ""}</div>
+        ${c.fund ? `<p class="small" style="margin:0">${c.fund.yr >= 30 ? "롱이 많이 몰려 선물로 들고 있는 비용이 커요. 오래 들고 갈 거라면 현물이 더 유리할 수 있어요." : c.fund.yr <= -15 ? "펀딩비가 음수라 롱 포지션은 오히려 펀딩비를 받고 있어요(숏이 몰린 상태)." : "펀딩비는 보통 수준이에요."}</p>` : ""}
+        <p class="legend">펀딩비는 롱이 숏에게 주는 돈(음수면 반대)이에요. 연환산은 8시간마다 낸다고 보고 계산했어요 — 바이낸스는 일부 코인을 4시간·1시간마다 정산해 실제로는 더 클 수 있어요. 언락은 DefiLlama 일정 기준이에요.</p></section>` : ""}
       ${posPts.length > 1 ? `<section class="section"><div class="sec-head"><h2>섹터 안 순위 흐름</h2><span class="sub">위로 갈수록 높은 순위</span></div><div class="panel">${lineChart(posPts, v => Math.round(-v) + "위", false, "섹터 안 순위")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>순위에 반영된 뉴스</h2><span class="sub">AI가 매긴 영향(-10~+10), 시간이 지나면 줄어요</span></div><div class="panel cn-list">${newsRows || '<div class="small muted">아직 반영된 뉴스가 없어요.</div>'}</div></section>
       <p class="legend"><a href="/sectors">섹터 순위판으로</a> · 점수는 AI 판단 점수이며 투자 권유가 아니에요.</p>`;

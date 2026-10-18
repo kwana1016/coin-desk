@@ -17,15 +17,19 @@ AI가 공개 뉴스와 업비트 시세를 보고 정해진 시간마다 쓰는 
 - `wrangler.jsonc`: Worker·정적 파일·D1·cron 설정. 이 저장소에 푸시하면 Cloudflare가 `npx wrangler deploy`로 배포
 
 ## 섹터 순위판 (`/sectors`, `/rank/:sym`)
-- `src/sectors.js`: 두 번째 cron(`3-58/5 * * * *`)으로 5분마다 한 가지씩 — 시세(코인마켓캡 공개 데이터 → 막히면 코인게코 → 코인로어, 15분마다, `kv cp`·역대 최고가 `kv ath`), 순위 계산(요청이 있거나 11시간 지났을 때), 초기 데이터 넣기(버전이 바뀌었을 때 한 번), 빗썸 원화마켓 목록(1시간마다)·바이낸스 선물 목록(코인게코 파생상품 정보, 6시간마다)
+- `src/sectors.js`: 두 번째 cron(`3-58/5 * * * *`)으로 5분마다 한 가지씩 — 시세(코인마켓캡 공개 데이터 → 막히면 코인게코 → 코인로어, 15분마다, `kv cp`·역대 최고가 `kv ath`), 순위 계산(요청이 있거나 11시간 지났을 때), 초기 데이터 넣기(버전이 바뀌었을 때 한 번), 빗썸 원화마켓 목록·유의 종목(1시간마다)
 - 점수 = 코인 품질×0.6 + 규모×0.25 + 섹터 생존 점수×0.15 + 뉴스 점수(±20, 반감기 3·10·45일). 1군(3대장)은 2군 1등이 3점 이상 앞선 상태가 2번 연속이면 교체(뉴스 +10이면 바로)
 - 후보: 시총 150위 안, 거래대금/시총 0.1% 이상, 기준 코인(BTC·ETH·SOL·BNB·XRP)과 스테이블·래핑·스테이킹 파생·금 토큰 제외(`kv sector_excluded`)
 - 예약 실행 '섹터 순위·그림 추적'(하루 3번)이 뉴스를 코인별 점수로 `coin_news`에 넣고 `kv rank_req`를 남긴 뒤 `/api/rank-now`를 불러 바로 계산
 - 초기 데이터: `tools/sector_seed.py` → `public/sector_seed.json`. 이후 원본은 D1(`sectors`, `coin_base`) — 다시 넣어도 D1 값이 이김(json_patch)
-- API: `/api/sectors`, `/api/sector-coin/:sym`, `/api/rank-now`
+- 실제 수익(`src/extra.js` `watchFees`, 28·58분): `coin_base.json.ll`(DefiLlama 프로토콜 이름)이 있는 코인을 6시간마다 10개씩 — 30일·7일·1년 수수료, 매출, 보유자 수익 → `kv fees`. 품질 점수 '실사용·수익'·'토큰 가치 포착'을 AI 점수와 반반 섞음(PoW·프라이버시 제외)
+- 성적표(`snapPerf`, 38분): 한국 시각 9시 이후 하루 한 번 1군·2군 코인 가격을 `perf`에 저장 → 화면이 1군 vs 2군 vs 전체 후보 vs 비트코인 누적 수익률(매일 동일 비중) 계산
+- 바이낸스 선물(23분, 2시간마다): 목록 `kv bnf` + 펀딩비·미결제약정 `kv fund` (코인게코 → 코인마켓캡)
+- 유의 종목: 업비트(`kv upbit_krw`의 w)·빗썸(`kv bithumb_warn`) 유의 종목은 지정 동안 뉴스 점수 -8
+- API: `/api/sectors`, `/api/sector-coin/:sym`, `/api/rank-now`, `/api/perf`
 
 ## D1 표
-- `sectors(id, ord, json)`, `coin_base(sym, sector, json)`, `coin_news(id, sym, ts, impact, kind, json)`, `rankings(id, ts, json)` — 섹터 순위판
+- `sectors(id, ord, json)`, `coin_base(sym, sector, json)`, `coin_news(id, sym, ts, impact, kind, json)`, `rankings(id, ts, json)`, `perf(day, ts, json)` — 섹터 순위판
 - `reports(id, ts, json)`, `weekly(id, ts, json)`, `alerts(id, ts, kind, json)` — kind: news(AI 판단)·auto_news(뉴스 자동 감지)·price(가격 급변)·listing/warning/delist(업비트 목록)·rejected(AI가 지운 것), `kv(k, v, ts)`
 
 ## 참고 도구 (예약 실행은 안내문에 들어 있는 사본을 씀)
