@@ -402,7 +402,7 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
     else if (prev && !pl && x.lg && !x.ext) moves.push(["in", x.sym, x.sec, 0, x.pos, x.lg === 1 ? (via[x.sym] || "") : ""]);
     else if (pl && !x.lg && !(p && p[15])) moves.push(["out", x.sym, x.sec, pp, 0, x.why]);
     else if (pl === 1 && x.lg === 1 && p[0] === x.sec && pp !== x.pos) moves.push([pp > x.pos ? "up" : "down", x.sym, x.sec, pp, x.pos, ""]);
-    if (x.warn && !(p && p[10])) moves.push(["warn", x.sym, x.sec, pp, x.pos, x.warn]);
+    if (x.warn && p && !p[10]) moves.push(["warn", x.sym, x.sec, pp, x.pos, x.warn]); // 새로 추적을 시작한 코인은 '지정'으로 알리지 않는다
     else if (!x.warn && p && p[10]) moves.push(["unwarn", x.sym, x.sec, pp, x.pos, p[10]]);
     const nt = (ntop[x.sym] || []).filter(n => Math.abs(n[2]) >= 0.3).sort((a, b) => Math.abs(b[2]) - Math.abs(a[2])).slice(0, 3);
     if (nt.length) top[x.sym] = nt;
