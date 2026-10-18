@@ -230,7 +230,7 @@ export default {
     const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
     if (event.cron === CRON2) {
       // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때) · 8분: 초기 데이터(버전이 바뀌었을 때만, 아니면 kv 한 번 읽고 끝)
-      // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 28·58분: 실제 수익(DefiLlama, 6시간 지난 코인 6개씩) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
+      // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 28·58분: 실제 수익(DefiLlama, 6시간 지난 코인 10개씩) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12;
       const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env) : (t === 4) ? watchBinance(env)
         : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env);

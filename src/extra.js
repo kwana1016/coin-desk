@@ -49,9 +49,9 @@ export async function apiPerf(db) {
 }
 
 // ── 실제 수익 데이터 (DefiLlama) ──
-// coin_base.json.ll = DefiLlama 프로토콜 이름(슬러그). 한 번에 6개 코인 × 3종류(수수료·매출·보유자 수익)를 받아 kv 'fees'에 쌓는다.
+// coin_base.json.ll = DefiLlama 프로토콜 이름(슬러그). 한 번에 10개 코인 × 3종류(수수료·매출·보유자 수익)를 받아 kv 'fees'에 쌓는다.
 // kv 'fees' = {t, m: {심볼: [수수료30일, 수수료7일, 수수료1년, 매출30일, 매출1년, 보유자수익30일, 보유자수익1년, 종류(1=프로토콜 2=체인), 받은 시각]}}
-// 6시간 지난 코인부터 차례로 갱신 (28·58분 칸) — 응답 앞부분에서 맨 처음 나오는 합계만 읽는다.
+// 6시간 지난 코인부터 차례로 갱신 (28·58분 칸, 무료 요금제 하위 요청 50개 안) — 응답 앞부분에서 맨 처음 나오는 합계만 읽는다.
 const LL_TYPES = [["dailyFees", 0], ["dailyRevenue", 3], ["dailyHoldersRevenue", 5]];
 async function llTotals(slug, dataType) {
   const r = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?dataType=${dataType}&excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`,
@@ -79,7 +79,7 @@ export async function watchFees(env, now = Date.now()) {
   ]);
   const cur = parse(fq && fq.v, { m: {} }); cur.m = cur.m || {};
   const due = (bq.results || []).filter(r => !cur.m[r.sym] || now - (cur.m[r.sym][8] || 0) > 6 * 3600e3)
-    .sort((a, b) => ((cur.m[a.sym] || [])[8] || 0) - ((cur.m[b.sym] || [])[8] || 0)).slice(0, 6);
+    .sort((a, b) => ((cur.m[a.sym] || [])[8] || 0) - ((cur.m[b.sym] || [])[8] || 0)).slice(0, 10);
   if (!due.length) return false;
   const res = await Promise.all(due.map(async r => {
     const out = Array(9).fill(null); let pt = null, ok = false;

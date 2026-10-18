@@ -406,7 +406,7 @@
   const xMult = x => x == null ? "-" : x >= 1000 ? Math.round(x).toLocaleString("en-US") + "배" : x >= 100 ? Math.round(x) + "배" : x.toFixed(1) + "배";
   function moneySection(M, secName) {
     const list = Object.values(M.coins).filter(c => c.fz && c.fz.H > 0 && c.lg).sort((a, b) => b.fz.H - a.fz.H).slice(0, 12);
-    if (!list.length) return `<details class="panel exl"><summary>돈 버는 코인 — DefiLlama 수익 데이터를 받는 중이에요</summary><div class="small muted" style="margin-top:8px">6시간마다 코인 6개씩 받아서 하루 안에 채워져요.</div></details>`;
+    if (!list.length) return `<details class="panel exl"><summary>돈 버는 코인 — DefiLlama 수익 데이터를 받는 중이에요</summary><div class="small muted" style="margin-top:8px">30분마다 코인 10개씩 받아서 몇 시간 안에 채워져요.</div></details>`;
     const dsh = c => c.fz.sh30 != null && c.fz.sh7 != null ? c.fz.sh7 - c.fz.sh30 : null;
     return `<section class="section"><div class="sec-head"><h2>돈 버는 코인</h2><span class="sub">토큰 보유자에게 돌아가는 수익 순 · DefiLlama${M.feesAt ? " · " + kst(M.feesAt) : ""}</span></div>
       <div class="panel"><div class="tbl"><table class="money"><thead><tr><th>코인</th><th>보유자 수익 30일</th><th>시총 ÷ 연 보유자 수익</th><th>수수료 1주 추세</th><th>섹터 점유율</th></tr></thead><tbody>${list.map(c => `<tr>
@@ -569,6 +569,7 @@
       : `<div class="small muted">이번 계산에서는 1군·2군 사이 이동이 없었어요${ups.length ? ` · 같은 리그 안 순위 변동 ${ups.length}건` : ""}.</div>`;
     const intro = `<details class="more rules"><summary>순위는 이렇게 정해요</summary><div class="more-body">
       <div><b>점수</b> = 코인 품질×0.6 + 규모×0.25 + 섹터 생존 점수×0.15 + 뉴스 점수. 품질은 ${QN.join("·")} 5항목(각 20점), 규모는 시총 1억 달러=0 ~ 1,000억 달러=100, 뉴스 점수는 -20~+20이에요.</div>
+      <div><b>실제 수익</b> — DefiLlama에서 수수료·매출·보유자 수익을 받는 코인은 '실사용·수익'(연 수수료 100만 달러=4 ~ 100억 달러=20)과 '토큰 가치 포착'(보유자 몫÷시총 1%=8 ~ 30%=20)을 AI 판단 점수와 반반 섞어요. PoW·프라이버시 코인은 화폐 성격이라 보여주기만 해요. <b>유의 종목</b>은 지정이 풀릴 때까지 뉴스 점수에서 8점을 빼요.</div>
       <div><b>뉴스</b>는 하루 3번 AI가 코인별로 -10~+10을 매기고, 시간이 지나면 줄어들어요(단기 3일·보통 10일·구조적 변화 45일마다 절반). 큰 코인은 웬만한 뉴스로는 순위가 잘 안 바뀌어요.</div>
       <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
       <div><b>후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
@@ -654,6 +655,7 @@
           <div><span class="tiny muted">시총 ÷ 연 보유자 수익</span><b class="num">${xMult(c.fz.mult)}</b><span class="tiny muted">매출 기준 ${xMult(c.fz.multR)}</span></div>
           <div><span class="tiny muted">수수료 최근 1주 추세</span><b class="num ${ppc(c.fz.trend)}">${pp(c.fz.trend)}</b><span class="tiny muted">30일 평균 대비</span></div>
           <div><span class="tiny muted">섹터 수수료 점유율</span><b class="num">${c.fz.sh30 != null ? c.fz.sh30.toFixed(0) + "%" : "-"}</b><span class="tiny muted">${c.fz.sh7 != null ? "최근 7일 " + c.fz.sh7.toFixed(0) + "%" : ""}</span></div></div>
+        ${["pow", "privacy"].includes(c.sec) ? '<p class="small muted" style="margin:0">PoW·프라이버시 코인은 화폐 성격이라 이 숫자를 점수에 반영하지 않아요.</p>' : ""}
         <p class="legend">수수료 = 사용자가 낸 돈 전체, 매출 = 그중 프로토콜이 가져간 몫, 보유자 수익 = 바이백·소각·분배로 토큰 보유자에게 간 몫이에요. 30일 값이 비면 1년 합계의 절반을 바닥으로 써요. 보유자 수익이 0이면 앱이 잘돼도 토큰 가격으로 바로 이어지지 않아요.</p></section>` : ""}
       <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>

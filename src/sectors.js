@@ -225,6 +225,7 @@ export async function watchBinance(env, now = Date.now()) {
 //   실사용·수익: 연환산 수수료 F — 100만 달러=4 · 1,000만=8 · 1억=12 · 10억=16 · 100억 달러=20
 //   토큰 가치 포착: 보유자 몫 C = max(보유자 수익, 매출의 절반)을 시총으로 나눈 비율 — 1%=8 · 3%≈12 · 10%=16 · 30%≈20, 없으면 2
 //   (30일 값을 1년으로 환산하되, 30일이 비었으면 1년 합계의 절반을 바닥으로 쓴다)
+const NO_FEE_SECTORS = new Set(["pow", "privacy"]);
 export function feeScore(f, mcap) {
   if (!f || (f[0] == null && f[3] == null && f[5] == null)) return null;
   const yr = (d30, y1) => Math.max(d30 != null ? d30 * 365 / 30 : 0, y1 != null ? y1 * 0.5 : 0);
@@ -258,13 +259,14 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees }) {
     const q = Array.isArray(b.q) ? b.q.slice() : [];
     const qd = feeScore(fees && fees[b.sym], m0 ? Number(m0[3]) || 0 : 0);
     // 실제 수익 데이터가 있으면 '실사용·수익'과 '토큰 가치 포착'을 수동 점수와 반반 섞는다
-    if (qd && q.length === 5) { if (qd[0] != null) q[0] = Math.round(((Number(q[0]) || 0) + qd[0]) / 2); if (qd[1] != null) q[1] = Math.round(((Number(q[1]) || 0) + qd[1]) / 2); }
+    // PoW·프라이버시 코인은 화폐 성격이라 수수료로 가치를 재지 않는다 (데이터는 보여주기만)
+    if (qd && q.length === 5 && !NO_FEE_SECTORS.has(b.sector)) { if (qd[0] != null) q[0] = Math.round(((Number(q[0]) || 0) + qd[0]) / 2); if (qd[1] != null) q[1] = Math.round(((Number(q[1]) || 0) + qd[1]) / 2); }
     const Q = q.reduce((s, x) => s + (Number(x) || 0), 0);
     // 업비트·빗썸 유의 종목이면 지정이 풀릴 때까지 뉴스 점수에서 8점을 뺀다
     const wv = warn ? (warn[b.kr || b.sym] || warn[b.sym] || null) : null;
     const N = clamp((nsum[b.sym] || 0) - (wv ? R.warn : 0), -R.nmax, R.nmax);
     const m = m0;
-    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv, qd };
+    const row = { sym: b.sym, sec: b.sector, Q, N: r1(N), S: 0, score: null, rank: null, el: false, why: "", pos: 0, lg: 0, chal: 0, warn: wv, qd: NO_FEE_SECTORS.has(b.sector) ? null : qd };
     rows[b.sym] = row;
     if (b.core) row.why = "core";
     if (!m) { row.why = row.why || "nodata"; continue; }
