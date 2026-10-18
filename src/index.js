@@ -173,6 +173,24 @@ async function watchUpbit(env) {
 }
 
 
+// 임시 진단: kv 'probe_req' = {h, p, q, f, n, o, lim} 이 있으면 1분 cron이 그 주소를 받아 kv 'probe'에 앞부분을 남긴다
+async function runProbe(env, req) {
+  const H = { ll: "api.llama.fi", lly: "yields.llama.fi", llc: "coins.llama.fi", cg: "api.coingecko.com", cmc: "api.coinmarketcap.com", up: "api.upbit.com", bt: "api.bithumb.com" };
+  const u = "https://" + (H[req.h] || "x") + "/" + (req.p || "") + (req.q ? "?" + req.q : "");
+  const out = { at: Date.now(), u };
+  try {
+    const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
+    out.status = r.status; out.clen = r.headers.get("content-length"); out.ms = Date.now() - out.at;
+    const lim = Math.min(Number(req.lim || 200000), 1500000), n = Math.min(Number(req.n || 8000), 60000);
+    let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
+    while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
+    try { await rd.cancel(); } catch (e) {}
+    out.len = t.length; out.off = req.f ? Math.max(0, t.indexOf(req.f)) : Number(req.o || 0); out.head = t.slice(out.off, out.off + n);
+  } catch (e) { out.err = String(e && e.message || e).slice(0, 300); }
+  await env.DB.batch([env.DB.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify(out), Date.now()),
+    env.DB.prepare("DELETE FROM kv WHERE k = 'probe_req'")]);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -198,6 +216,8 @@ export default {
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }
+    const pr = await env.DB.prepare("SELECT v FROM kv WHERE k = 'probe_req'").first().catch(() => null);
+    if (pr) { ctx.waitUntil(runProbe(env, JSON.parse(pr.v)).catch(e => console.error("probe", e))); return; }
     // 0: 업비트 목록 · 1·3: 뉴스(3곳씩) · 2: 전체 시세·급변 · 4: 주봉·공포탐욕
     const k = min % 5;
     const job = k === 0 ? watchUpbit(env) : k === 2 ? watchPrices(env) : k === 4 ? watchWeeks(env, min) : watchNews(env, min);
