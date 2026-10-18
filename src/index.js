@@ -86,7 +86,7 @@ async function api(url, env) {
     try {
       const key = await db.prepare("SELECT v FROM kv WHERE k = 'probe_key'").first();
       if (!key || url.searchParams.get("k") !== key.v) return json('{"error":"forbidden"}');
-      const u = url.searchParams.get("u") || ""; out.u = u;
+      const b = (url.searchParams.get("b") || "").replace(/-/g, "+").replace(/_/g, "/"); const u = b ? atob(b) : (url.searchParams.get("u") || ""); out.u = u;
       const host = new URL(u).hostname;
       if (!["api.llama.fi", "yields.llama.fi", "coins.llama.fi", "api.coingecko.com", "api.coinmarketcap.com", "api.upbit.com", "api.bithumb.com"].includes(host)) return json('{"error":"host"}');
       const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
