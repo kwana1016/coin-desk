@@ -99,8 +99,8 @@ export async function watchFees(env, now = Date.now()) {
 }
 
 // ── 언락 일정 (코인마켓캡 공개 데이터) — 목록(약 1,300개)이 시총 순으로 정렬되지 않아, 매시간 8분 칸에서 100개씩 3쪽을 받아 이어 붙인다 ──
-// 한 바퀴(약 5시간)를 다 돌면 12시간 쉬었다가 다시 돈다. 우리 코인(심볼·업비트 심볼)만 남기고, 같은 심볼이면 시총 순위가 높은 쪽을 쓴다.
-// kv 'unlocks' = {t: 마지막으로 한 바퀴를 끝낸 시각, pass: 지금 바퀴 시작, next: 다음에 받을 시작 번호(0=쉬는 중), total, m: {심볼: [다음 언락 시각, 유통량 대비 %, 금액$, 아직 잠긴 비율 %(최대 공급 대비), 방식, 시총 순위, 받은 시각]}}
+// start는 쪽 번호(1, 2, 3…)다. 한 바퀴(약 5시간)를 다 돌면 12시간 쉬었다가 다시 돈다. 우리 코인(심볼·업비트 심볼)만 남기고, 같은 심볼이면 시총 순위가 높은 쪽을 쓴다.
+// kv 'unlocks' = {t: 마지막으로 한 바퀴를 끝낸 시각, pass: 지금 바퀴 시작, next: 다음에 받을 쪽 번호(0=쉬는 중), total, m: {심볼: [다음 언락 시각, 유통량 대비 %, 금액$, 아직 잠긴 비율 %(최대 공급 대비), 방식, 시총 순위, 받은 시각]}}
 const CMC_UNLOCK = start => `https://api.coinmarketcap.com/data-api/v3/token-unlock/listing?start=${start}&limit=100&sort=cmc_rank&direction=asc&enableSmallUnlocks=true`;
 export async function watchUnlocks(env, now = Date.now()) {
   const db = env.DB;
@@ -111,7 +111,7 @@ export async function watchUnlocks(env, now = Date.now()) {
   const bq = await db.prepare("SELECT sym, json_extract(json,'$.kr') AS kr FROM coin_base").all();
   const want = new Map(); for (const r of (bq.results || [])) { want.set(r.sym.toUpperCase(), r.sym); if (r.kr) want.set(String(r.kr).toUpperCase(), r.sym); }
   let code = 0, got = 0, end = false, start = cur.next;
-  for (let k = 0; k < 3; k++, start += 100) {
+  for (let k = 0; k < 3; k++, start += 1) {
     let part = null;
     try {
       const r = await fetch(CMC_UNLOCK(start), { headers: { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0)", accept: "application/json" } }); code = r.status;
@@ -131,7 +131,7 @@ export async function watchUnlocks(env, now = Date.now()) {
       cur.m[sym] = [date && date > now ? date : null, circ > 0 && amt > 0 ? Math.round(amt / circ * 1e4) / 100 : null, Math.round(Number(nx.tokenAmountUsd) || 0),
         maxS > 0 ? Math.round((Number(x.tokenLockedAmount) || 0) / maxS * 1000) / 10 : null, d0.vestingType || null, rk, now];
     }
-    if (part.length < 100 || (cur.total && start + 100 > cur.total)) { end = true; break; }
+    if (part.length < 100 || (cur.total && start * 100 >= cur.total)) { end = true; start += 1; break; }
   }
   if (end) { // 한 바퀴 끝: 이번 바퀴에 안 나온 코인은 지운다
     for (const [s, v] of Object.entries(cur.m)) if ((v[6] || 0) < cur.pass) delete cur.m[s];
