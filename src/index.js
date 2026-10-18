@@ -91,7 +91,12 @@ async function api(url, env) {
       if (!["api.llama.fi", "yields.llama.fi", "coins.llama.fi", "api.coingecko.com", "api.coinmarketcap.com", "api.upbit.com", "api.bithumb.com"].includes(host)) return json('{"error":"host"}');
       const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
       out.status = r.status;
-      const t = await r.text(); out.len = t.length;
+      out.clen = r.headers.get("content-length"); out.ct = r.headers.get("content-type");
+      const lim = Math.min(Number(url.searchParams.get("lim") || 200000), 1500000);
+      let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
+      while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
+      try { await rd.cancel(); } catch (e) {}
+      out.len = t.length;
       const f = url.searchParams.get("f"); const n = Math.min(Number(url.searchParams.get("n") || 8000), 60000);
       out.off = f ? Math.max(0, t.indexOf(f)) : Number(url.searchParams.get("o") || 0);
       out.head = t.slice(out.off, out.off + n);
