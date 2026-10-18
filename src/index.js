@@ -14,7 +14,7 @@ const CRON2 = "3-58/5 * * * *";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" };
 const PAGES = [/^\/$/, /^\/index\.html$/, /^\/r\/[\w-]+(\.html)?$/, /^\/track(\.html)?$/, /^\/coin\/?$/, /^\/coin\/[\w-]+(\.html)?$/,
-  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/, /^\/sectors\/?$/, /^\/rank\/[^/]+\/?$/];
+  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/, /^\/sectors\/?$/, /^\/rank\/[^/]+\/?$/, /^\/money\/?$/];
 
 function json(body, status = 200) { return new Response(body, { status, headers: JSON_HEADERS }); }
 // 저장된 JSON 문자열을 다시 파싱하지 않고 이어 붙인다 (CPU 절약)

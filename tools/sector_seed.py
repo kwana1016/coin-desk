@@ -1,4 +1,4 @@
-# 섹터 순위판 초기 데이터 (2026-10-16 기준, 10/17 코인 18개·섹터 1개 추가). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
+# 섹터 순위판 초기 데이터 (2026-10-16 기준, 10/17 코인 18개·섹터 1개 추가, 10/18 업비트 원화 코인 185개·바이낸스 300위 안 코인 25개·섹터 2개 추가). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
 # 이후 섹터·코인 기본 점수는 D1(sectors, coin_base)이 원본이고, 예약 실행이 거기서 고친다.
 # 점수는 공개 정보를 바탕으로 한 AI 판단 점수(0~100)이며 확률 예측이 아니다.
 import json, os, sys
@@ -123,6 +123,16 @@ sec("privacy", "기타", "프라이버시", "스위스 비밀계좌", [6, 12, 6,
     "익명 수요는 분명하고 오래 살아남았지만, EU 등 규제로 거래소 접근이 줄고 있어요. 한국 원화 거래소에는 대부분 없어요.",
     "감시·규제 강화 뉴스에 따른 수요 급증, ETF 승인",
     "거래소 상장폐지, EU의 2027년 익명 코인 취급 금지")
+sec("nft", "소비자", "NFT·IP", "캐릭터 IP 회사(산리오·디즈니)와 경매장", [5, 4, 3, 9, 5, 6], "쇠퇴 · IP로 재편",
+    "NFT 캐릭터 브랜드(두들즈·아즈키·문버드)와 NFT 거래소(매직에덴·블러)의 토큰.",
+    "2021~22년 NFT 붐 뒤 거래량이 90% 넘게 줄었어요. 살아남는 쪽은 캐릭터 IP를 장난감·애니메이션·게임으로 넓히는 브랜드와 여러 체인을 다루는 거래소예요.",
+    "IP 상품·애니메이션 흥행, NFT 거래량 반등, 대형 브랜드 협업",
+    "거래량 감소, 로열티 수익 축소, 토큰 쓰임새 약함")
+sec("social", "소비자", "소셜·커뮤니티", "SNS·커뮤니티(트위터·네이버 카페)와 팬 플랫폼", [6, 7, 4, 9, 6, 8], "실험 중",
+    "글쓰기·커뮤니티·크리에이터·스포츠 팬 활동에 토큰 보상을 주는 소셜 서비스.",
+    "사용자는 모아도 광고·구독 같은 수익 모델이 약하고 보상 토큰 매도가 이어져요. 스팀(2016)·칠리즈(2019)처럼 오래 살아남은 경우도 있어요.",
+    "크리에이터 코인 붐, 월드컵 같은 대형 스포츠 이벤트, 대형 SNS 제휴",
+    "보상 인플레이션, 사용자 이탈")
 
 SEC_IDS = {s["id"] for s in S}
 
@@ -487,7 +497,7 @@ coin("ENS", "ens-ethereum-name-service", "app", "이더리움 네임 서비스",
 coin("BAT", "bat-basic-attention-token", "app", "베이직어텐션토큰", [8, 5, 9, 14, 15], "브레이브 브라우저의 광고 보상 토큰", ["브레이브 월 사용자 수천만 명", "2017년부터 생존, 공급 대부분 유통"], ["사용자 증가가 토큰 수요로 이어지지 않음", "광고 매출 규모 작음"], "브레이브 수익의 BAT 바이백 도입", "광고 결제·보상(약함)")
 coin("TWT", "twt-trust-wallet-token", "app", "트러스트월렛", [7, 5, 9, 13, 11], "바이낸스 계열 지갑 앱 트러스트월렛의 토큰", ["지갑 앱 사용자 규모", "바이낸스 생태계 지원"], ["토큰 쓰임새 약함", "지갑 해킹 사고 이력"], "지갑 수수료 할인·혜택 확대", "수수료 할인·거버넌스")
 coin("SUN", "sun-sun-token", "dex", "선", [10, 10, 6, 10, 9], "트론 대표 DEX(선스왑)·밈 발행(선펌프) 토큰 — 수익으로 SUN 바이백·소각", ["트론 생태계 안 독점적 위치", "바이백·소각"], ["저스틴 선 한 사람의 영향력", "트론 밖 확장 없음"], "트론 밈·디파이 붐", "수익 일부 바이백·소각")
-coin("MET", "met-meteora", "dex", "메테오라", [12, 8, 9, 6, 2], "솔라나 유동성 풀 DEX — 밈·신규 토큰 유동성이 몰리는 곳(2025년 10월 토큰 출시)", ["솔라나 신규 토큰 유동성 상위", "수수료 수익 큼"], ["출시 뒤 하락·언락 물량", "공동창업자 밈코인(LIBRA) 논란"], "솔라나 밈 시즌 재개", "수수료 일부(설계 중)")
+coin("MET", "met-meteora", "dex", "메테오라", [12, 8, 9, 6, 2], "솔라나 유동성 풀 DEX — 밈·신규 토큰 유동성이 몰리는 곳(2025년 10월 토큰 출시)", ["솔라나 신규 토큰 유동성 상위", "수수료 수익 큼"], ["출시 뒤 하락·언락 물량", "공동창업자 밈코인(LIBRA) 논란"], "솔라나 밈 시즌 재개", "수수료 일부(설계 중)", kr="MET2")
 coin("FLUID", "fluid-instadapp", "lending", "플루이드", [13, 11, 11, 11, 9], "대출과 DEX를 한 금고에 합친 디파이(인스타댑 후신) — 수익으로 바이백", ["이더리움 대출·DEX 거래량 상위권", "바이백 진행"], ["구조가 복잡해 위험 파악이 어려움", "에이브·모포와 경쟁"], "디파이 수익 환원 테마, 거래량 급증", "수익 바이백")
 coin("CVX", "cvx-convex-finance", "stable", "컨벡스", [9, 10, 8, 14, 13], "커브(CRV) 보상을 키워 주는 수익 플랫폼 — CRV 투표권 상당 부분 보유", ["커브 거버넌스 영향력", "2021년부터 생존"], ["커브 성장에 묶여 있음", "보상 수익 감소"], "커브 거래량·보상 회복", "플랫폼 수수료 일부를 스테이커에게")
 coin("GNO", "gno-gnosis", "l1", "노시스", [8, 8, 8, 15, 15], "노시스체인·노시스페이 카드·세이프 지갑의 뿌리(2017년)", ["노시스페이 실결제 카드", "공급 고정에 가깝고 금고가 큼"], ["체인 사용량이 작음", "생태계 성장 느림"], "노시스페이·결제 테마", "체인 스테이킹·수수료", stake=True)
@@ -502,7 +512,10 @@ coin("ZBCN", "zbcn-zebec-network", "pay", "제벡", [6, 6, 5, 8, 6], "급여·�
 coin("TRAC", "trac-origintrail", "ai", "오리진트레일", [7, 7, 8, 14, 13], "공급망·AI용 '탈중앙 지식 그래프' — 데이터 출처를 검증", ["공급망 기업 사용 사례", "2018년부터 생존, 공급 고정"], ["토큰 수요 연결 약함", "AI 테마 의존"], "AI 데이터 검증 제휴", "데이터 게시 수수료·스테이킹")
 coin("PIEVERSE", "pieverse-pieverse", "ai", "파이버스", [4, 5, 5, 5, 1], "AI 에이전트용 결제 인프라(가스 없는 x402b 결제, BNB체인)", ["에이전트 결제 테마", "업비트 원화 상장"], ["실사용 초기", "토큰 쓰임새 약함"], "x402 에이전트 결제 확산", "수수료 할인·스테이킹")
 
-EX = """usdt-tether 스테이블|usdc-usd-coin 스테이블|usds-usds 스테이블|susds-susds 스테이블(이자형)|dai-dai 스테이블|usd1-usd1 스테이블|usde-ethena-usde 스테이블|usdg-global-dollar 스테이블|pyusd-paypal-usd 스테이블|usdf-falcon-finance 스테이블|usdd-usdd 스테이블|bfusd-bfusd 스테이블|susde-ethena-staked-usde 스테이블(이자형)|syrupusdc-syrupusdc 스테이블(이자형)|usdce-usd-coine 스테이블(브릿지)|gho-gho 스테이블|usd0-usual-usd 스테이블|tusd-trueusd 스테이블|usdtb-usdtb 스테이블|fdusd-first-digital-usd 스테이블|euroc-euro-coin 스테이블(유로)|alusd-alchemixusd 스테이블|frax-frax 스테이블|usdai-usdai 스테이블|susdai-staked-usdai 스테이블(이자형)|rlusd-ripple-usd 스테이블|chip-usdai 스테이블|crvusd-curvefi-usd-stablecoin 스테이블|usdf-astherus-usdf 스테이블|uusd-unity-usd 스테이블|musd-metamask-usd 스테이블|frxusd-frax-usd 스테이블|cash-cash 스테이블|onyc-onyc 이자형 토큰
+# 업비트 원화마켓 편입 코인 (시총 150위 밖이면 마이너리그만)
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_upbit.py"), encoding="utf-8").read())
+
+EX = """usdt-tether 스테이블|usdc-usd-coin 스테이블|usds-usds 스테이블|susds-susds 스테이블(이자형)|dai-dai 스테이블|usd1-usd1 스테이블|usde-ethena-usde 스테이블|usdg-global-dollar 스테이블|pyusd-paypal-usd 스테이블|usdf-falcon-finance 스테이블|usdd-usdd 스테이블|bfusd-bfusd 스테이블|susde-ethena-staked-usde 스테이블(이자형)|syrupusdc-syrupusdc 스테이블(이자형)|usdce-usd-coine 스테이블(브릿지)|gho-gho 스테이블|usd0-usual-usd 스테이블|tusd-trueusd 스테이블|usdtb-usdtb 스테이블|fdusd-first-digital-usd 스테이블|euroc-euro-coin 스테이블(유로)|alusd-alchemixusd 스테이블|frax-frax 스테이블|usdai-usdai 스테이블|susdai-staked-usdai 스테이블(이자형)|rlusd-ripple-usd 스테이블|chip-usdai 스테이블|crvusd-curvefi-usd-stablecoin 스테이블|usdf-astherus-usdf 스테이블|uusd-unity-usd 스테이블|musd-metamask-usd 스테이블|frxusd-frax-usd 스테이블|cash-cash 스테이블|onyc-onyc 이자형 토큰|jpyc-jpyc 스테이블(엔화)
 steth-lido-staked-ether 스테이킹 파생|wsteth-wrapped-liquid-staked-ether-20 스테이킹 파생|weeth-wrapped-eeth 스테이킹 파생|reth-rocket-pool-eth 스테이킹 파생|rseth-rseth 스테이킹 파생|meth-meth 스테이킹 파생|lseth-liquid-staked-ethereum 스테이킹 파생|cbeth-coinbase-wrapped-staked-eth 스테이킹 파생|frxeth-frax-ether 스테이킹 파생|sfrxeth-staked-frax-ether 스테이킹 파생|ethx-stader-ethx 스테이킹 파생|oeth-origin-ether 스테이킹 파생|superoeth-super-oeth 스테이킹 파생|eth-reserve-protocol-eth-plus 스테이킹 파생|ezeth-renzo-restaked-eth 스테이킹 파생|pufeth-pufeth 스테이킹 파생|jitosol-jito-staked-sol 스테이킹 파생|bnsol-binance-staked-sol 스테이킹 파생|jupsol-jupiter-staked-sol 스테이킹 파생|msol-marinade-staked-sol 스테이킹 파생|vsol-the-vault-staked-sol 스테이킹 파생|scnsol-socean-staked-sol 스테이킹 파생|bbsol-bybit-staked-sol 스테이킹 파생|khype-kinetiq-staked-hype 스테이킹 파생|asbnb-astherus-staked-bnb 스테이킹 파생|stkaave-staked-aave 스테이킹 파생|lbtc-lombard-staked-btc 스테이킹 파생|ebtc-etherfi-staked-btc 스테이킹 파생|solvbtc-solv-protocol-solvbtc 래핑 BTC
 wbtc-wrapped-bitcoin 래핑|cbbtc-coinbase-wrapped-btc 래핑|weth-weth 래핑|eth-ethereum-token 래핑|wbnb-wrapped-bnb 래핑|wtrx-wrapped-trx 래핑|tbtc-tbtc 래핑|btcb-bitcoin-avalanche-bridged-btcb 래핑|sol-binance-peg-sol 래핑
 paxg-pax-gold 금 토큰|xaut-tether-gold 금 토큰|jlp-jupiter-perpetuals-liquidity-provider-token LP 토큰|mag7ssi-mag7ssi 지수 토큰|spcxb-spacex-tokenized-bstocks 토큰화 주식
@@ -531,6 +544,12 @@ ATH = {"BTC": 126174.0, "ETH": 4945.07, "USDT": 1.21608, "BNB": 1370.48, "XRP": 
 
 # DefiLlama 프로토콜 이름 (실제 수익 데이터용, 10/18 확인)
 LL = {"ADA": "cardano", "NEAR": "near", "AVAX": "avalanche", "GRAM": "ton", "ALGO": "algorand", "FLR": "flare", "KAIA": "kaia", "XTZ": "tezos", "SUI": "sui", "APT": "aptos", "SEI": "sei", "INJ": "injective", "MON": "monad", "GNO": "gnosis", "ARB": "arbitrum", "MNT": "mantle", "POL": "polygon", "OP": "op-mainnet", "STRK": "starknet", "ZK": "zksync-era", "STX": "stacks", "TIA": "celestia", "DOT": "polkadot", "ATOM": "cosmos-hub", "RUNE": "thorchain", "ZRO": "layerzero", "LINK": "chainlink", "GRT": "the-graph", "UNI": "uniswap", "CAKE": "pancakeswap", "RAY": "raydium", "JUP": "jupiter", "AERO": "aerodrome", "CRV": "curve-finance", "SUN": "sun", "MET": "meteora", "HYPE": "hyperliquid", "ASTER": "aster", "LIT": "lighter", "AAVE": "aave", "JST": "justlend", "SYRUP": "maple-finance", "COMP": "compound-finance", "MORPHO": "morpho", "KMNO": "kamino", "FLUID": "fluid", "LDO": "lido", "ETHFI": "ether.fi", "JTO": "jito", "EIGEN": "eigencloud", "SKY": "sky", "PENDLE": "pendle", "ENA": "ethena", "WLFI": "world-liberty-financial", "FF": "falcon-finance", "CVX": "convex-finance", "TRX": "tron", "XLM": "stellar", "XPL": "plasma", "HBAR": "hedera", "CC": "canton", "ONDO": "ondo-finance", "XDC": "xdc", "VIRTUAL": "virtuals-protocol", "WLD": "world-chain", "VVV": "venice", "FIL": "filecoin", "AR": "arweave", "AKT": "akash", "PUMP": "pump", "PONS": "pons", "ENS": "ens", "TWT": "trust-wallet", "IMX": "immutable-zkevm", "AXS": "axie-infinity", "LTC": "litecoin", "BCH": "bitcoin-cash", "ETC": "ethereum-classic", "ZEC": "zcash", "XMR": "monero"}
+# 10/18 추가: 기준 코인 체인 수수료 + 업비트·바이낸스 편입 코인 중 DefiLlama 수익 데이터가 있을 만한 곳 (이름이 틀리면 데이터만 비어요)
+LL.update({"ETH": "ethereum", "SOL": "solana", "BNB": "bsc", "BTC": "bitcoin", "EUL": "euler", "ORCA": "orca", "LPT": "livepeer", "ME": "magic-eden", "BLUR": "blur",
+           "SPK": "spark", "DEEP": "deepbook", "ORDER": "orderly", "AVNT": "avantis", "WET": "humidifi", "ZORA": "zora", "CHZ": "chiliz", "WAL": "walrus", "IO": "io.net",
+           "ATH": "aethir", "RSR": "reserve-protocol", "CELO": "celo", "ZETA": "zetachain", "BERA": "berachain", "TAIKO": "taiko", "LINEA": "linea", "BLAST": "blast",
+           "KAVA": "kava", "ASTR": "astar", "CFG": "centrifuge", "API3": "api3", "RED": "redstone", "AXL": "axelar", "SAFE": "safe", "PUFFER": "puffer-finance",
+           "LAYER": "solayer", "GMT": "stepn", "COW": "cow-swap", "F": "synfutures", "SNX": "synthetix", "YFI": "yearn-finance", "HUMA": "huma-finance", "KSM": "kusama"})
 for _c in C:
     if _c["sym"] in LL: _c["ll"] = LL[_c["sym"]]
 
@@ -542,7 +561,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-17a", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
+    out = {"version": "2026-10-18a", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
