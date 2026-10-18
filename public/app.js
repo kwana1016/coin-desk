@@ -411,8 +411,8 @@
     if (!list.length) return `<details class="panel exl"><summary>돈 버는 코인 — DefiLlama 수익 데이터를 받는 중이에요</summary><div class="small muted" style="margin-top:8px">30분마다 코인 10개씩 받아서 몇 시간 안에 채워져요.</div></details>`;
     const dsh = c => c.fz.sh30 != null && c.fz.sh7 != null ? c.fz.sh7 - c.fz.sh30 : null;
     return `<section class="section"><div class="sec-head"><h2>돈 버는 코인</h2><span class="sub">토큰 보유자에게 돌아가는 수익 순 · DefiLlama${M.feesAt ? " · " + kst(M.feesAt) : ""}</span></div>
-      <div class="panel"><div class="tbl"><table class="money"><thead><tr><th>코인</th><th>보유자 수익 30일</th><th>시총 ÷ 연 보유자 수익</th><th>수수료 1주 추세</th><th>섹터 점유율</th></tr></thead><tbody>${list.map(c => `<tr>
-        <td><a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="tiny muted">${esc(secName[c.sec] || c.sec)}${c.lg === 1 ? " · 1군" : ""}</span></td>
+      <div class="panel"><div class="tbl"><table class="money"><thead><tr><th>코인</th><th>보유자 수익<br>30일</th><th>시총 ÷ 연<br>보유자 수익</th><th>수수료<br>1주 추세</th><th>섹터<br>점유율</th></tr></thead><tbody>${list.map(c => `<tr>
+        <td class="mn"><a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a><span class="tiny muted">${esc(secName[c.sec] || c.sec)}${c.lg === 1 ? " · 1군" : ""}</span></td>
         <td class="num">${krUsd(c.fz.h30)}</td><td class="num">${xMult(c.fz.mult)}</td>
         <td class="num ${ppc(c.fz.trend)}">${pp(c.fz.trend)}</td>
         <td class="num">${c.fz.sh30 != null ? c.fz.sh30.toFixed(0) + "%" : "-"}${dsh(c) != null && Math.abs(dsh(c)) >= 1 ? ` <span class="tiny ${ppc(dsh(c))}">${dsh(c) > 0 ? "▲" : "▼"}${Math.abs(dsh(c)).toFixed(0)}p</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
@@ -512,7 +512,10 @@
   function perfCalc(snaps, M) {
     if (!snaps || !snaps.length) return null;
     const nowPx = sym => { const c = M.coins[sym]; return c && c.mk ? n(c.mk[2]) : null; };
-    const pts = [...snaps.map(x => ({ t: x.s.t, day: x.day, c: x.s.c || {}, btc: n(x.s.btc) })), { t: M.cpAt || Date.now(), now: true, c: null, btc: nowPx("BTC") }];
+    const pts = snaps.map(x => ({ t: x.s.t, day: x.day, c: x.s.c || {}, btc: n(x.s.btc) }));
+    // 마지막 기록 뒤에 받은 시세가 있으면 '지금' 점을 하나 더 붙인다
+    const nowT = M.cpAt || Date.now();
+    if (nowT > pts[pts.length - 1].t + 60e3) pts.push({ t: nowT, now: true, c: null, btc: nowPx("BTC") });
     const G = [["g1", c => c[0] === 1], ["g2", c => c[0] === 2], ["ga", () => true]];
     const V = { g1: 1, g2: 1, ga: 1, btc: 1 }, series = [{ t: pts[0].t, ...V }];
     for (let i = 0; i + 1 < pts.length; i++) {
@@ -671,7 +674,7 @@
           <div><span class="tiny muted">수수료 최근 1주 추세</span><b class="num ${ppc(c.fz.trend)}">${pp(c.fz.trend)}</b><span class="tiny muted">30일 평균 대비</span></div>
           <div><span class="tiny muted">섹터 수수료 점유율</span><b class="num">${c.fz.sh30 != null ? c.fz.sh30.toFixed(0) + "%" : "-"}</b><span class="tiny muted">${c.fz.sh7 != null ? "최근 7일 " + c.fz.sh7.toFixed(0) + "%" : ""}</span></div></div>
         ${["pow", "privacy"].includes(c.sec) ? '<p class="small muted" style="margin:0">PoW·프라이버시 코인은 화폐 성격이라 이 숫자를 점수에 반영하지 않아요.</p>' : ""}
-        <p class="legend">수수료 = 사용자가 낸 돈 전체, 매출 = 그중 프로토콜이 가져간 몫, 보유자 수익 = 바이백·소각·분배로 토큰 보유자에게 간 몫이에요. 30일 값이 비면 1년 합계의 절반을 바닥으로 써요. 보유자 수익이 0이면 앱이 잘돼도 토큰 가격으로 바로 이어지지 않아요.</p></section>` : ""}
+        <p class="legend">수수료 = 사용자가 낸 돈 전체, 매출 = 그중 프로토콜이 가져간 몫, 보유자 수익 = 바이백·소각·분배로 토큰 보유자에게 간 몫이에요. 30일 값이 비면 1년 합계의 절반을 바닥으로 써요. 보유자 수익이 0이면 앱이 잘돼도 토큰 가격으로 바로 이어지지 않아요. DefiLlama가 집계하지 않는 바이백(별도 리저브 매입 등)은 빠져 있을 수 있어요.</p></section>` : ""}
       <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>
         <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}</div></section>
