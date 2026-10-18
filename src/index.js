@@ -20,7 +20,7 @@ function rowsToJson(rows, key = "r") {
   return "[" + rows.map(x => `{"id":${JSON.stringify(x.id)},"ts":${Number(x.ts)},"${key}":${x.json}}`).join(",") + "]";
 }
 
-async function api(url, env) {
+async function api(url, env, ctx) {
   const p = url.pathname.replace(/\/+$/, "");
   const db = env.DB;
   if (p === "/api/latest") {
@@ -82,29 +82,28 @@ async function api(url, env) {
   }
   // 임시 진단: 허용된 데이터 API 응답 일부를 kv 'probe'에 저장 (키는 D1에만 있음). 항상 200으로 답한다.
   if (p === "/api/_probe") {
-    const out = { at: Date.now() };
-    try {
-      const key = await db.prepare("SELECT v FROM kv WHERE k = 'probe_key'").first();
-      if (!key || url.searchParams.get("k") !== key.v) return json('{"error":"forbidden"}');
-      const H = { ll: "api.llama.fi", lly: "yields.llama.fi", llc: "coins.llama.fi", cg: "api.coingecko.com", cmc: "api.coinmarketcap.com", up: "api.upbit.com", bt: "api.bithumb.com" };
-      const qs = (url.searchParams.get("q") || "").split(",").filter(Boolean).map(x => x.split(":")).map(([a, b]) => encodeURIComponent(a) + "=" + encodeURIComponent(b || "")).join("&");
-      const u = "https://" + (H[url.searchParams.get("h")] || "x") + "/" + (url.searchParams.get("p") || "") + (qs ? "?" + qs : ""); out.u = u;
-      const host = new URL(u).hostname;
-      if (!["api.llama.fi", "yields.llama.fi", "coins.llama.fi", "api.coingecko.com", "api.coinmarketcap.com", "api.upbit.com", "api.bithumb.com"].includes(host)) return json('{"error":"host"}');
-      const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
-      out.status = r.status;
-      out.clen = r.headers.get("content-length"); out.ct = r.headers.get("content-type");
-      const lim = Math.min(Number(url.searchParams.get("lim") || 200000), 1500000);
-      let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
-      while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
-      try { await rd.cancel(); } catch (e) {}
-      out.len = t.length;
-      const f = url.searchParams.get("f"); const n = Math.min(Number(url.searchParams.get("n") || 8000), 60000);
-      out.off = f ? Math.max(0, t.indexOf(f)) : Number(url.searchParams.get("o") || 0);
-      out.head = t.slice(out.off, out.off + n);
-    } catch (e) { out.err = String(e && e.message || e).slice(0, 300); }
-    try { await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify(out), Date.now()).run(); } catch (e) { out.dberr = String(e).slice(0, 200); }
-    return json(JSON.stringify({ status: out.status, len: out.len, err: out.err || null, dberr: out.dberr || null }));
+    const key = await db.prepare("SELECT v FROM kv WHERE k = 'probe_key'").first();
+    if (!key || url.searchParams.get("k") !== key.v) return json('{"error":"forbidden"}');
+    const H = { ll: "api.llama.fi", lly: "yields.llama.fi", llc: "coins.llama.fi", cg: "api.coingecko.com", cmc: "api.coinmarketcap.com", up: "api.upbit.com", bt: "api.bithumb.com" };
+    const qs = (url.searchParams.get("q") || "").split(",").filter(Boolean).map(x => x.split(":")).map(([a, b]) => encodeURIComponent(a) + "=" + encodeURIComponent(b || "")).join("&");
+    const u = "https://" + (H[url.searchParams.get("h")] || "x") + "/" + (url.searchParams.get("p") || "") + (qs ? "?" + qs : "");
+    const f = url.searchParams.get("f"), n = Math.min(Number(url.searchParams.get("n") || 8000), 60000), o = Number(url.searchParams.get("o") || 0);
+    const lim = Math.min(Number(url.searchParams.get("lim") || 200000), 1500000);
+    // 응답이 느린 API도 있어서, 바로 답하고 받는 일은 뒤에서 마저 한다
+    const work = (async () => {
+      const out = { at: Date.now(), u };
+      try {
+        const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0 (compatible; coin-desk/1.0)", accept: "application/json" } });
+        out.status = r.status; out.clen = r.headers.get("content-length"); out.ms = Date.now() - out.at;
+        let t = ""; const rd = r.body.getReader(); const dec = new TextDecoder();
+        while (t.length < lim) { const { done, value } = await rd.read(); if (done) break; t += dec.decode(value, { stream: true }); }
+        try { await rd.cancel(); } catch (e) {}
+        out.len = t.length; out.off = f ? Math.max(0, t.indexOf(f)) : o; out.head = t.slice(out.off, out.off + n);
+      } catch (e) { out.err = String(e && e.message || e).slice(0, 300); }
+      await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('probe', ?1, ?2)").bind(JSON.stringify(out), Date.now()).run();
+    })();
+    ctx.waitUntil(work.catch(() => {}));
+    return json(JSON.stringify({ queued: u }));
   }
   if (p === "/api/sectors") return json(await apiSectors(db));
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -173,10 +172,10 @@ async function watchUpbit(env) {
 
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/api/")) {
-      try { return await api(url, env); }
+      try { return await api(url, env, ctx); }
       catch (e) { return json(JSON.stringify({ error: "server", message: String(e && e.message || e).slice(0, 200) }), 500); }
     }
     // 정적 파일에 없는 경로: 페이지 주소면 app.html(200), 아니면 app.html(404) — 화면은 app.js가 그린다
