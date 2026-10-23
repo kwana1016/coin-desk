@@ -550,6 +550,10 @@ LL.update({"ETH": "ethereum", "SOL": "solana", "BNB": "bsc", "BTC": "bitcoin", "
            "ATH": "aethir", "RSR": "reserve-protocol", "CELO": "celo", "ZETA": "zetachain", "BERA": "berachain", "TAIKO": "taiko", "LINEA": "linea", "BLAST": "blast",
            "KAVA": "kava", "ASTR": "astar", "CFG": "centrifuge", "API3": "api3", "RED": "redstone", "AXL": "axelar", "SAFE": "safe", "PUFFER": "puffer-finance",
            "LAYER": "solayer", "GMT": "stepn", "COW": "cow-swap", "F": "synfutures", "SNX": "synthetix", "YFI": "yearn-finance", "HUMA": "huma-finance", "KSM": "kusama"})
+# 10/23 사이트가 실제로 받아 확인한 이름 추가, 데이터가 안 나오는 이름은 뺌(D1과 맞춤)
+LL.update({"XRP": "xrpl", "ICP": "icp", "EGLD": "multiversx", "S": "sonic", "W": "wormhole", "DRV": "derive", "DYDX": "dydx", "GMX": "gmx",
+           "DASH": "dash", "PLUME": "plume-mainnet", "WAL": "walrus-protocol", "BR": "bedrock", "HUMA": "huma", "MAGMA": "magma-finance"})
+for _k in ("IO", "ME", "GMT", "KAVA", "RED"): LL.pop(_k, None)
 for _c in C:
     if _c["sym"] in LL: _c["ll"] = LL[_c["sym"]]
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sector_report.py"), encoding="utf-8").read())  # 섹터 리포트(돈의 흐름·지표·고르는 법·좋아질 때·나빠질 때)
