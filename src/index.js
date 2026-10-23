@@ -6,7 +6,7 @@
 
 import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
 import { watchMarket, watchBithumb, watchBinance, maybeRanks, maybeSeed, rankNow, apiSectors, apiSectorCoin } from "./sectors.js";
-import { snapPerf, apiPerf, watchFees, watchUnlocks } from "./extra.js";
+import { snapPerf, apiPerf, watchFees, watchUnlocks, watchFeeHist, apiFeeHist } from "./extra.js";
 import { watchMarketX } from "./upbitx.js";
 
 // 두 번째 cron (섹터 순위판용): 5분마다 3·8·13…분에 한 가지씩 — 첫 번째 cron과 CPU 한도를 나눠 쓰지 않는다
@@ -85,6 +85,7 @@ async function api(url, env, ctx) {
 
   if (p === "/api/sectors") return json(await apiSectors(db));
   if (p === "/api/perf") return json(await apiPerf(db));
+  if (p === "/api/feehist") return json(await apiFeeHist(db));
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
@@ -170,8 +171,10 @@ export default {
       // 3·18·33·48분: 시세(코인마켓캡→코인게코→코인로어) · 13·43분: 순위 계산(요청이 있거나 11시간 지났을 때), 없으면 300위 밖 업비트 코인 시세(kv cpx) · 8분: 초기 데이터(버전이 바뀌었을 때만) 아니면 언락 일정(12시간마다)
       // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 28·58분: 실제 수익(DefiLlama, 6시간 지난 코인 10개씩) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12;
-      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env).then(done => done || watchMarketX(env)) : (t === 4) ? watchBinance(env)
-        : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env).then(done => done || watchUnlocks(env));
+      // 23·38·8분 칸이 쉬면(바이낸스 목록이 신선 · 오늘 성적표를 이미 찍음 · 언락 쉬는 중) 수수료 12개월 흐름(DefiLlama 일별 차트, 코인 2개씩)
+      const hist = done => done === false ? watchFeeHist(env) : done;
+      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env).then(done => done || watchMarketX(env)) : (t === 4) ? watchBinance(env).then(hist)
+        : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env).then(hist) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env).then(done => done || watchUnlocks(env)).then(hist);
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }

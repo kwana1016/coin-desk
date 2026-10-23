@@ -150,7 +150,7 @@ export function marketKey(idx, b) {
 
 // ── 초기 데이터 (public/sector_seed.json) — 버전이 바뀌었을 때 한 번만 넣는다 ──
 // D1이 원본이라, 이미 있는 섹터·코인은 D1 값을 그대로 두고 새 항목(과 새로 생긴 필드)만 더한다.
-export const SEED_VERSION = "2026-10-18a";
+export const SEED_VERSION = "2026-10-23a";
 export async function maybeSeed(env, now = Date.now()) {
   const db = env.DB;
   const cur = await db.prepare("SELECT v FROM kv WHERE k = 'sector_seed_v'").first();
@@ -203,7 +203,7 @@ export async function watchBinance(env, now = Date.now()) {
   // 바이낸스 USDⓈ-M 선물 목록 + 펀딩비·미결제약정. 2시간마다 새로 받되, 실패하면 다음 시간에 다시 시도한다 (코인게코 → 코인마켓캡 순서)
   // kv 'bnf' = [심볼...] · kv 'fund' = {t, src, m: {심볼: [펀딩비 %(1회), 미결제약정 $]}}
   const last = await env.DB.prepare("SELECT ts FROM kv WHERE k = 'bnf'").first().catch(() => null);
-  if (last && now - Number(last.ts) < 2 * HOUR - 10 * 60000) return;
+  if (last && now - Number(last.ts) < 2 * HOUR - 10 * 60000) return false;
   const ALIAS = { RAYSOL: "RAY", BEAMX: "BEAM", LUNA2: "LUNA" };
   const norm = x => { const s = x.toUpperCase().replace(/^1000+/, "").replace(/^1M(?=[A-Z])/, ""); return ALIAS[s] || s; };
   const NB = '(?:(?!"base":|"baseSymbol":)[\\s\\S]){0,900}?';
@@ -346,6 +346,7 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
     row.score = r1(R.w[0] * Q + R.w[1] * S + R.w[2] * (Number(sectors[b.sector]) || 50) + N);
     if (b.core) continue;
     const inTop = rank > 0 && rank <= R.cap, liqOk = mcap > 0 && vol / mcap >= R.liq;
+    row.liq = liqOk;
     if (!(inTop && liqOk)) {
       if (!(onUp || (onBn && rank > 0 && rank <= R.cap2))) { row.why = inTop ? "liq" : "rank"; continue; }
       row.ext = 1; // 마이너리그만 (1군 후보 아님)
@@ -381,17 +382,31 @@ export function rankCore({ now, sectors, coins, news, cp, prev, warn, fees, unlo
       if (streak >= R.need || cand.N >= R.fast) { maj.delete(weak.sym); maj.add(cand.sym); via[cand.sym] = streak >= R.need ? "chal" : "fast"; continue; }
       break;
     }
-    const majors = arr.filter(x => maj.has(x.sym)), minors = arr.filter(x => !maj.has(x.sym));
+    // 빈자리: 시총 150위 안 후보가 3개가 안 되는 섹터(NFT·소셜 등)는 시세·거래량이 되는 마이너리그 코인으로 '임시 1군'을 채운다.
+    // 지난번 임시 1군을 먼저 지키고, 다른 코인이 그보다 3점 이상 앞서면 바꾼다. 150위 안 코인이 들어오면 그 코인이 먼저다.
+    if (maj.size < 3) {
+      const pool = arr.filter(x => x.ext && x.rank > 0 && x.liq);
+      const act = pool.filter(x => pc[x.sym] && pc[x.sym][0] === sec && pc[x.sym][2] === 1).slice(0, 3 - maj.size);
+      for (const x of pool) { if (maj.size + act.length >= 3) break; if (!act.includes(x)) act.push(x); }
+      for (let g = 0; g < 3; g++) {
+        const out = pool.find(x => !act.includes(x)); if (!out || !act.length) break;
+        const lo = act.reduce((a, b) => (b.score < a.score ? b : a));
+        if (out.score - lo.score < R.margin) break;
+        act.splice(act.indexOf(lo), 1, out);
+      }
+      for (const x of act) { maj.add(x.sym); x.act = 1; if (prev && !(pc[x.sym] && pc[x.sym][2] === 1)) via[x.sym] = "act"; }
+    }
+    const majors = arr.filter(x => maj.has(x.sym)).sort((a, b) => (a.act ? 1 : 0) - (b.act ? 1 : 0) || b.score - a.score), minors = arr.filter(x => !maj.has(x.sym));
     const weak = majors.length >= 3 ? majors.reduce((a, b) => (b.score < a.score ? b : a)) : null;
     majors.forEach((x, i) => { x.pos = i + 1; x.lg = 1; x.chal = 0; });
     minors.forEach((x, i) => { x.pos = majors.length + i + 1; x.lg = 2; x.chal = (!x.ext && weak && x.score - weak.score >= R.margin) ? pchal(x.sym) + 1 : 0; });
   }
   // 스냅숏: c[sym] = [섹터, 순위, 리그(1·2, 0=후보 아님), 점수, 품질, 규모, 뉴스, 도전 횟수, 시총 순위, 후보 아닌 이유, 유의 거래소(없으면 null), 품질에 섞은 수익 데이터[실사용, 가치 포착](없으면 null),
   //   데이터 점수(0~100, 없으면 null), 데이터 항목[성장, 실질 보유자 수익, 밸류, 점유율 추세, 공급 건전성], 실제 공급 증가율(연 %, 기록이 쌓이기 전엔 null),
-  //   마이너리그 전용(1=업비트 원화·바이낸스 300위 안이라 들어온 코인, 1군 후보 아님 / 아니면 null)]
+  //   마이너리그 전용(1=업비트 원화·바이낸스 300위 안이라 들어온 코인, 1군 후보 아님 / 2=그런 코인이 150위 안 후보가 모자란 섹터의 빈자리를 채운 '임시 1군' / 아니면 null)]
   const c = {}, trail = {}, moves = [], top = {};
   for (const x of Object.values(rows)) {
-    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null, x.ds ? x.ds[0] : null, x.ds ? x.ds[1] : null, x.ds ? x.ds[2] : null, x.ext || null];
+    c[x.sym] = [x.sec, x.pos, x.lg, x.score, x.Q, x.S, x.N, x.chal, x.rank, x.why, x.warn || null, x.qd || null, x.ds ? x.ds[0] : null, x.ds ? x.ds[1] : null, x.ds ? x.ds[2] : null, x.ext ? (x.act ? 2 : 1) : null];
     const t = (ptrail[x.sym] || []).concat([x.pos || 0]).slice(-RULES.keep);
     if (t.some(Boolean)) trail[x.sym] = t;
     const p = pc[x.sym];

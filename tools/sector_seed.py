@@ -1,4 +1,4 @@
-# 섹터 순위판 초기 데이터 (2026-10-16 기준, 10/17 코인 18개·섹터 1개 추가, 10/18 업비트 원화 코인 185개·바이낸스 300위 안 코인 25개·섹터 2개 추가). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
+# 섹터 순위판 초기 데이터 (2026-10-16 기준, 10/17 코인 18개·섹터 1개 추가, 10/18 업비트 원화 코인 185개·바이낸스 300위 안 코인 25개·섹터 2개 추가, 10/23 섹터 리포트 필드 추가). 실행하면 public/sector_seed.json 을 만든다 (Worker가 버전이 바뀌면 D1에 한 번 넣음).
 # 이후 섹터·코인 기본 점수는 D1(sectors, coin_base)이 원본이고, 예약 실행이 거기서 고친다.
 # 점수는 공개 정보를 바탕으로 한 AI 판단 점수(0~100)이며 확률 예측이 아니다.
 import json, os, sys
@@ -552,6 +552,7 @@ LL.update({"ETH": "ethereum", "SOL": "solana", "BNB": "bsc", "BTC": "bitcoin", "
            "LAYER": "solayer", "GMT": "stepn", "COW": "cow-swap", "F": "synfutures", "SNX": "synthetix", "YFI": "yearn-finance", "HUMA": "huma-finance", "KSM": "kusama"})
 for _c in C:
     if _c["sym"] in LL: _c["ll"] = LL[_c["sym"]]
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sector_report.py"), encoding="utf-8").read())  # 섹터 리포트(돈의 흐름·지표·고르는 법·좋아질 때·나빠질 때)
 
 def main():
     syms = [c["sym"] for c in C]; cps = [c["cp"] for c in C]
@@ -561,7 +562,7 @@ def main():
     assert not ex & set(cps), ex & set(cps)
     for s in S:
         s["grade"] = "A" if s["score"] >= 80 else "B" if s["score"] >= 65 else "C" if s["score"] >= 50 else "D"
-    out = {"version": "2026-10-18a", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
+    out = {"version": "2026-10-23a", "groups": GROUPS, "sectors": S, "coins": C, "excluded": EXCLUDED, "ath": ATH}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "sector_seed.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))

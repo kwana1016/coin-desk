@@ -144,3 +144,58 @@ export async function watchUnlocks(env, now = Date.now()) {
     db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('unlocks_status', ?1, ?2)").bind(JSON.stringify({ code, at: now, got, next: cur.next, total: cur.total || null, n: Object.keys(cur.m).length }), now)]);
   return true;
 }
+
+// ── 수수료 12개월 흐름 (DefiLlama 일별 차트 → 달마다 하루 평균) ──
+// kv 'feehist' = {t, m: {심볼: [첫 달(YYYYMM), [수수료 하루 평균 ×13달], [매출 ×13], [보유자 몫 ×13], 받은 시각]}} — 마지막 칸은 이번 달(진행 중), 데이터가 없는 달은 null
+// 일주일마다 갱신, 한 번에 코인 2개(요청 6개). 수수료가 큰 코인부터. 응답 전체를 JSON으로 풀지 않고 totalDataChart 끝부분(최근 약 400일)만 정규식으로 읽는다.
+// 다른 일이 쉬는 칸(언락 쉬는 중 8분 · 바이낸스 목록이 신선한 23분 · 성적표를 이미 찍은 38분)에서 돈다.
+const HIST_TYPES = ["dailyFees", "dailyRevenue", "dailyHoldersRevenue"];
+async function llChart(slug, dataType, from) {
+  const r = await fetch(`https://api.llama.fi/summary/fees/${encodeURIComponent(slug)}?dataType=${dataType}&excludeTotalDataChartBreakdown=true`,
+    { headers: { "user-agent": "Mozilla/5.0 (compatible; AI-Coin-Research/1.0)", accept: "application/json" } });
+  if (!r.ok) { try { r.body && r.body.cancel(); } catch (e) {} return null; }
+  const t = await r.text();
+  const i = t.indexOf('"totalDataChart":['); if (i < 0 || t[i + 18] === "]") return [];
+  const j = t.indexOf("]]", i); if (j < 0) return [];
+  const seg = t.slice(Math.max(i + 18, j - 24000), j + 1);
+  const out = [], re = /\[(\d{9,13}),(-?[0-9.eE+-]+|null)\]/g; let m;
+  while ((m = re.exec(seg))) { let ts = Number(m[1]); if (ts < 1e12) ts *= 1000; if (ts >= from && m[2] !== "null") out.push([ts, Number(m[2])]); }
+  return out;
+}
+const ym = ms => { const d = new Date(ms); return d.getUTCFullYear() * 12 + d.getUTCMonth(); };
+export async function watchFeeHist(env, now = Date.now()) {
+  const db = env.DB;
+  const [bq, hq, fq] = await Promise.all([
+    db.prepare("SELECT sym, json_extract(json,'$.ll') AS ll FROM coin_base WHERE json_extract(json,'$.ll') IS NOT NULL").all(),
+    db.prepare("SELECT v FROM kv WHERE k = 'feehist'").first(),
+    db.prepare("SELECT v FROM kv WHERE k = 'fees'").first(),
+  ]);
+  const cur = parse(hq && hq.v, { m: {} }); cur.m = cur.m || {};
+  const fees = (parse(fq && fq.v, {}).m) || {};
+  const F = s => { const f = fees[s]; return f ? Math.max(Number(f[0]) || 0, (Number(f[2]) || 0) / 12) : -1; };
+  // 수수료 데이터가 확인된 코인만 (DefiLlama 이름이 틀려 비어 있는 코인은 건너뜀)
+  const due = (bq.results || []).filter(r => F(r.sym) > 0 && (!cur.m[r.sym] || now - (cur.m[r.sym][4] || 0) > 7 * DAY))
+    .sort((a, b) => (cur.m[a.sym] ? 1 : 0) - (cur.m[b.sym] ? 1 : 0) || F(b.sym) - F(a.sym)).slice(0, 2);
+  if (!due.length) return false;
+  const m0 = ym(now) - 12, d0 = new Date(now), from = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() - 12, 1);
+  const res = await Promise.all(due.map(async r => {
+    const ser = [];
+    for (const dt of HIST_TYPES) {
+      let pts = null; try { pts = await llChart(r.ll, dt, from); } catch (e) {}
+      if (!pts) { ser.push(null); continue; }
+      const sum = Array(13).fill(0), cnt = Array(13).fill(0);
+      for (const [ts, v] of pts) { const k = ym(ts) - m0; if (k >= 0 && k < 13 && isFinite(v)) { sum[k] += v; cnt[k]++; } }
+      ser.push(cnt.some(Boolean) ? sum.map((s, k) => cnt[k] ? Number((s / cnt[k]).toPrecision(3)) : null) : null);
+    }
+    return [r.sym, ser];
+  }));
+  const first = Math.floor(m0 / 12) * 100 + (m0 % 12) + 1;
+  for (const [sym, ser] of res) cur.m[sym] = [first, ser[0], ser[1], ser[2], now];
+  cur.t = now;
+  await db.prepare("INSERT OR REPLACE INTO kv (k, v, ts) VALUES ('feehist', ?1, ?2)").bind(JSON.stringify(cur), now).run();
+  return true;
+}
+export async function apiFeeHist(db) {
+  const r = await db.prepare("SELECT v FROM kv WHERE k = 'feehist'").first();
+  return r && r.v ? r.v : '{"m":{}}';
+}
