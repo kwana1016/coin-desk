@@ -379,7 +379,7 @@
   const SPS = ["실수익", "사용 추세", "기관 채택", "규제 내구성", "대체 불가", "사이클 생존"]; // 막대 위 짧은 이름
   const WHY = { rank: "시총 150위 밖(업비트 원화·바이낸스 300위 안 아님)", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
   const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락", warn: "유의 종목 지정", unwarn: "유의 해제" };
-  const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움" };
+  const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움", act: "150위 안 후보가 모자라 임시로 채움" };
   const pp = x => { x = n(x); return x == null ? "-" : (x > 0 ? "+" : "") + x.toFixed(Math.abs(x) >= 100 ? 0 : 1) + "%"; };
   const ppc = x => { x = n(x); return x == null ? "" : x > 0 ? "rise" : x < 0 ? "fall" : ""; };
   const ppChip = (x, suf = "") => n(x) == null ? `<span class="chg">-</span>` : `<span class="chg ${ppc(x)}">${pp(x)}${suf}</span>`;
@@ -444,7 +444,7 @@
         warn: c[10] || null, mk, fund: fundInfo(fundM[b.sym] || fundM[kr]), unl: unlM[b.sym] || null,
         flags: flagsOf(mk).concat(c[10] ? ["warn"] : []).concat(fundFlag(fundM[b.sym] || fundM[kr])).concat(unlFlag(unlM[b.sym])), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk),
-        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null, ext: c[15] === 1 };
+        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null, ext: c[15] >= 1, act: c[15] === 2 };
     });
     // 섹터 안 수수료 점유율: 30일 기준과 최근 7일 기준을 비교
     const secSum = {};
@@ -485,7 +485,7 @@
     const newsMark = c.N && Math.abs(c.N) >= 1 ? `<span class="nw ${c.N > 0 ? "rise" : "fall"}" title="뉴스 점수">뉴스 ${c.N > 0 ? "+" : ""}${c.N.toFixed(1)}</span>` : "";
     return `<a class="rk-row${c.lg === 1 ? " major" : ""}" href="/rank/${encodeURIComponent(c.sym)}">
       <span class="rk-no num">${opt.no != null ? opt.no : (c.pos || "-")}</span>
-      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}${c.ext ? `<span class="tag xr" title="시총 150위 밖이라 1군 후보는 아니고 마이너리그에만 들어가요">${c.crank ? c.crank + "위" : "순위 밖"}</span>` : ""}</span>
+      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}${c.act ? `<span class="tag xr act" title="이 섹터에 시총 150위 안 후보가 3개가 안 돼서, 시세·거래량이 되는 마이너리그 코인으로 1군 빈자리를 임시로 채웠어요">임시 · ${c.crank ? c.crank + "위" : "순위 밖"}</span>` : c.ext ? `<span class="tag xr" title="시총 150위 밖이라 1군 후보는 아니고 마이너리그에만 들어가요">${c.crank ? c.crank + "위" : "순위 밖"}</span>` : ""}</span>
         <span class="rk-s">${exBadges(c)}${flagBadges(c)}${chal}${newsMark}</span></span>
       <span class="rk-sc"><span class="num">${c.score != null ? c.score.toFixed(1) : "-"}</span>${opt.noMove ? "" : moveMark(c)}</span>
       <span class="rk-px"><span class="num">${usd(mk[2])}</span><span class="rk-cg">7일 <b class="num ${ppc(mk[6])}">${pp(mk[6])}</b> · 고점 <b class="num ${ppc(mk[9])}">${pp(mk[9])}</b></span></span></a>`;
@@ -496,21 +496,79 @@
       <span class="sv-parts" role="img" aria-label="생존 점수 ${s.score}/100 — ${esc(SPARTS.map(([k, mx], i) => `${k} ${parts[i] ?? "-"}/${mx}`).join(", "))}">${SPARTS.map(([k, mx], i) => `<span class="sv-p"><span class="sv-k"><span class="sv-kn">${SPS[i]}</span><span class="sv-kv num">${parts[i] ?? "-"}<small>/${mx}</small></span></span><i><em style="width:${Math.round((parts[i] || 0) / mx * 100)}%"></em></i></span>`).join("")}</span>
       <span class="sv-n num">${s.score}</span><span class="sv-l">${gl}</span></div>`;
   }
-  function sectorCard(s, M, F) {
+  const median = a => { const v = a.filter(x => x != null && isFinite(x)).sort((x, y) => x - y), k = v.length >> 1; return v.length ? (v.length % 2 ? v[k] : (v[k - 1] + v[k]) / 2) : null; };
+  // 섹터별 숫자 — 1군·2군 코인(시세 있는 것)으로 계산: 시총 합, 시총 가중 7일·30일(섹터 지수), 1군 평균, 고점 대비 중앙값, 연 수수료·보유자 몫, 시총÷수수료 중앙값
+  function secStats(M) {
+    const out = {};
+    Object.values(M.sec).forEach(s => {
+      const list = Object.values(M.coins).filter(c => c.sec === s.id && c.lg && c.mk), maj = list.filter(c => c.lg === 1);
+      const cap = c => n(c.mk[3]) || 0;
+      const w = i => { let a = 0, b = 0; list.forEach(c => { const v = n(c.mk[i]), m = cap(c); if (v != null && m > 0) { a += v * m; b += m; } }); return b > 0 ? a / b : null; };
+      const avg = i => { const v = maj.map(c => n(c.mk[i])).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+      const fee = list.filter(c => c.fz && c.fz.F > 0);
+      out[s.id] = { id: s.id, n: list.length, cap: list.reduce((a, c) => a + cap(c), 0), d7: w(6), d30: w(7), m7: avg(6), m30: avg(7),
+        ath: median(list.map(c => n(c.mk[9]))), F: fee.reduce((a, c) => a + c.fz.F, 0), H: fee.reduce((a, c) => a + (c.fz.H || 0), 0), nf: fee.length,
+        earn: fee.filter(c => c.fz.H > 0).length, pf: fee.length >= 3 ? median(fee.map(c => cap(c) > 0 ? cap(c) / c.fz.F : null)) : null,
+        ds: median(list.map(c => c.ds)), up: list.filter(c => c.ex.up).length, list };
+    });
+    return out;
+  }
+  // 섹터 흐름 — 요즘 돈이 어느 섹터로 가나 (섹터 지수 = 1군·2군 시총 가중 등락)
+  const SF_SORTS = [["d30", "30일"], ["d7", "7일"], ["ath", "고점 대비"], ["F", "연 수수료"], ["score", "생존 점수"]];
+  function sectorFlow(M, SS, key) {
+    const btc = M.coins.BTC && M.coins.BTC.mk ? { d7: n(M.coins.BTC.mk[6]), d30: n(M.coins.BTC.mk[7]) } : {};
+    const rows = Object.values(M.sec).map(s => ({ s, x: SS[s.id] })).filter(r => r.x && r.x.n >= 2);
+    const val = r => key === "score" ? r.s.score : key === "F" ? r.x.F : key === "ath" ? (r.x.ath ?? -1e9) : (r.x[key] ?? -1e9);
+    rows.sort((a, b) => val(b) - val(a));
+    const k2 = key === "d7" ? "d7" : "d30", vmax = Math.max(10, ...rows.map(r => Math.abs(r.x[k2] || 0)));
+    const bar = v => { if (v == null) return ""; const w = Math.min(50, Math.abs(v) / vmax * 50); return `<i class="${v >= 0 ? "pos" : "neg"}" style="${v >= 0 ? "left:50%" : `left:${(50 - w).toFixed(1)}%`};width:${w.toFixed(1)}%"></i>`; };
+    return `<div class="sf${rows.length > 10 ? " cut" : ""}">${rows.map(({ s, x }) => { const [g] = GRADE(s.score), v = x[k2], vb = btc[k2] != null && v != null ? v - btc[k2] : null;
+      return `<button type="button" class="sf-r" data-sec="${esc(s.id)}"><span class="sf-n"><span class="sv-g g-${g}">${g}</span><b>${esc(s.name)}</b></span>
+        <span class="sf-bar" aria-hidden="true"><em></em>${bar(v)}</span><span class="sf-v num ${ppc(v)}">${pp(v)}</span>
+        <span class="sf-m tiny muted">${k2 === "d30" ? "7일" : "30일"} <b class="num ${ppc(x[k2 === "d30" ? "d7" : "d30"])}">${pp(x[k2 === "d30" ? "d7" : "d30"])}</b> · BTC 대비 <b class="num ${ppc(vb)}">${vb == null ? "-" : (vb > 0 ? "+" : "") + vb.toFixed(1) + "%p"}</b> · 고점 대비 <b class="num">${pp(x.ath)}</b><span class="sf-x">${x.F > 0 ? ` · 연 수수료 <b class="num">${krUsd(x.F)}</b>` : ""} · 시총 ${capKo(x.cap)} · ${x.n}개</span></span></button>`; }).join("")}</div>
+      ${rows.length > 10 ? `<button type="button" class="fchip sf-all" aria-expanded="false" data-t="나머지 ${rows.length - 10}개 섹터도 보기">나머지 ${rows.length - 10}개 섹터도 보기</button>` : ""}`;
+  }
+  function sectorFlowNote(M, SS, secName) {
+    const btc = M.coins.BTC && M.coins.BTC.mk ? n(M.coins.BTC.mk[7]) : null;
+    const rows = Object.values(SS).filter(x => x.n >= 2 && x.d30 != null).sort((a, b) => b.d30 - a.d30);
+    if (rows.length < 4) return "";
+    const nm = x => `<b>${esc(secName[x.id] || x.id)}</b>(${pp(x.d30)})`;
+    const beat = btc != null ? rows.filter(x => x.d30 > btc).length : null;
+    const fee = Object.values(SS).filter(x => x.F > 0).sort((a, b) => b.F - a.F).slice(0, 3);
+    return `<ul class="sf-note"><li>최근 30일 가장 강한 섹터는 ${rows.slice(0, 2).map(nm).join("·")}, 가장 약한 섹터는 ${rows.slice(-2).reverse().map(nm).join("·")}예요.</li>
+      ${beat != null ? `<li>비트코인(30일 ${pp(btc)})보다 잘한 섹터는 ${rows.length}개 중 <b>${beat}개</b>예요${beat <= rows.length / 4 ? " — 지금은 알트코인보다 비트코인이 강한 장이에요" : beat >= rows.length * 3 / 4 ? " — 알트코인 쪽으로 돈이 도는 장이에요" : ""}.</li>` : ""}
+      ${fee.length ? `<li>실제 수수료가 가장 많이 도는 곳은 ${fee.map(x => `<b>${esc(secName[x.id] || x.id)}</b>(연 ${krUsd(x.F)})`).join("·")}이에요 — 가격이 아니라 사용량 기준이에요.</li>` : ""}</ul>`;
+  }
+  function sectorCard(s, M, F, SS) {
     const arr = Object.values(M.coins).filter(c => c.sec === s.id && c.lg);
     const majors = arr.filter(c => c.lg === 1).sort((a, b) => a.pos - b.pos);
     const minors = arr.filter(c => c.lg === 2).sort((a, b) => a.pos - b.pos).filter(F);
     const others = Object.values(M.coins).filter(c => c.sec === s.id && !c.lg && c.why !== "core");
+    const st = (SS || {})[s.id];
+    const nums = st && st.n ? [`시총 ${capKo(st.cap)}`, `30일 <b class="num ${ppc(st.d30)}">${pp(st.d30)}</b>`, `고점 대비 <b class="num">${pp(st.ath)}</b>`,
+      st.F > 0 ? `연 수수료 <b class="num">${krUsd(st.F)}</b>` : "", st.F > 0 ? `보유자 몫 <b class="num">${pct0(st.H / st.F * 100)}</b>` : ""].filter(Boolean).join(" · ") : "";
+    // 섹터 안 돈 버는 코인, 30일 가장 강한·약한 코인
+    const earners = st ? st.list.filter(c => c.fz && c.fz.F > 0).sort((a, b) => (b.fz.H - a.fz.H) || (b.fz.F - a.fz.F)).slice(0, 3) : [];
+    const mov = st ? st.list.filter(c => n(c.mk[7]) != null).sort((a, b) => n(b.mk[7]) - n(a.mk[7])) : [];
+    const cl = c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a>`;
+    const act = majors.filter(c => c.act).length;
     return `<section class="sec-card" id="s-${esc(s.id)}"><div class="sc-top"><h3>${esc(s.name)}</h3><span class="sc-cy">${esc(s.cycle || "")}</span></div>
-      ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>
+      ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>${nums ? `<div class="sc-num tiny muted">${nums}</div>` : ""}
       <div class="rk-h"><span>1군 · 3대장</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div>
-      <div class="rk-list">${majors.length ? majors.map(c => coinRow(c)).join("") : `<div class="empty small">후보가 아직 없어요 (시총 150위 안·거래량 기준)</div>`}</div>
+      <div class="rk-list">${majors.length ? majors.map(c => coinRow(c)).join("") : `<div class="empty small">후보가 아직 없어요 (시세·거래량이 있는 코인이 없어요)</div>`}</div>
+      ${act ? `<div class="tiny muted sc-act">이 섹터는 시총 150위 안 후보가 ${3 - act ? `${3 - act}개뿐이라` : "없어서"}, 마이너리그에서 시세·거래량이 되는 코인 ${act}개로 1군 빈자리를 임시로 채웠어요(‘임시’ 표시). 150위 안 코인이 생기면 그 코인이 먼저예요.</div>` : ""}
       ${minors.length ? `<details class="minor"><summary>마이너리그 ${minors.length}개${minors.some(c => c.ext) ? ` <span class="tiny muted">(150위 밖 ${minors.filter(c => c.ext).length}개 포함)</span>` : ""}</summary><div class="rk-list">${minors.map(c => coinRow(c)).join("")}</div></details>` : ""}
-      <details class="more"><summary>섹터 설명 · 급등 재료 · 위험</summary><div class="more-body">
+      <details class="more srep"><summary>섹터 리포트 — 돈의 흐름 · 고르는 법 · 좋아질 때와 나빠질 때</summary><div class="more-body">
+        ${s.flow ? `<div><div class="mini-h">돈의 흐름</div>${esc(s.flow)}${st && st.F > 0 ? `<div class="small sr-fact">실제 숫자: 이 섹터 코인 ${st.nf}개의 연 수수료 <b>${krUsd(st.F)}</b> 중 토큰 보유자 몫은 ${st.H > 0 ? `<b>${krUsd(st.H)}</b>(${pct0(st.H / st.F * 100)})` : "<b>없어요</b>"}${st.pf ? ` · 시총은 연 수수료의 중앙값 ${xMult(st.pf)}` : ""}.</div>` : ""}</div>` : ""}
+        ${earners.length ? `<div><div class="mini-h">섹터 안에서 돈 버는 코인</div>${earners.map(c => `${cl(c)} <span class="tiny muted">연 수수료 ${krUsd(c.fz.F)}${c.fz.H > 0 ? ` · 보유자 몫 ${krUsd(c.fz.H)}` : " · 보유자 몫 없음"}</span>`).join("<br>")} <a class="tiny" href="/money">돈 버는 코인 →</a></div>` : ""}
+        ${Array.isArray(s.kpi) && s.kpi.length ? `<div><div class="mini-h">봐야 할 지표</div><ul>${s.kpi.map(k => `<li>${esc(k)}</li>`).join("")}</ul></div>` : ""}
+        ${s.pick ? `<div><div class="mini-h">섹터 안에서 고르는 법</div>${esc(s.pick)}</div>` : ""}
+        ${s.bull || s.bear ? `<div class="scen"><div class="bull"><b>좋아지는 그림</b>${esc(s.bull || "")}</div><div class="bear"><b>나빠지는 그림</b>${esc(s.bear || "")}</div></div>` : ""}
         <div><div class="mini-h">웹2로 치면</div>${esc(s.web2 || "")}</div>
         <div><div class="mini-h">끝까지 남을까</div>${esc(s.why || "")}</div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(s.trigger || "")}</div>
         <div><div class="mini-h">위험</div>${esc(s.risk || "")}</div>
+        ${mov.length >= 3 ? `<div><div class="mini-h">최근 30일 섹터 안에서</div>가장 강함 ${mov.slice(0, 2).map(c => `${cl(c)} <span class="num ${ppc(c.mk[7])}">${pp(c.mk[7])}</span>`).join(" · ")} / 가장 약함 ${mov.slice(-2).reverse().map(c => `${cl(c)} <span class="num ${ppc(c.mk[7])}">${pp(c.mk[7])}</span>`).join(" · ")}</div>` : ""}
         <div><div class="mini-h">생존 점수 구성</div>${SPARTS.map(([k, mx], i) => `${k} ${(s.parts || [])[i] ?? "-"}/${mx}`).join(" · ")}</div>
         ${others.length ? `<div><div class="mini-h">지금 후보가 아닌 코인</div>${others.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="tiny muted">${esc(WHY[c.why] || c.why || "")}</span>`).join(" · ")}</div>` : ""}
       </div></details></section>`;
@@ -586,8 +644,8 @@
   async function sectorsPage() {
     nav("sectors"); setTitle("섹터 순위판");
     const [d, perf] = await Promise.all([get("/api/sectors"), get("/api/perf").catch(() => [])]);
-    const M = sectorModel(d), R = M.rank;
-    const pref = loadPref();
+    const M = sectorModel(d), R = M.rank, SS = secStats(M);
+    const pref = loadPref(); if (!SF_SORTS.some(x => x[0] === pref.sf)) pref.sf = "d30";
     const secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
     const core = Object.values(M.coins).filter(c => c.why === "core" || c.b.core).sort((a, b) => (a.crank || 99) - (b.crank || 99));
     const moves = (R.moves || []).filter(m => ["promo", "demo", "in", "out", "warn", "unwarn"].includes(m[0]));
@@ -602,7 +660,7 @@
       <div><b>심층 점검</b>은 AI가 코인마다 10가지 체크리스트(누가 돈을 내나 · 토큰에 돌아오나 · 공급 · 사용자 · 경쟁 · 팀·개발 · 리스크 · 밸류 · 일정 · 반대 논리)를 근거 링크와 함께 채우고, 기준표에 맞춰 품질 점수를 고쳐요. 하루 3번 몇 개씩 차례로 돌아요.</div>
       <div><b>뉴스</b>는 하루 3번 AI가 코인별로 -10~+10을 매기고, 시간이 지나면 줄어들어요(단기 3일·보통 10일·구조적 변화 45일마다 절반). 큰 코인은 웬만한 뉴스로는 순위가 잘 안 바뀌어요.</div>
       <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
-      <div><b>1군 후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. <b>마이너리그</b>에는 여기에 더해 업비트 원화마켓 코인 전부와 바이낸스(선물 포함) 상장 코인 중 시총 300위 안 코인이 들어가요 — 이 코인들은 순위 옆에 시총 순위가 붙고 1군 후보는 아니에요. '150위까지만'을 체크하면 예전처럼 150위 안 코인만 보여요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
+      <div><b>1군 후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. <b>마이너리그</b>에는 여기에 더해 업비트 원화마켓 코인 전부와 바이낸스(선물 포함) 상장 코인 중 시총 300위 안 코인이 들어가요 — 이 코인들은 순위 옆에 시총 순위가 붙고 1군 후보는 아니에요. 다만 150위 안 후보가 3개가 안 되는 섹터(NFT·소셜 등)는 이 중 시세·거래량이 되는 코인으로 1군 빈자리를 <b>임시</b>로 채워요. '150위까지만'을 체크하면 예전처럼 150위 안 코인만 보여요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
       <div><b>과열</b> = 30일 +40% 이상 또는 7일 +25% 이상. <b>과대낙폭</b> = 고점 대비 -90% 이하 또는 30일 -30% 이하. 둘 다 거르거나 그 순서로 볼 수 있어요.</div>
       <div><b>섹터 생존 점수</b>(0~100) = ${SPARTS.map(([k, mx]) => `${k} ${mx}`).join(" · ")}. A 80+ 핵심 · B 65+ 성장 · C 50+ 순환 · D 50 미만 회피.</div></div></details>`;
     main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>섹터별 3대장과 마이너리그</h1>
@@ -610,6 +668,10 @@
       ${core.length ? `<section class="section"><div class="sec-head"><h2>기준 코인</h2><span class="sub">순위에서 빼고 시장 기준으로만 봐요</span></div><div class="core-strip">${core.map(c => { const mk = c.mk || []; return `<a class="core-c" href="/rank/${encodeURIComponent(c.sym)}"><b>${esc(c.b.ko || c.sym)}</b><span class="num">${usd(mk[2])}</span><span class="num ${ppc(mk[6])}">7일 ${pp(mk[6])}</span><span class="num tiny muted">고점 ${pp(mk[9])}</span></a>`; }).join("")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>이번 순위 변동</h2><span class="sub">${R.ts ? kst(R.ts) : ""}</span></div><div class="panel mvf-list">${moveHtml}</div></section>
       ${perfSection(perfCalc(perf, M), M, secName)}
+      <section class="section" id="sf-s"><div class="sec-head"><h2>섹터 흐름 — 요즘 돈이 어디로 가나</h2><span class="sub">시총 가중 섹터 지수 · 누르면 이동</span></div>
+        <div class="panel">${sectorFlowNote(M, SS, secName)}<div class="fchips" id="sf-sort" role="group" aria-label="섹터 흐름 정렬">${SF_SORTS.map(([k, l]) => `<button type="button" class="fchip" data-sf="${k}">${l}</button>`).join("")}</div>
+        <div id="sf-body"></div>
+        <p class="legend">막대는 가운데(0%)에서 오른쪽이 오름, 왼쪽이 내림이에요. 섹터 지수는 큰 코인 영향을 많이 받아서, 1군 평균과 다를 수 있어요. 수익률은 가격만 본 것이고(스테이킹 보상 제외), 투자 권유가 아니에요.</p></div></section>
       ${moneyTeaser(M, secName)}
       <section class="section"><div class="lvl" id="sec-view" role="group" aria-label="보기"><button type="button" data-v="sec">섹터별</button><button type="button" data-v="all">전체 순위</button></div>
         <div class="ctl" id="sec-ctl"><label class="chk"><input type="checkbox" id="t150"> 150위까지만</label><label class="sel">정렬 <select id="sec-sort">${SORTS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
@@ -635,7 +697,7 @@
       const box = $("sec-body");
       if (pref.view === "sec") {
         box.innerHTML = M.groups.map(g => { const ss = Object.values(M.sec).filter(s => s.group === g).sort((a, b) => b.score - a.score || a.ord - b.ord);
-          return ss.length ? `<div class="grp"><h2 class="grp-h">${esc(g)}</h2>${ss.map(s => sectorCard(s, M, F)).join("")}</div>` : ""; }).join("");
+          return ss.length ? `<div class="grp"><h2 class="grp-h">${esc(g)}</h2>${ss.map(s => sectorCard(s, M, F, SS)).join("")}</div>` : ""; }).join("");
       } else {
         const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0,
@@ -647,6 +709,14 @@
       }
       savePref(pref);
     };
+    const drawSf = () => { document.querySelectorAll("#sf-sort .fchip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sf === pref.sf))); $("sf-body").innerHTML = sectorFlow(M, SS, pref.sf); savePref(pref); };
+    document.querySelectorAll("#sf-sort .fchip").forEach(b => b.addEventListener("click", () => { pref.sf = b.dataset.sf; drawSf(); }));
+    $("sf-body").addEventListener("click", e => {
+      const all = e.target.closest(".sf-all"); if (all) { const box = $("sf-body").querySelector(".sf"), open = box.classList.toggle("cut") === false; all.setAttribute("aria-expanded", String(open)); all.textContent = open ? "접기" : all.dataset.t; return; }
+      const b = e.target.closest("[data-sec]"); if (!b) return;
+      if (pref.view !== "sec") { pref.view = "sec"; draw(); }
+      const el = $("s-" + b.dataset.sec); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); try { history.replaceState(null, "", "#s-" + b.dataset.sec); } catch (x) {} } });
+    drawSf();
     document.querySelectorAll("#sec-view button").forEach(b => b.addEventListener("click", () => { pref.view = b.dataset.v; draw(); }));
     document.querySelectorAll("#sec-ctl .fchip").forEach(b => b.addEventListener("click", () => { const f = new Set(pref.f || []); f.has(b.dataset.f) ? f.delete(b.dataset.f) : f.add(b.dataset.f); pref.f = [...f]; draw(); }));
     $("sec-sort").addEventListener("change", e => { pref.sort = e.target.value; draw(); });
@@ -674,12 +744,112 @@
       ${qn.length ? `<div class="tiny muted">이 점검으로 품질 점수 변경: ${esc(qn.join(" · "))}${d.q.why ? " — " + esc(d.q.why) : ""}</div>` : ""}
       <p class="legend">점은 5점 만점(리스크·반대 논리는 점이 많을수록 안전). AI가 공개 자료로 조사한 내용이라 틀릴 수 있어요 — 출처를 직접 확인해 주세요.</p></section>`;
   }
+  // ── 수수료 12개월 흐름 (kv feehist → /api/feehist) ──
+  // h = [첫 달 YYYYMM, 수수료[13], 매출[13], 보유자 몫[13], 받은 시각] — 값은 달마다 하루 평균($), 마지막 칸은 이번 달(진행 중)
+  let FHP = null;
+  const feeHist = () => FHP || (FHP = get("/api/feehist").then(d => (d && d.m) || {}).catch(() => ({})));
+  const monthOf = (first, i) => { const m0 = (Math.floor(first / 100) * 12) + (first % 100 - 1) + i; return { y: Math.floor(m0 / 12), m: m0 % 12 + 1 }; };
+  const avgOf = a => { const v = a.filter(x => x != null && isFinite(x)); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
+  function histInfo(h) {
+    if (!h || !Array.isArray(h[1])) return null;
+    const F = h[1], R = h[2] || [], H = h[3] || [], full = F.slice(0, 12), have = full.filter(v => v != null && v > 0);
+    const o = { h, F, R, H, first: h[0], at: h[4], months: have.length };
+    if (have.length < 4) return o;
+    const mean = avgOf(have), sd = Math.sqrt(have.reduce((a, b) => a + (b - mean) ** 2, 0) / have.length);
+    o.cv = sd / mean; o.steady = o.cv < 0.3 ? "꾸준함" : o.cv < 0.7 ? "보통" : "들쭉날쭉";
+    const a3 = avgOf(full.slice(9, 12)), a9 = avgOf(full.slice(0, 9));
+    o.tr = a3 && a9 ? (a3 / a9 - 1) * 100 : null;
+    o.hm = H.slice(0, 12).filter(v => v > 0).length;
+    const i = H.findIndex(v => v > 0); if (i > 0 && H.slice(i, 12).every(v => v > 0)) o.hStart = monthOf(h[0], i);
+    return o;
+  }
+  // 작은 선(수수료 하루 평균, 13달)
+  function spark(arr) {
+    const pts = (arr || []).slice(0, 13).map((x, i) => [i, x]).filter(p => p[1] != null && isFinite(p[1]));
+    if (pts.length < 4) return "";
+    const mx = Math.max(...pts.map(p => p[1]), 1e-9), W = 72, H = 22, X = i => 1 + i / 12 * (W - 2), Y = v => H - 2 - Math.max(0, v) / mx * (H - 4);
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${pts.map((p, k) => (k ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("")}"/><circle cx="${X(pts[pts.length - 1][0]).toFixed(1)}" cy="${Y(pts[pts.length - 1][1]).toFixed(1)}" r="2"/></svg>`;
+  }
+  // 13달 막대 — 한 칸 안에 수수료(연함) ⊃ 매출(중간) ⊃ 보유자 몫(진함). 높이는 한 달 환산(하루 평균 × 30)
+  function histChart(h, label) {
+    const F = h[1] || [], R = h[2] || [], Hh = h[3] || [];
+    const vals = [...F, ...R, ...Hh].filter(v => v != null && v > 0); if (vals.length < 3) return "";
+    const W = Math.round(Math.min(560, Math.max(320, (window.innerWidth || 560) - 64))), Ht = 190, L = 50, Rr = 6, T = 12, B = 24;
+    const top = Math.max(...vals) * 30, step = Math.pow(10, Math.floor(Math.log10(top))), nice = [1, 2, 2.5, 5, 10].map(k => k * step).find(v => v * 4 >= top) || step * 10;
+    const Y = v => T + (1 - v / (nice * 4)) * (Ht - T - B), bw = (W - L - Rr) / 13;
+    let g = ""; for (let k = 0; k <= 4; k++) { const v = nice * k, y = Y(v); g += `<line class="${k ? "grid" : "zero"}" x1="${L}" x2="${W - Rr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text class="axis" x="${L - 5}" y="${(y + 4).toFixed(1)}" text-anchor="end">${krShort(v)}</text>`; }
+    let cols = "";
+    for (let i = 0; i < 13; i++) {
+      const x = L + i * bw, mo = monthOf(h[0], i), cur = i === 12;
+      const ser = [[F[i], "f", "수수료"], [R[i], "r", "매출"], [Hh[i], "h", "보유자 몫"]].filter(p => p[0] != null && p[0] > 0).sort((a, b) => b[0] - a[0]);
+      const tip = `${mo.y}년 ${mo.m}월${cur ? " (진행 중)" : ""}|수수료 한 달 ${krUsd((F[i] || 0) * 30)}|매출 ${krUsd((R[i] || 0) * 30)}|보유자 몫 ${krUsd((Hh[i] || 0) * 30)}`;
+      cols += `<g class="hc${cur ? " cur" : ""}" tabindex="0" data-tip="${esc(tip)}"><rect class="hit" x="${x.toFixed(1)}" y="${T}" width="${bw.toFixed(1)}" height="${Ht - T - B}"/>${ser.map(([v, k]) => `<rect class="mf-${k}" x="${(x + bw * 0.14).toFixed(1)}" y="${Y(v * 30).toFixed(1)}" width="${(bw * 0.72).toFixed(1)}" height="${Math.max(0.8, Y(0) - Y(v * 30)).toFixed(1)}" rx="1.5"/>`).join("")}</g>`;
+      if (i % (W < 420 ? 2 : 1) === 0 || i === 12) cols += `<text class="axis" x="${(x + bw / 2).toFixed(1)}" y="${Ht - 8}" text-anchor="middle">${mo.m === 1 || i === 0 ? String(mo.y).slice(2) + "." : ""}${mo.m}${W < 420 ? "" : "월"}</text>`;
+    }
+    return `<div class="chart hchart"><svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${esc(label || "12개월 수수료·매출·보유자 몫")}">${g}${cols}</svg></div>`;
+  }
+  const krShort = v => v >= 1e8 ? (v / 1e8).toFixed(v >= 1e9 ? 0 : 1) + "억$" : v >= 1e4 ? Math.round(v / 1e4) + "만$" : v > 0 ? "$" + Math.round(v) : "0";
+  const histLegend = `<div class="mlegend"><span><i class="mf-f"></i>수수료</span><span><i class="mf-r"></i>매출</span><span><i class="mf-h"></i>보유자 몫</span><span class="tiny muted">마지막 칸은 이번 달(진행 중, 하루 평균×30)</span></div>`;
+  function histNote(hi) {
+    if (!hi || hi.months < 4) return "";
+    const t = [];
+    if (hi.tr != null) t.push(Math.abs(hi.tr) < 10 ? "최근 3달 수수료는 그 전 9달 평균과 비슷해요" : `최근 3달 수수료가 그 전 9달 평균보다 ${pct0(Math.abs(hi.tr))} ${hi.tr > 0 ? "많아요(커지는 중)" : "적어요(줄어드는 중)"}`);
+    t.push(`달마다 ${hi.steady === "꾸준함" ? "고르게 벌어요" : hi.steady === "보통" ? "조금씩 오르내려요" : "크게 오르내려요(한두 달 반짝)"}`);
+    if (hi.hStart) t.push(`보유자 몫은 ${hi.hStart.y}년 ${hi.hStart.m}월부터 생겼어요`);
+    else if (hi.hm === 12) t.push("보유자 몫이 12달 내내 있었어요");
+    else if (hi.hm === 0) t.push("12달 동안 보유자 몫이 없었어요");
+    return t.join(" · ") + ".";
+  }
+  // ── 코인 페이지: 숫자로 본 진단 · 같은 섹터 비교 ──
+  function coinDiag(c, M, SS, secName, hi) {
+    const st = SS[c.sec], mk = c.mk || [], out = [], peers = st ? st.list : [];
+    const dt = d => `${Math.abs(d).toFixed(1)}%p ${d >= 0 ? "강해요" : "약해요"}`;
+    if (peers.includes(c) && peers.length > 1) {
+      const bs = peers.slice().sort((a, b) => (b.score ?? -1e9) - (a.score ?? -1e9)), bc = peers.slice().sort((a, b) => (n(b.mk[3]) || 0) - (n(a.mk[3]) || 0));
+      out.push(["위치", `${secName[c.sec] || c.sec} 후보 ${peers.length}개 중 점수 ${bs.indexOf(c) + 1}위, 시총 ${bc.indexOf(c) + 1}위예요.`]);
+    }
+    const d30 = n(mk[7]), btc = M.coins.BTC && M.coins.BTC.mk ? n(M.coins.BTC.mk[7]) : null;
+    if (d30 != null) out.push(["가격 흐름", [`최근 30일 ${pp(d30)}`, st && st.d30 != null && c.sym !== "BTC" ? `섹터 지수(${pp(st.d30)})보다 ${dt(d30 - st.d30)}` : "", btc != null && c.sym !== "BTC" ? `비트코인(${pp(btc)})보다 ${dt(d30 - btc)}` : ""].filter(Boolean).join(" · ") + "."]);
+    const ath = n(mk[9]);
+    if (ath != null) out.push(["고점 대비", `${pp(ath)}${st && st.ath != null && peers.length > 2 ? ` — 섹터 중앙값(${pp(st.ath)})보다 ${ath < st.ath ? "더 빠져 있어요" : "덜 빠졌어요"}` : ""}.`]);
+    const mcap = n(mk[3]);
+    if (c.fz && c.fz.F > 0 && mcap) { const pf = mcap / c.fz.F;
+      out.push(["밸류", `시총이 1년 수수료의 ${xMult(pf)}${st && st.pf ? ` — 섹터 중앙값(${xMult(st.pf)})보다 ${pf <= st.pf ? `${(st.pf / pf).toFixed(1)}배 싸요` : `${(pf / st.pf).toFixed(1)}배 비싸요`}` : ""}.`]); }
+    if (c.fz && c.fz.F > 0) { const y = mcap && c.fz.H > 0 ? c.fz.H / mcap * 100 : 0;
+      out.push(["토큰에 오는 돈", NOFEE.has(c.sec) ? `수수료(연 ${krUsd(c.fz.F)})는 채굴자 몫이라 보유자에게 돌아오지 않아요(화폐형).` : c.fz.H > 0 ? `1년치 보유자 몫 ${krUsd(c.fz.H)} — 시총의 ${pct0(y)}, 100만 원어치면 1년에 약 ${wonPer(y)}어치가 돌아오는 셈이에요.` : c.fz.R > 0 ? `매출(연 ${krUsd(c.fz.R)})은 있지만 보유자에게 돌아가는 몫은 없어요.` : `수수료(연 ${krUsd(c.fz.F)})는 대부분 유동성 공급자·검증인 몫이에요.`]); }
+    else if (!NOFEE.has(c.sec)) out.push(["토큰에 오는 돈", "DefiLlama에 수수료 데이터가 없어요 — 수익 모델이 없거나 아직 집계되지 않는 코인이에요."]);
+    if (hi && hi.months >= 4) out.push(["수수료 추세", histNote(hi)]);
+    else if (c.fz && c.fz.trend != null) out.push(["수수료 추세", `최근 7일 수수료가 30일 평균보다 ${pp(c.fz.trend)}.`]);
+    const circ = n(mk[11]), sup = [];
+    if (circ != null) sup.push(`유통 비율 ${Math.round(circ * 100)}%${circ < 0.5 ? "(앞으로 풀릴 물량이 많아요)" : circ >= 0.9 ? "(거의 다 풀렸어요)" : ""}`);
+    if (c.unl && c.unl[0] && c.unl[0] - Date.now() < 30 * 86400e3 && c.unl[1] != null) sup.push(`${kstDate(c.unl[0])} 언락 유통량의 ${c.unl[1].toFixed(1)}%`);
+    if (c.sg != null) sup.push(`실제 공급 연 ${c.sg > 0 ? "+" : ""}${c.sg.toFixed(1)}%`);
+    if (sup.length) out.push(["공급", sup.join(" · ") + "."]);
+    if (c.fund) out.push(["선물 수급", c.fund.yr >= 30 ? `펀딩비 연 ${c.fund.yr.toFixed(0)}% — 롱이 몰려 있어 선물로 들고 있는 비용이 커요.` : c.fund.yr <= -15 ? `펀딩비 연 ${c.fund.yr.toFixed(0)}% — 숏이 몰려 있어요.` : `펀딩비 연 ${c.fund.yr.toFixed(0)}%로 보통이에요.`]);
+    if (c.ds != null && st && st.ds != null && peers.length > 2) out.push(["데이터 점수", `${c.ds.toFixed(0)}/100 — 섹터 중앙값 ${st.ds.toFixed(0)}보다 ${c.ds >= st.ds ? "높아요" : "낮아요"}(숫자로만 매긴 점수).`]);
+    if (c.N != null && Math.abs(c.N) >= 2) out.push(["뉴스", `뉴스 점수 ${c.N > 0 ? "+" : ""}${c.N.toFixed(1)} — ${c.N > 0 ? "좋은 소식이 쌓여 있어요" : "나쁜 소식이 쌓여 있어요"}.`]);
+    return out;
+  }
+  function peerTable(c, SS) {
+    const st = SS[c.sec]; if (!st) return "";
+    const list = st.list.slice().sort((a, b) => (a.lg - b.lg) || (a.pos - b.pos));
+    let show = list.slice(0, 10); if (!show.includes(c) && c.mk) show.push(c);
+    if (show.length < 2) return "";
+    const td = (v, cls = "") => `<td class="num ${cls}">${v}</td>`;
+    return `<section class="section"><div class="sec-head"><h2>같은 섹터 비교</h2><span class="sub"><a href="/sectors#s-${esc(c.sec)}">섹터 리포트 →</a></span></div>
+      <div class="panel"><div class="tbl"><table class="money peer"><thead><tr><th>코인</th><th>점수</th><th>시총</th><th>30일</th><th>고점<br>대비</th><th>연<br>수수료</th><th>시총 ÷<br>수수료</th><th>보유자<br>수익률</th><th>유통<br>비율</th></tr></thead><tbody>${show.map(x => { const mk = x.mk || [], mc = n(mk[3]);
+        return `<tr${x === c ? ' class="me"' : ""}><td class="mn"><a href="/rank/${encodeURIComponent(x.sym)}">${esc(x.b.ko || x.sym)}</a><span class="tiny muted">${x.lg === 1 ? `1군 ${x.pos}위${x.act ? " · 임시" : ""}` : x.lg === 2 ? `마이너 ${x.pos}위` : "후보 아님"}</span></td>
+          ${td(x.score != null ? x.score.toFixed(1) : "-")}${td(capKo(mc).replace(" 달러", ""))}${td(pp(mk[7]), ppc(mk[7]))}${td(pp(mk[9]))}${td(x.fz && x.fz.F > 0 ? krUsd(x.fz.F) : "-")}${td(x.fz && x.fz.F > 0 && mc ? xMult(mc / x.fz.F) : "-")}${td(x.fz && x.fz.H > 0 && mc ? pct0(x.fz.H / mc * 100) : "-")}${td(n(mk[11]) != null ? Math.round(n(mk[11]) * 100) + "%" : "-")}</tr>`; }).join("")}</tbody></table></div>
+      <p class="legend">1군·마이너리그 순서예요(최대 10개). 시총 ÷ 수수료는 낮을수록 버는 돈에 비해 싸고, 보유자 수익률은 1년 보유자 몫 ÷ 시총이에요. 유통 비율이 낮으면 앞으로 풀릴 물량이 많아요.</p></div></section>`;
+  }
+  let M_SEC = {};
   async function rankCoinPage(sym) {
     nav("sectors");
-    const [d, h] = await Promise.all([get("/api/sectors"), get("/api/sector-coin/" + encodeURIComponent(sym)).catch(() => ({ hist: [], news: [] }))]);
-    const M = sectorModel(d), c = M.coins[sym];
+    const [d, h, FH] = await Promise.all([get("/api/sectors"), get("/api/sector-coin/" + encodeURIComponent(sym)).catch(() => ({ hist: [], news: [] })), feeHist()]);
+    const M = sectorModel(d), c = M.coins[sym]; M_SEC = M.sec;
     if (!c) { setTitle(sym); main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>${esc(sym)}</h1></header><div class="empty">순위판에 없는 코인이에요. <a href="/sectors">섹터 순위판으로</a></div>`; return; }
     const b = c.b, s = M.sec[c.sec] || {}, mk = c.mk || [];
+    const SS = secStats(M), secName = Object.fromEntries(Object.values(M.sec).map(x => [x.id, x.name])), hi = histInfo(FH[sym]), diag = coinDiag(c, M, SS, secName, hi);
     setTitle(`${b.ko || sym} 섹터 순위`);
     const R = (d.rank && d.rank.rules) || { w: [0.6, 0.25, 0.15] }, w = R.w || [0.6, 0.25, 0.15];
     const parts = [["코인 품질", (c.Q || 0) * w[0], `${c.Q ?? "-"}/100 × ${w[0]}`], ["규모(시총)", (c.S || 0) * w[1], `${c.S ?? "-"}/100 × ${w[1]}`], ["섹터 생존", (s.score || 0) * w[2], `${s.score ?? "-"}/100 × ${w[2]}`], ["뉴스", c.N || 0, "-20~+20"]];
@@ -697,6 +867,9 @@
       <section class="tiles"><div class="tile"><b>점수</b><div class="v num">${c.score != null ? c.score.toFixed(1) : "-"}</div><div class="s">${c.crank ? `시총 ${c.crank}위` : ""}</div></div>
         <div class="tile"><b>가격</b><div class="v num">${usd(mk[2])}</div><div class="s">${ppChip(mk[5], " 24h")}</div></div>
         <div class="tile"><b>고점 대비</b><div class="v num ${ppc(mk[9])}">${pp(mk[9])}</div><div class="s">7일 ${pp(mk[6])} · 30일 ${pp(mk[7])}</div></div></section>
+      ${diag.length ? `<section class="panel section cdiag"><div class="sec-head"><h2>숫자로 본 진단</h2><span class="sub">데이터로 자동 계산 · 같은 섹터와 비교</span></div>
+        <dl class="cd">${diag.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+        <p class="legend">사람 판단 없이 시세(코인마켓캡)·수수료(DefiLlama)·언락·펀딩비 숫자로만 쓴 문장이에요. 왜 그런지는 아래 심층 점검과 장단점을 같이 보세요. 투자 권유가 아니에요.</p></section>` : ""}
       <section class="panel section sb"><h2>점수 구성</h2>${parts.map(([k, v, t]) => `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill${v < 0 ? " neg" : ""}" style="width:${Math.min(100, Math.abs(v) / 60 * 100).toFixed(0)}%"></div></div><span class="num small">${v >= 0 ? "" : "-"}${Math.abs(v).toFixed(1)}</span></div>`).join("")}
         <p class="tiny muted" style="margin:0">${parts.map(([k, , t]) => `${k} ${t}`).join(" · ")}</p>
         <div class="mini-h">코인 품질 5항목 (각 20점)</div>${QN.map((k, i) => { const man = (b.q || [])[i], dv = i < 2 && c.qd ? c.qd[i] : null, used = dv != null && man != null ? Math.round((man + dv) / 2) : man;
@@ -712,11 +885,13 @@
           <div><span class="tiny muted">시총 ÷ 연 보유자 수익</span><b class="num">${xMult(c.fz.mult)}</b><span class="tiny muted">매출 기준 ${xMult(c.fz.multR)}</span></div>
           <div><span class="tiny muted">수수료 최근 1주 추세</span><b class="num ${ppc(c.fz.trend)}">${pp(c.fz.trend)}</b><span class="tiny muted">30일 평균 대비</span></div>
           <div><span class="tiny muted">섹터 수수료 점유율</span><b class="num">${c.fz.sh30 != null ? c.fz.sh30.toFixed(0) + "%" : "-"}</b><span class="tiny muted">${c.fz.sh7 != null ? "최근 7일 " + c.fz.sh7.toFixed(0) + "%" : ""}</span></div></div>
+        ${hi && hi.months >= 3 ? `<div class="mini-h">12개월 흐름 (한 달 환산)</div><div class="mwrap" id="c-hist">${histChart(hi.h, `${b.ko || sym} 12개월 수수료·매출·보유자 몫`)}${histLegend}</div>${histNote(hi) ? `<p class="small" style="margin:0">${esc(histNote(hi))}</p>` : ""}` : ""}
         ${["pow", "privacy"].includes(c.sec) ? '<p class="small muted" style="margin:0">PoW·프라이버시 코인은 화폐 성격이라 이 숫자를 점수에 반영하지 않아요.</p>' : ""}
         <p class="legend">수수료 = 사용자가 낸 돈 전체, 매출 = 그중 프로토콜이 가져간 몫, 보유자 수익 = 바이백·소각·분배로 토큰 보유자에게 간 몫이에요. 30일 값이 비면 1년 합계의 절반을 바닥으로 써요. 보유자 수익이 0이면 앱이 잘돼도 토큰 가격으로 바로 이어지지 않아요. DefiLlama가 집계하지 않는 바이백(별도 리저브 매입 등)은 빠져 있을 수 있어요.</p></section>` : ""}
       <section class="panel section"><div class="scen"><div class="bull"><b>장점</b>${(b.pros || []).map(esc).join(" · ")}</div><div class="bear"><b>단점</b>${(b.cons || []).map(esc).join(" · ")}</div></div>
         <div><div class="mini-h">급등할 수 있는 때</div>${esc(b.trigger || "")}</div><div><div class="mini-h">토큰에 가치가 쌓이는 방식</div>${esc(b.capture || "")}${b.stake ? " · 스테이킹 하지 않으면 발행분만큼 몫이 줄어요" : ""}</div>
         <div class="small muted">시총 ${capKo(mk[3])} · 24시간 거래대금 ${capKo(mk[4])}${n(mk[11]) != null ? ` · 유통 비율 ${Math.round(n(mk[11]) * 100)}%` : ""}</div></section>
+      ${peerTable(c, SS)}
       ${c.fund || c.unl ? `<section class="panel section"><h2>보유 비용 · 공급 일정</h2><div class="fz-grid">
         ${c.fund ? `<div><span class="tiny muted">바이낸스 선물 펀딩비(1회)</span><b class="num ${c.fund.rate > 0 ? "rise" : c.fund.rate < 0 ? "fall" : ""}">${c.fund.rate > 0 ? "+" : ""}${c.fund.rate.toFixed(4)}%</b><span class="tiny muted">연환산 약 ${c.fund.yr > 0 ? "+" : ""}${c.fund.yr.toFixed(1)}%</span></div>
           <div><span class="tiny muted">미결제약정</span><b class="num">${krUsd(c.fund.oi)}</b><span class="tiny muted">${M.fundAt ? kst(M.fundAt) : ""}</span></div>` : ""}
@@ -727,6 +902,7 @@
       ${posPts.length > 1 ? `<section class="section"><div class="sec-head"><h2>섹터 안 순위 흐름</h2><span class="sub">위로 갈수록 높은 순위</span></div><div class="panel">${lineChart(posPts, v => Math.round(-v) + "위", false, "섹터 안 순위")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>순위에 반영된 뉴스</h2><span class="sub">AI가 매긴 영향(-10~+10), 시간이 지나면 줄어요</span></div><div class="panel cn-list">${newsRows || '<div class="small muted">아직 반영된 뉴스가 없어요.</div>'}</div></section>
       <p class="legend"><a href="/sectors">섹터 순위판으로</a> · 점수는 AI 판단 점수이며 투자 권유가 아니에요.</p>`;
+    if ($("c-hist")) moneyTip($("c-hist"));
   }
 
   // ── 라우팅 ──
@@ -743,7 +919,9 @@
     ["fyield", "희석 반영", "앞으로 풀릴 물량까지 치면 어디가 많이 돌려주나?", "아직 잠긴 토큰이 다 풀린다고 보고 다시 계산한 수익률이에요. 유통 비율이 낮을수록 많이 줄어요.", "dil"],
     ["pe", "싼 순", "버는 돈에 비해 가장 싼 곳은?", "시가총액이 1년 보유자 몫의 몇 배인지(주식의 PER) — 낮을수록 싸요.", "pe"],
     ["growth", "성장", "요즘 가장 빨리 크는 곳은?", "최근 30일 수수료가 1년 평균보다 얼마나 늘었는지예요.", "growth"],
-    ["payout", "환원율", "번 돈을 가장 아낌없이 돌려주는 곳은?", "매출 중 보유자에게 돌려준 비율(주식의 배당성향)이에요.", "payout"]];
+    ["payout", "환원율", "번 돈을 가장 아낌없이 돌려주는 곳은?", "매출 중 보유자에게 돌려준 비율(주식의 배당성향)이에요.", "payout"],
+    ["steady", "꾸준함", "1년 내내 고르게 버는 곳은?", "지난 12달 수수료가 달마다 얼마나 고르게 나왔는지예요. 한두 달 반짝한 곳을 거를 때 써요(12개월 기록이 있는 코인만).", "steady"],
+    ["tr3", "3달 추세", "최근 석 달 동안 수수료가 늘고 있는 곳은?", "최근 3달 평균 수수료가 그 전 9달 평균보다 얼마나 많은지예요. 30일 성장보다 덜 흔들려요(12개월 기록이 있는 코인만).", "trend"]];
   // 처음 보는 사람을 위한 용어 풀이 — 가게·주식에 빗대어
   const GLOSS = {
     fee: ["수수료", "사용자가 그 서비스를 쓰면서 낸 돈 전체예요. 가게로 치면 손님이 계산대에 낸 돈 총액이에요. 크면 '많이 쓰인다'는 뜻이지만, 이 돈이 토큰 주인에게 가는지는 별개예요."],
@@ -760,11 +938,13 @@
     buyback: ["바이백 · 소각", "프로토콜이 번 돈으로 시장에서 자기 토큰을 사들이는 게 바이백, 사들인 토큰을 없애는 게 소각이에요. 둘 다 남은 토큰 한 개의 몫을 키워요(주식의 자사주 매입·소각)."],
     arch: ["돈이 돌아오는 방식", "환원형 = 번 돈 대부분을 돌려줌 · 체인 소각형 = 체인 수수료를 태움 · 금고 적립형 = 프로토콜 금고(DAO)에 쌓아 둠 · 통과형 = 수수료가 대부분 유동성 공급자·검증인 몫 · 혼합형 = 일부만 돌려줌."],
     ann: ["1년치로 환산", "최근 30일 실적을 1년(×365÷30)으로 늘린 값이에요. 단, 1년 실제 실적의 절반보다 작으면 1년 실적을 써서 한 달 반짝한 것에 속지 않게 했어요."],
+    steady: ["꾸준함", "지난 12달 동안 달마다 수수료가 얼마나 고르게 나왔는지예요(변동계수 = 표준편차 ÷ 평균). 0.3 아래면 '꾸준함', 0.7 위면 '들쭉날쭉'이에요. 가게로 치면 매달 매출이 비슷한 가게가 더 믿을 만한 것과 같아요."],
+    trend: ["3달 추세", "최근 3달 평균 수수료 ÷ 그 전 9달 평균 − 1이에요. 30일 하나만 보는 것보다 일시적인 급등락에 덜 속아요. +면 커지는 중, -면 줄어드는 중이에요."],
     fswitch: ["수수료 스위치", "지금은 금고에 쌓는 매출을 토큰 보유자에게 돌리기로 결정하는 것(주로 거버넌스 투표)이에요. 결정되면 보유자 몫이 0에서 갑자기 생겨서 대표적인 급등 재료가 돼요."] };
   const tq = k => GLOSS[k] ? `<button type="button" class="tq" data-term="${k}" aria-label="${esc(GLOSS[k][0])} 뜻">?</button>` : "";
   // 받침에 따라 은/는 (한글이 아니면 '은(는)')
   const eun = w => { const c = String(w || "").trim().slice(-1).charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3 ? ((c - 0xac00) % 28 ? "은" : "는") : "은(는)"; };
-  const wonPer = y => y > 0 ? `${y >= 10 ? y.toFixed(0) : y >= 1 ? y.toFixed(1) : y.toFixed(2)}만 원` : "0원"; // 100만 원어치 기준 1년 몫
+  const wonPer = y => !(y > 0) ? "0원" : y >= 1 ? `${y >= 10 ? y.toFixed(0) : y.toFixed(1)}만 원` : `${(Math.round(y * 100) * 100).toLocaleString("ko-KR")}원`; // 100만 원어치 기준 1년 몫 (1만 원 아래는 원 단위)
   let tqBound = false;
   function bindTerms() { // '?' 누르면 용어 풀이 말풍선
     if (tqBound) return; tqBound = true;
@@ -785,7 +965,7 @@
   const ARCH = { give: ["환원형", "매출의 절반 이상을 바이백·소각·분배로 보유자에게 돌려줘요"], burn: ["체인 소각형", "체인 수수료를 태워서 모든 보유자의 몫을 늘려요"],
     vault: ["금고 적립형", "매출은 있지만 대부분 프로토콜 금고(DAO)에 쌓여요 — 환원 결정이 나오면 보유자 몫이 생길 수 있어요"],
     pass: ["통과형", "수수료 대부분이 유동성 공급자·검증인(체인은 검증인·금고)에게 가고 토큰 보유자 몫이 작아요"], mix: ["혼합형", "매출 일부만 보유자에게 돌아가요"] };
-  function moneyModel(M) {
+  function moneyModel(M, FH) {
     const rows = [];
     Object.values(M.coins).forEach(c => {
       const fz = c.fz; if (!fz || !(fz.F > 0)) return;
@@ -800,7 +980,7 @@
       rows.push({ c, sym: c.sym, sec: c.sec, F, R, H, mcap, fdv, circ, d1y, d30, d7, growth, take, payout, arch,
         pf: mcap && F > 0 ? mcap / F : null, ps: mcap && R > 0 ? mcap / R : null, pe: mcap && H > 0 ? mcap / H : null,
         yield: mcap && H > 0 ? H / mcap * 100 : 0, fyield: (fdv || mcap) && H > 0 ? H / (fdv || mcap) * 100 : 0, ryield: mcap && R > 0 ? R / mcap * 100 : 0,
-        noScore: NOFEE.has(c.sec) });
+        noScore: NOFEE.has(c.sec), hi: FH ? histInfo(FH[c.sym]) : null });
     });
     // 섹터 중앙값 (시총 ÷ 연 수수료) — 같은 섹터 안에서 비싼지 싼지
     const med = a => { const v = a.slice().sort((x, y) => x - y), k = v.length >> 1; return v.length ? (v.length % 2 ? v[k] : (v[k - 1] + v[k]) / 2) : null; };
@@ -879,7 +1059,8 @@
   function moneyRow(r, i, key, secName) {
     const c = r.c, a = ARCH[r.arch];
     const main = { H: [krUsd(r.H), "연 보유자 몫"], yield: [pct0(r.yield), `100만 원당 연 ${wonPer(r.yield)}`], fyield: [pct0(r.fyield), `희석 반영 · 100만 원당 ${wonPer(r.fyield)}`], pe: [xMult(r.pe), "시총 ÷ 보유자 몫"],
-      growth: [pp(r.growth), "수수료 성장"], F: [krUsd(r.F), "연 수수료"], R: [krUsd(r.R), "연 매출"], payout: [r.R > 0 ? pct0(r.payout * 100) : "-", "매출 중 보유자 몫"] }[key] || [krUsd(r.H), "연 보유자 몫"];
+      growth: [pp(r.growth), "수수료 성장"], F: [krUsd(r.F), "연 수수료"], R: [krUsd(r.R), "연 매출"], payout: [r.R > 0 ? pct0(r.payout * 100) : "-", "매출 중 보유자 몫"],
+      steady: [r.hi && r.hi.cv != null ? r.hi.steady : "-", r.hi && r.hi.cv != null ? `변동 ${r.hi.cv.toFixed(2)}` : "기록 없음"], tr3: [r.hi && r.hi.tr != null ? pp(r.hi.tr) : "-", "최근 3달 vs 9달"] }[key] || [krUsd(r.H), "연 보유자 몫"];
     const fun = [[r.F, "수수료", "f"], [r.R, "매출", "r"], [r.H, "보유자", "h"]];
     const tmax = Math.max(r.d1y || 0, r.d30 || 0, r.d7 || 0, 1);
     const tr = [[r.d1y, "1년 평균"], [r.d30, "최근 30일"], [r.d7, "최근 7일"]];
@@ -887,6 +1068,7 @@
     return `<details class="mrow"${i < 1 ? " open" : ""}><summary>
         <span class="mr-no num">${i + 1}</span>
         <span class="mr-nm"><b>${esc(c.b.ko || c.sym)}</b> <span class="sym">${esc(c.sym)}</span><span class="mr-tags"><span class="tag">${esc(secName[c.sec] || c.sec)}</span>${c.b.core ? '<span class="tag">기준 코인</span>' : c.lg === 1 ? '<span class="tag mine">1군</span>' : ""}<span class="tag arch-${r.arch}" title="${esc(a[1])}">${a[0]}</span>${r.c.ex.up ? '<span class="xb up" title="업비트 원화마켓">업</span>' : ""}</span></span>
+        <span class="mr-sp" title="12개월 수수료 흐름">${r.hi ? spark(r.hi.F) : ""}</span>
         <span class="mr-v"><b class="num">${main[0]}</b><span class="tiny muted">${main[1]}</span></span></summary>
       <div class="mr-body">
         <div class="mr-grid">
@@ -901,6 +1083,7 @@
           <div><div class="mini-h">돈의 흐름 (1년치) ${tq("ann")}</div>${fun.map(([v, l, k]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-${k}" style="width:${v > 0 ? Math.max(1, v / r.F * 100).toFixed(1) : 0}%"></i></span><span class="num">${krUsd(v)}</span></div>`).join("")}</div>
           <div><div class="mini-h">하루 평균 수수료 추세 ${tq("growth")}</div>${tr.map(([v, l]) => `<div class="mfun"><span>${l}</span><span class="mfun-t"><i class="mf-r" style="width:${v ? (v / tmax * 100).toFixed(1) : 0}%"></i></span><span class="num">${v ? krUsd(v) : "-"}</span></div>`).join("")}</div>
         </div>
+        ${r.hi && r.hi.months >= 3 ? `<div><div class="mini-h">12개월 흐름 (한 달 환산) ${tq("steady")}</div><div class="mwrap mr-hist">${histChart(r.hi.h, `${r.c.b.ko || r.sym} 12개월 수수료·매출·보유자 몫`)}</div>${histNote(r.hi) ? `<div class="small">${esc(histNote(r.hi))}</div>` : ""}</div>` : ""}
         <ul class="mr-v2">${moneyVerdict(r, secName).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
         ${cav.length ? `<div class="mr-cav">${cav.map(t => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
         <div class="small"><a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)} 순위·심층 점검 보기 →</a></div>
@@ -961,11 +1144,62 @@
     return `<div class="mcmp">${col("F", "많이 쓰이는 곳", "수수료 순", "fee", hTag)}${col("R", "많이 버는 곳", "매출 순", "rev", hTag)}${col("H", "많이 돌려주는 곳", "보유자 몫 순", "hold", fTag)}</div>
       ${ins.length ? `<div class="mins"><div class="mini-h">눈여겨볼 차이</div><ul>${ins.map(t => `<li>${t}</li>`).join("")}</ul></div>` : ""}`;
   }
+  // ── 12개월 합계 (같은 달끼리 더함) — 12달 수수료 기록이 다 있는 코인만 ──
+  function histSum(rows) {
+    const acc = {}; let used = 0, last = -1;
+    rows.forEach(r => { const h = r.hi && r.hi.h; if (!h || !Array.isArray(h[1]) || h[1].slice(0, 12).some(v => v == null)) return; used++;
+      const base = Math.floor(h[0] / 100) * 12 + (h[0] % 100 - 1);
+      for (let i = 0; i < 13; i++) { const a = acc[base + i] = acc[base + i] || [0, 0, 0]; a[0] += h[1][i] || 0; a[1] += (h[2] || [])[i] || 0; a[2] += (h[3] || [])[i] || 0; }
+      last = Math.max(last, base + 12); });
+    if (!used) return null;
+    const first = last - 12, ser = [[], [], []];
+    for (let k = first; k <= last; k++) { const a = acc[k]; for (let j = 0; j < 3; j++) ser[j].push(a ? a[j] : null); }
+    return { h: [Math.floor(first / 12) * 100 + first % 12 + 1, ser[0], ser[1], ser[2]], used };
+  }
+  function moneyYear(MM) {
+    const S = histSum(MM.rows), got = MM.rows.filter(r => r.hi).length;
+    if (!S || S.used < 5) return `<div class="small muted">DefiLlama에서 코인마다 12개월 기록을 받는 중이에요(지금 ${got}개 / ${MM.rows.length}개 · 한 시간에 몇 개씩, 하루쯤 걸려요). 다 모이면 여기에 웹3 전체 수수료가 1년 동안 어떻게 변했는지 그려져요.</div>`;
+    const hi = histInfo(S.h), F = S.h[1], H = S.h[3];
+    const y12 = F.slice(0, 12).reduce((a, b) => a + (b || 0), 0) * 30.4, h12 = H.slice(0, 12).reduce((a, b) => a + (b || 0), 0) * 30.4;
+    const best = F.slice(0, 12).indexOf(Math.max(...F.slice(0, 12))), bm = monthOf(S.h[0], best);
+    return `${histChart(S.h, "12개월 전체 수수료·매출·보유자 몫")}${histLegend}
+      <ul class="mr-v2"><li>기록이 다 있는 코인 ${S.used}개를 합치면 지난 12달 수수료는 약 <b>${krUsd(y12)}</b>, 그중 토큰 보유자 몫은 <b>${krUsd(h12)}</b>(${pct0(h12 / Math.max(y12, 1) * 100)})예요.</li>
+        ${hi && hi.tr != null ? `<li>최근 3달 평균은 그 전 9달보다 <b class="${ppc(hi.tr)}">${pp(hi.tr)}</b> — 웹3 전체 '매출'이 ${hi.tr > 10 ? "커지는 중이에요" : hi.tr < -10 ? "줄어드는 중이에요" : "비슷한 수준이에요"}.</li>` : ""}
+        <li>가장 많이 번 달은 ${bm.y}년 ${bm.m}월이에요. 수수료는 거래가 몰리는 강세장·급락장에 커지는 경향이 있어요.</li></ul>`;
+  }
+  function moneySecTrend(MM, secName) {
+    const by = {}; MM.rows.forEach(r => (by[r.sec] = by[r.sec] || []).push(r));
+    const list = Object.entries(by).map(([id, rows]) => ({ id, S: histSum(rows) })).filter(x => x.S).map(x => { const F = x.S.h[1], a3 = avgOf(F.slice(9, 12)), a9 = avgOf(F.slice(0, 9));
+      return { ...x, tr: a3 && a9 ? (a3 / a9 - 1) * 100 : null, y: F.slice(0, 12).reduce((a, b) => a + (b || 0), 0) * 30.4 }; }).filter(x => x.tr != null && x.S.used >= 2).sort((a, b) => b.tr - a.tr);
+    if (list.length < 4) return "";
+    const k = Math.min(6, Math.floor(list.length / 2)), row = x => `<div class="mst-r"><span class="mst-n">${esc(secName[x.id] || x.id)}</span>${spark(x.S.h[1])}<b class="num ${ppc(x.tr)}">${pp(x.tr)}</b><span class="tiny muted">연 ${krUsd(x.y)} · 코인 ${x.S.used}개</span></div>`;
+    return `<div class="mst"><div><div class="mini-h">커지는 곳</div>${list.slice(0, k).map(row).join("")}</div><div><div class="mini-h">줄어드는 곳</div>${list.slice(-k).reverse().map(row).join("")}</div></div>`;
+  }
+  // 수익과 가격이 엇갈리는 곳 — 수수료 성장(최근 30일 ÷ 1년 평균)과 가격 30일 변동이 반대
+  function moneyDiverge(MM) {
+    const pr = r => r.c.mk ? n(r.c.mk[7]) : null;
+    const up = MM.rows.filter(r => r.growth != null && r.growth >= 15 && pr(r) != null && pr(r) <= -5 && !r.c.b.core).sort((a, b) => (b.growth - pr(b)) - (a.growth - pr(a))).slice(0, 6);
+    const dn = MM.rows.filter(r => r.growth != null && r.growth <= -15 && pr(r) != null && pr(r) >= 5 && !r.c.b.core).sort((a, b) => (pr(b) - b.growth) - (pr(a) - a.growth)).slice(0, 6);
+    if (!up.length && !dn.length) return "";
+    const li = r => `<li><a href="/rank/${encodeURIComponent(r.sym)}">${esc(r.c.b.ko || r.sym)}</a> <span class="tiny muted">수수료 <b class="num ${ppc(r.growth)}">${pp(r.growth)}</b> · 가격 30일 <b class="num ${ppc(pr(r))}">${pp(pr(r))}</b>${r.H > 0 ? ` · 수익률 ${pct0(r.yield)}` : ""}</span></li>`;
+    return `<div class="mdiv"><div><div class="mini-h">쓰임은 느는데 가격은 빠진 곳</div>${up.length ? `<ul>${up.map(li).join("")}</ul>` : '<div class="small muted">지금은 없어요.</div>'}</div>
+      <div><div class="mini-h">가격은 올랐는데 쓰임은 줄어든 곳</div>${dn.length ? `<ul>${dn.map(li).join("")}</ul>` : '<div class="small muted">지금은 없어요.</div>'}</div></div>`;
+  }
+  // 1군인데 수수료 데이터가 없는 코인 — 왜 비어 있는지
+  function moneyCoverage(M, MM) {
+    const has = new Set(MM.rows.map(r => r.sym));
+    const g1 = Object.values(M.coins).filter(c => c.lg === 1), miss = g1.filter(c => !has.has(c.sym));
+    const why = c => c.sec === "meme" ? "밈 — 수수료 모델이 없어요" : NOFEE.has(c.sec) ? "화폐형 — 수수료는 채굴자 몫" : c.b.ll ? "DefiLlama 이름 확인 중" : c.sec === "cex" ? "거래소 장부 — 온체인 집계 안 됨" : "DefiLlama에 수수료 집계 없음";
+    const grp = {}; miss.forEach(c => (grp[why(c)] = grp[why(c)] || []).push(c));
+    return `<details class="panel more"><summary>1군 ${g1.length}개 중 ${g1.length - miss.length}개만 수수료 데이터가 있어요 — 나머지는 왜 비어 있나</summary><div class="more-body small">
+      ${Object.entries(grp).map(([k, list]) => `<div><b>${esc(k)}</b> <span class="muted">${list.length}개</span><div>${list.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a>`).join(" · ")}</div></div>`).join("")}
+      <p class="legend">수수료가 없다고 나쁜 코인은 아니에요(비트코인처럼 화폐로 보유되는 코인, 밈처럼 관심이 가치인 코인). 다만 이 페이지의 '돈 버는' 기준으로는 잴 수 없어요.</p></div></details>`;
+  }
   async function moneyPage() {
     nav("money"); setTitle("돈 버는 코인"); bindTerms();
-    const d = await get("/api/sectors");
+    const [d, FH] = await Promise.all([get("/api/sectors"), feeHist()]);
     const M = sectorModel(d);
-    const MM = moneyModel(M), secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
+    const MM = moneyModel(M, FH), secName = Object.fromEntries(Object.values(M.sec).map(s => [s.id, s.name]));
     if (!MM.rows.length) { main().innerHTML = `<header class="head"><div class="eyebrow">돈 버는 코인</div><h1>웹3에서 실제로 돈을 버는 곳</h1></header><div class="empty">DefiLlama 수익 데이터를 받는 중이에요. 몇 시간 안에 채워져요.</div>`; return; }
     const T = MM.tot, top3 = MM.rows.slice().sort((a, b) => b.H - a.H).slice(0, 3), top3H = top3.reduce((s, r) => s + r.H, 0);
     const earners = MM.rows.filter(r => r.H > 0).length;
@@ -990,6 +1224,10 @@
       <section class="section" id="m-cmp"><div class="sec-head"><h2>순위 비교 — 많이 쓰이는 곳 ≠ 많이 돌려주는 곳</h2><span class="sub">같은 코인도 기준에 따라 순위가 크게 달라요</span></div>
         <div class="panel">${moneyCompare(MM)}
         <p class="legend">왼쪽 두 줄의 오른쪽 작은 글씨는 그 코인의 '보유자 몫' 순위, 오른쪽 줄은 '수수료' 순위예요. 순위 차이가 크면 "쓰이는 것"과 "토큰에 돈이 오는 것"이 따로 놀고 있다는 뜻이에요.</p></div></section>
+      <section class="section" id="m-year"><div class="sec-head"><h2>1년 흐름 — 웹3의 '매출'은 커지고 있나</h2><span class="sub">달마다 한 달 환산 · 막대에 올리면 자세히</span></div>
+        <div class="panel mwrap" id="m-yr">${moneyYear(MM)}
+        ${moneySecTrend(MM, secName) ? `<div class="mini-h" style="margin-top:12px">섹터별 수수료 추세 (최근 3달 vs 그 전 9달) ${tq("trend")}</div>${moneySecTrend(MM, secName)}` : ""}
+        <p class="legend">DefiLlama 일별 수수료를 달마다 하루 평균으로 모아 30을 곱했어요. 12개월 기록이 다 있는 코인만 더해서, 새로 생긴 코인은 빠져 있어요.</p></div></section>
       <section class="section"><div class="sec-head"><h2>돈이 어디서 나오나 — 섹터별</h2><span class="sub">막대에 손가락·마우스를 올리면 자세히</span></div>
         <div class="panel mwrap" id="m-sec">${moneySecChart(MM, secName)}
         <p class="legend">한 막대 안에서 연한 부분이 사용자가 낸 수수료 전체 ${tq("fee")}, 중간이 프로토콜 매출 ${tq("rev")}, 진한 부분이 토큰 보유자에게 간 몫 ${tq("hold")}이에요. 수수료가 커도 진한 부분이 작으면 그 섹터는 "쓰이긴 하는데 토큰엔 돈이 잘 안 오는" 곳이에요.</p></div></section>
@@ -998,6 +1236,8 @@
       <section class="section" id="m-map-s"><div class="sec-head"><h2>싸고 성장하는 코인 지도</h2><span class="sub">보유자 몫이 있는 코인만 · 점에 올리면 자세히</span></div>
         <div class="panel mwrap" id="m-map">${moneyScatter(MM) || '<div class="small muted">점을 찍을 코인이 아직 부족해요.</div>'}
         <p class="legend">가로는 시총 ÷ 1년 보유자 몫 ${tq("pe")} — 왼쪽일수록 버는 돈에 비해 싸요. 세로는 수수료 성장 ${tq("growth")} — 위일수록 요즘 더 많이 쓰여요. 왼쪽 위 칸(20배 이하 = 수익률 연 5% 이상, 그리고 성장 중)이 가장 매력적인 자리예요. 진한 점은 1군, 이름은 보유자 몫이 큰 코인 몇 개만 붙였어요.</p></div></section>
+      ${moneyDiverge(MM) ? `<section class="section"><div class="sec-head"><h2>쓰임과 가격이 엇갈리는 곳</h2><span class="sub">수수료 성장(최근 30일 ÷ 1년 평균) vs 가격 30일</span></div>
+        <div class="panel">${moneyDiverge(MM)}<p class="legend">왼쪽은 사람들이 더 많이 쓰는데 가격은 빠진 곳, 오른쪽은 가격은 올랐는데 쓰임은 줄어든 곳이에요. 가격이 언젠가 쓰임을 따라간다고 보면 눈여겨볼 만하지만, 수수료가 늘어난 이유(일시적 이벤트·인센티브)를 꼭 확인해야 해요. 투자 권유가 아니에요.</p></div></section>` : ""}
       ${vault.length ? `<section class="section"><div class="sec-head"><h2>환원 결정이 나오면 달라질 코인 ${tq("fswitch")}</h2><span class="sub">매출은 큰데 보유자 몫이 작은 곳</span></div>
         <div class="panel"><div class="mvault">${vault.map(r => `<a href="/rank/${encodeURIComponent(r.sym)}"><b>${esc(r.c.b.ko || r.sym)}</b><span class="tiny muted">${esc(secName[r.sec] || r.sec)}</span><span class="num">매출 ${krUsd(r.R)}</span><span class="small">다 돌려주면 연 <b class="num">${pct0(r.ryield)}</b><span class="tiny muted"> (지금 ${pct0(r.yield)})</span></span><span class="tiny muted">100만 원당 ${wonPer(r.yield)} → ${wonPer(r.ryield)}</span></a>`).join("")}</div>
         <p class="legend">유니스왑의 '수수료 스위치'처럼, 프로토콜 매출을 바이백·분배로 돌리기로 결정되면 토큰의 수익률이 바로 바뀌어요. 이런 거버넌스 투표가 대표적인 급등 재료예요. 실제로 결정될지는 각 프로토콜 거버넌스를 확인해야 해요.</p></div></section>` : ""}
@@ -1006,7 +1246,8 @@
         <div class="mq" id="m-q"></div>
         <div class="ctl" id="m-ctl"><label class="sel">섹터 <select id="m-sec-f"><option value="">전체</option>${MM.secs.map(s => `<option value="${esc(s.id)}">${esc(secName[s.id] || s.id)}</option>`).join("")}</select></label>
           <label class="chk"><input type="checkbox" id="m-t150"> 150위까지만</label><label class="chk"><input type="checkbox" id="m-up"> 업비트 원화만</label><label class="chk"><input type="checkbox" id="m-major"> 1군만</label></div>
-        <div class="panel" id="m-list"></div></section>
+        <div class="panel mwrap" id="m-list"></div></section>
+      ${moneyCoverage(M, MM)}
       <details class="panel more" id="m-gloss"><summary>용어 풀이 전체 보기 (가게·주식으로 비유)</summary><div class="more-body small mgl">
         ${Object.values(GLOSS).map(([t, x]) => `<div><b>${esc(t)}</b><p>${esc(x)}</p></div>`).join("")}
         <div><b>한계</b><p>거래소 토큰(BNB·OKB 등)의 바이백, 오프체인 매출은 잘 안 잡혀요. 체인 수수료 소각은 스테이킹 발행과 함께 봐야 실제 희석을 알 수 있어요. 수수료에는 인센티브로 되돌려 준 돈이 섞여 있을 수 있어요. 바이백은 현금 배당이 아니라 토큰 가치로 돌아와요. 투자 권유가 아니에요.</p></div></div></details>`;
@@ -1015,16 +1256,18 @@
       document.querySelectorAll("[data-ms]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.ms === pref.sort)));
       const S = MONEY_SORTS.find(x => x[0] === pref.sort) || MONEY_SORTS[2];
       $("m-q").innerHTML = `<b>${esc(S[2])}</b> ${tq(S[4])}<span class="small muted">${esc(S[3])}</span>`;
-      const key = pref.sort, val = { H: r => r.H, R: r => r.R, yield: r => r.yield, fyield: r => r.fyield, pe: r => r.pe ? -r.pe : -1e15, growth: r => r.growth ?? -1e9, F: r => r.F, payout: r => r.R > 0 ? r.payout : -1 }[key] || (r => r.H);
+      const key = pref.sort, val = { H: r => r.H, R: r => r.R, yield: r => r.yield, fyield: r => r.fyield, pe: r => r.pe ? -r.pe : -1e15, growth: r => r.growth ?? -1e9, F: r => r.F, payout: r => r.R > 0 ? r.payout : -1,
+        steady: r => r.hi && r.hi.cv != null ? -r.hi.cv : -1e9, tr3: r => r.hi && r.hi.tr != null ? r.hi.tr : -1e9 }[key] || (r => r.H);
       const list = MM.rows.filter(r => (!pref.sec || r.sec === pref.sec) && (!pref.t150 || (r.c.crank > 0 && r.c.crank <= 150)) && (!pref.up || r.c.ex.up) && (!pref.major || r.c.lg === 1))
-        .filter(r => key === "pe" || key === "yield" || key === "fyield" ? r.H > 0 : key === "payout" ? r.R > 0 : key === "R" ? r.R > 0 : true).sort((a, b) => val(b) - val(a));
-      $("m-list").innerHTML = list.length ? list.map((r, i) => moneyRow(r, i, key, secName)).join("") : '<div class="empty small">조건에 맞는 코인이 없어요.</div>';
+        .filter(r => key === "pe" || key === "yield" || key === "fyield" ? r.H > 0 : key === "payout" ? r.R > 0 : key === "R" ? r.R > 0 : key === "steady" ? r.hi && r.hi.cv != null : key === "tr3" ? r.hi && r.hi.tr != null : true).sort((a, b) => val(b) - val(a));
+      $("m-list").innerHTML = list.length ? list.map((r, i) => moneyRow(r, i, key, secName)).join("") : `<div class="empty small">${(key === "steady" || key === "tr3") && !MM.rows.some(r => r.hi && r.hi.cv != null) ? "12개월 기록을 받는 중이에요 — 하루쯤 지나면 이 순서로 볼 수 있어요." : "조건에 맞는 코인이 없어요."}</div>`;
+      moneyTip($("m-list"));
       saveMPref(pref);
     };
     document.querySelectorAll("[data-ms]").forEach(b => b.addEventListener("click", () => { pref.sort = b.dataset.ms; draw(); }));
     $("m-sec-f").addEventListener("change", e => { pref.sec = e.target.value; draw(); });
     [["m-t150", "t150"], ["m-up", "up"], ["m-major", "major"]].forEach(([id, k]) => $(id).addEventListener("change", e => { pref[k] = e.target.checked; draw(); }));
-    draw(); moneyTip($("m-sec")); if ($("m-map")) moneyTip($("m-map")); openHash();
+    draw(); moneyTip($("m-sec")); if ($("m-map")) moneyTip($("m-map")); moneyTip($("m-yr")); openHash();
   }
 
   async function route() {

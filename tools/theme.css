@@ -586,3 +586,70 @@ table.money td.num{text-align:right}
 .mq .small{width:100%}
 .mgl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 16px}
 .mgl p{margin:2px 0 0;line-height:1.6;color:var(--ink)}
+
+/* ── 섹터 흐름 (10/23) ── */
+.tag.xr.act{border-style:solid;border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.sc-num{display:block;line-height:1.5;word-break:keep-all}
+.sc-num b{font-weight:600}
+.sc-num b:not(.rise):not(.fall){color:var(--ink)}
+.sc-act{background:var(--sunk);border-radius:10px;padding:7px 10px;line-height:1.5;word-break:keep-all}
+.sr-fact{margin-top:4px;color:var(--muted)}
+.sr-fact b{color:var(--ink)}
+.sf-note{margin:0 0 10px;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:3px;word-break:keep-all}
+#sf-sort{margin-bottom:8px}
+.sf{display:flex;flex-direction:column}
+.sf-r{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 64px;grid-template-areas:"n b v" "m m m";gap:2px 10px;align-items:center;padding:8px 4px;border-top:1px solid var(--line);cursor:pointer;width:100%}
+.sf-r:first-child{border-top:0}
+.sf-r:hover,.sf-r:focus-visible{background:var(--sunk)}
+.sf-r:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:8px}
+.sf-n{grid-area:n;display:flex;align-items:center;gap:7px;min-width:0}
+.sf-n b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sf-n .sv-g{width:20px;height:20px;font-size:11px;border-radius:6px;flex:none}
+.sf-bar{grid-area:b;position:relative;height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.sf-bar em{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line-strong)}
+.sf-bar i{position:absolute;top:1px;bottom:1px;border-radius:4px}
+.sf-bar i.pos{background:var(--rise)} .sf-bar i.neg{background:var(--fall)}
+.sf-v{grid-area:v;text-align:right;font-size:14px;font-weight:600}
+.sf-m{grid-area:m;line-height:1.5;word-break:keep-all}
+.sf-m b{font-weight:600}
+@media (max-width:520px){.sf-r{grid-template-columns:minmax(0,1fr) 58px;grid-template-areas:"n v" "b b" "m m"}.sf-bar{height:8px;margin:2px 0}}
+/* 코인 페이지: 숫자로 본 진단 · 같은 섹터 비교 · 12개월 흐름 */
+.cd{display:grid;grid-template-columns:minmax(0,1fr);gap:0;margin:0}
+.cd>div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+.cd>div:first-child{border-top:0}
+.cd dt{font-size:12px;font-weight:700;color:var(--muted);padding-top:2px}
+.cd dd{margin:0;font-size:14px;word-break:keep-all}
+@media (max-width:520px){.cd>div{grid-template-columns:76px minmax(0,1fr)}}
+table.peer tr.me td{background:var(--accent-soft)}
+table.peer tr.me td.mn a{color:var(--accent)}
+.hchart svg{max-height:260px}
+.hchart .axis{font-size:11px}
+.hc{outline:none}
+.hc .hit{fill:transparent}
+.hc:hover .hit,.hc:focus-visible .hit{fill:var(--sunk)}
+.hc rect.mf-f{fill:var(--mf-f)} .hc rect.mf-r{fill:var(--mf-r)} .hc rect.mf-h{fill:var(--mf-h)}
+.hc.cur rect.mf-f,.hc.cur rect.mf-r,.hc.cur rect.mf-h{opacity:.5}
+.spark{display:inline-block;vertical-align:middle;overflow:visible}
+.spark path{fill:none;stroke:var(--mf-r);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+.spark circle{fill:var(--mf-h)}
+/* 돈 버는 코인: 12개월 · 엇갈림 */
+.mrow>summary{grid-template-columns:28px minmax(0,1fr) auto auto}
+.mr-sp{display:flex;align-items:center}
+.mr-sp:empty{display:none}
+@media (max-width:400px){.mr-sp{display:none}}
+.mr-hist .hchart svg{max-height:220px}
+.mst{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px;margin-top:6px}
+@media (max-width:640px){.mst{grid-template-columns:minmax(0,1fr)}}
+.mst-r{display:grid;grid-template-columns:minmax(0,1fr) 72px 58px;gap:2px 10px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.mst-r .mst-n{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mst-r b{text-align:right;font-size:13px}
+.mst-r .tiny{grid-column:1/-1;margin-top:-2px}
+.mdiv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:640px){.mdiv{grid-template-columns:minmax(0,1fr)}}
+.mdiv ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.mdiv b{font-weight:600}
+.sf.cut .sf-r:nth-child(n+11){display:none}
+.sf-all{margin-top:8px}
+@media (max-width:520px){.sf-x{display:none}}
+.mst>div{display:flex;flex-direction:column}
+.mst .mini-h{margin-bottom:2px}
