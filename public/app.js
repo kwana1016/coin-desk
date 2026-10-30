@@ -378,6 +378,18 @@
   const SPARTS = [["실수익", 25], ["사용 추세", 20], ["기관 채택", 15], ["규제 내구성", 15], ["대체 불가능성", 15], ["사이클 생존", 10]];
   const SPS = ["실수익", "사용 추세", "기관 채택", "규제 내구성", "대체 불가", "사이클 생존"]; // 막대 위 짧은 이름
   const WHY = { rank: "시총 150위 밖(업비트 원화·바이낸스 300위 안 아님)", liq: "거래량 부족", nodata: "시세 없음", core: "기준 코인" };
+  // 탈중앙화 정도 — coin_base.json.dz = {s, lv(3 탈중앙·2 중간·1 중앙화), p[5], why, e(1=섹터 평균 추정), at, h[[ts, s]]}
+  const DZ = { 3: ["탈중앙", "운영 회사 없이도 돌아가고, 누구나 참여할 수 있는 쪽"], 2: ["중간", "탈중앙 구조는 있지만 회사·재단 영향이 아직 큰 쪽"], 1: ["중앙화", "회사·재단·허가된 소수가 운영을 쥐고 있는 쪽"] };
+  const DZP = [["검증·운영 참여", "블록·주문을 누가 처리하나 — 누구나 참여 가능하고 수가 많을수록 높아요"], ["지분 분산", "팀·재단·회사·VC가 토큰을 얼마나 몰아 갖고 있나 — 고르게 퍼질수록 높아요"],
+    ["업그레이드 통제", "규칙 변경을 누가 하나 — 바꿀 수 없는 코드·투표면 높고, 회사 단독·관리자 키면 낮아요"], ["회사·재단 독립", "그 회사·재단이 사라져도 돌아가나 — 그렇다면 높아요"], ["검열·동결 내성", "누군가 거래를 막거나 자금을 동결할 수 있나 — 어려울수록 높아요"]];
+  const dzLv = s => s >= 60 ? 3 : s >= 35 ? 2 : 1;
+  function dzOf(z) { if (!z || !Array.isArray(z.p)) return null; const s = z.s != null ? n(z.s) : z.p.reduce((a, x) => a + (n(x) || 0), 0);
+    const h = (Array.isArray(z.h) ? z.h : []).filter(x => Array.isArray(x) && x.length >= 2).sort((a, b) => a[0] - b[0]);
+    const prev = h.length > 1 ? n(h[h.length - 2][1]) : null;
+    return { s, lv: z.lv || dzLv(s), p: z.p, why: z.why || "", est: !!z.e, at: z.at || null, h, prev, d: prev != null ? s - prev : 0 }; }
+  function dzBadge(c, opt = {}) { const z = c.dz; if (!z) return "";
+    const t = `탈중앙화 ${z.s}/100 · ${DZ[z.lv][0]} — ${z.why}${z.est ? " (아직 섹터 평균 추정치)" : ""}${z.d ? ` · 지난번 ${z.prev} → ${z.s}` : ""}`;
+    return `<span class="dz dz${z.lv}${z.est ? " est" : ""}" title="${esc(t)}"><i aria-hidden="true"></i>${DZ[z.lv][0]}${opt.num ? ` <b class="num">${z.s}</b>` : ""}${z.d ? `<em class="${z.d > 0 ? "up" : "down"}">${z.d > 0 ? "▲" : "▼"}${Math.abs(z.d)}</em>` : ""}</span>`; }
   const MOVE = { promo: "1군 승격", demo: "2군 강등", in: "후보 진입", out: "후보 제외", up: "순위 상승", down: "순위 하락", warn: "유의 종목 지정", unwarn: "유의 해제" };
   const VIA = { chal: "2번 연속 3점 이상 앞섬", fast: "큰 뉴스로 바로 승격", fill: "빈자리 채움", act: "150위 안 후보가 모자라 임시로 채움" };
   const pp = x => { x = n(x); return x == null ? "-" : (x > 0 ? "+" : "") + x.toFixed(Math.abs(x) >= 100 ? 0 : 1) + "%"; };
@@ -444,7 +456,7 @@
         warn: c[10] || null, mk, fund: fundInfo(fundM[b.sym] || fundM[kr]), unl: unlM[b.sym] || null,
         flags: flagsOf(mk).concat(c[10] ? ["warn"] : []).concat(fundFlag(fundM[b.sym] || fundM[kr])).concat(unlFlag(unlM[b.sym])), ex: { up: upbit.has(kr), bt: bithumb.has(kr), bf: bnf.has(b.sym) || bnf.has(kr) }, mine: mine.has(kr) || mine.has(b.sym),
         trail: (rank.trail || {})[b.sym] || [], news: (rank.news || {})[b.sym] || [], qd: c[11] || null, fz: feeInfo(feesM[b.sym], mk),
-        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null, ext: c[15] >= 1, act: c[15] === 2 };
+        ds: c[12] != null ? n(c[12]) : null, dp: c[13] || null, sg: c[14] != null ? n(c[14]) : null, ext: c[15] >= 1, act: c[15] === 2, dz: dzOf(b.dz) };
     });
     // 섹터 안 수수료 점유율: 30일 기준과 최근 7일 기준을 비교
     const secSum = {};
@@ -485,7 +497,7 @@
     const newsMark = c.N && Math.abs(c.N) >= 1 ? `<span class="nw ${c.N > 0 ? "rise" : "fall"}" title="뉴스 점수">뉴스 ${c.N > 0 ? "+" : ""}${c.N.toFixed(1)}</span>` : "";
     return `<a class="rk-row${c.lg === 1 ? " major" : ""}" href="/rank/${encodeURIComponent(c.sym)}">
       <span class="rk-no num">${opt.no != null ? opt.no : (c.pos || "-")}</span>
-      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}${c.act ? `<span class="tag xr act" title="이 섹터에 시총 150위 안 후보가 3개가 안 돼서, 시세·거래량이 되는 마이너리그 코인으로 1군 빈자리를 임시로 채웠어요">임시 · ${c.crank ? c.crank + "위" : "순위 밖"}</span>` : c.ext ? `<span class="tag xr" title="시총 150위 밖이라 1군 후보는 아니고 마이너리그에만 들어가요">${c.crank ? c.crank + "위" : "순위 밖"}</span>` : ""}</span>
+      <span class="rk-nm"><span class="rk-t"><b>${name}</b><span class="sym">${esc(c.sym)}</span>${dzBadge(c)}${c.mine ? '<span class="tag mine">내 코인</span>' : ""}${opt.showSec && c.sec ? `<span class="tag">${esc((opt.secName || {})[c.sec] || c.sec)}</span>` : ""}${c.act ? `<span class="tag xr act" title="이 섹터에 시총 150위 안 후보가 3개가 안 돼서, 시세·거래량이 되는 마이너리그 코인으로 1군 빈자리를 임시로 채웠어요">임시 · ${c.crank ? c.crank + "위" : "순위 밖"}</span>` : c.ext ? `<span class="tag xr" title="시총 150위 밖이라 1군 후보는 아니고 마이너리그에만 들어가요">${c.crank ? c.crank + "위" : "순위 밖"}</span>` : ""}</span>
         <span class="rk-s">${exBadges(c)}${flagBadges(c)}${chal}${newsMark}</span></span>
       <span class="rk-sc"><span class="num">${c.score != null ? c.score.toFixed(1) : "-"}</span>${opt.noMove ? "" : moveMark(c)}</span>
       <span class="rk-px"><span class="num">${usd(mk[2])}</span><span class="rk-cg">7일 <b class="num ${ppc(mk[6])}">${pp(mk[6])}</b> · 고점 <b class="num ${ppc(mk[9])}">${pp(mk[9])}</b></span></span></a>`;
@@ -553,7 +565,7 @@
     const cl = c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a>`;
     const act = majors.filter(c => c.act).length;
     return `<section class="sec-card" id="s-${esc(s.id)}"><div class="sc-top"><h3>${esc(s.name)}</h3><span class="sc-cy">${esc(s.cycle || "")}</span></div>
-      ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>${nums ? `<div class="sc-num tiny muted">${nums}</div>` : ""}
+      ${survival(s)}<p class="sc-story">${esc(s.story || "")}</p>${nums ? `<div class="sc-num tiny muted">${nums}</div>` : ""}${dzMix(arr)}
       <div class="rk-h"><span>1군 · 3대장</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div>
       <div class="rk-list">${majors.length ? majors.map(c => coinRow(c)).join("") : `<div class="empty small">후보가 아직 없어요 (시세·거래량이 있는 코인이 없어요)</div>`}</div>
       ${act ? `<div class="tiny muted sc-act">이 섹터는 시총 150위 안 후보가 ${3 - act ? `${3 - act}개뿐이라` : "없어서"}, 마이너리그에서 시세·거래량이 되는 코인 ${act}개로 1군 빈자리를 임시로 채웠어요(‘임시’ 표시). 150위 안 코인이 생기면 그 코인이 먼저예요.</div>` : ""}
@@ -572,6 +584,24 @@
         <div><div class="mini-h">생존 점수 구성</div>${SPARTS.map(([k, mx], i) => `${k} ${(s.parts || [])[i] ?? "-"}/${mx}`).join(" · ")}</div>
         ${others.length ? `<div><div class="mini-h">지금 후보가 아닌 코인</div>${others.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="tiny muted">${esc(WHY[c.why] || c.why || "")}</span>`).join(" · ")}</div>` : ""}
       </div></details></section>`;
+  }
+  // 섹터 안 탈중앙화 구성 — 1군·2군 코인 수(시총 비중)
+  function dzMix(arr) { const z = arr.filter(c => c.dz); if (z.length < 2) return "";
+    const capOf = c => (c.mk && n(c.mk[3])) || 0, tot = z.reduce((a, c) => a + capOf(c), 0);
+    const g = [3, 2, 1].map(l => { const xs = z.filter(c => c.dz.lv === l); return { l, n: xs.length, w: tot > 0 ? xs.reduce((a, c) => a + capOf(c), 0) / tot * 100 : 0 }; });
+    return `<div class="sc-dz tiny" title="이 섹터 1군·2군 코인의 탈중앙화 구성 — 막대는 시총 비중"><span class="muted">탈중앙화</span><span class="dzbar" aria-hidden="true">${g.filter(x => x.w > 0).map(x => `<i class="dzb${x.l}" style="width:${x.w.toFixed(1)}%"></i>`).join("")}</span>${g.filter(x => x.n).map(x => `<span class="dzc dzc${x.l}">${DZ[x.l][0]} ${x.n}</span>`).join("")}</div>`; }
+  // 탈중앙화 지도 — 1군·기준 코인을 세 칸으로, 최근 점수가 바뀐 코인
+  function dzMap(M, secName) {
+    const list = Object.values(M.coins).filter(c => c.dz && (c.lg === 1 || c.why === "core" || c.b.core));
+    if (!list.length) return "";
+    const col = l => list.filter(c => c.dz.lv === l).sort((a, b) => b.dz.s - a.dz.s);
+    const chip = c => `<a class="dzm-c${c.dz.est ? " est" : ""}" href="/rank/${encodeURIComponent(c.sym)}" title="${esc(`${c.b.ko || c.sym} · ${secName[c.sec] || c.sec} · ${c.dz.s}/100 — ${c.dz.why}`)}"><b>${esc(c.b.ko || c.sym)}</b><span class="num">${c.dz.s}</span>${c.dz.d ? `<em class="${c.dz.d > 0 ? "up" : "down"}">${c.dz.d > 0 ? "▲" : "▼"}${Math.abs(c.dz.d)}</em>` : ""}</a>`;
+    const changed = Object.values(M.coins).filter(c => c.dz && c.dz.d).sort((a, b) => Math.abs(b.dz.d) - Math.abs(a.dz.d)).slice(0, 8);
+    const est = Object.values(M.coins).filter(c => c.lg && c.dz && c.dz.est).length;
+    return `<section class="section" id="dz-map"><div class="sec-head"><h2>탈중앙화 지도</h2><span class="sub">1군·기준 코인 · 누가 운영을 쥐고 있나</span></div><div class="panel">
+      <div class="dzm">${[3, 2, 1].map(l => `<div class="dzm-col dzm${l}"><div class="dzm-h"><span class="dz dz${l}"><i aria-hidden="true"></i>${DZ[l][0]}</span><span class="tiny muted">${esc(DZ[l][1])}</span></div><div class="dzm-list">${col(l).map(chip).join("") || '<span class="tiny muted">없어요</span>'}</div></div>`).join("")}</div>
+      ${changed.length ? `<div class="dzm-chg small"><b>최근 점수가 바뀐 코인</b> ${changed.map(c => `<a href="/rank/${encodeURIComponent(c.sym)}">${esc(c.b.ko || c.sym)}</a> <span class="num ${c.dz.d > 0 ? "dzup" : "dzdn"}">${c.dz.prev}→${c.dz.s}</span>`).join(" · ")}</div>` : ""}
+      <p class="legend">점수(0~100) = ${DZP.map(([k]) => k).join(" · ")} 5항목 각 20점이에요. 60점 이상 탈중앙, 35~59 중간, 35 미만 중앙화. 순위 점수에는 넣지 않고 따로 추적해요 — 검증자 개방·관리자 키 제거·지분 분산 같은 뉴스가 나오면 AI가 점수를 고치고, 바뀐 기록이 ▲▼로 남아요.${est ? ` 1군·2군 중 ${est}개는 아직 섹터 평균 추정치(점선 표시)라 하루 3번 차례로 확인해요.` : ""} 탈중앙이 곧 좋은 투자라는 뜻은 아니에요.</p></div></section>`;
   }
   // ── 성적표: 매일 9시 이후 저장한 1군·2군 가격을 이어 붙여 '매일 동일 비중으로 다시 맞춘' 수익률을 계산 ──
   function perfCalc(snaps, M) {
@@ -637,8 +667,8 @@
       ${P.promos.length ? `<div class="mini-h">1군에 새로 들어온 뒤 성적</div><div class="pf-pr">${P.promos.slice(0, 10).map(x => `<div><a href="/rank/${encodeURIComponent(x.sym)}">${esc((M.coins[x.sym] && M.coins[x.sym].b.ko) || x.sym)}</a> <span class="tiny muted">${esc(secName[x.sec] || x.sec)} · ${kstDate(x.t)} 승격</span> <b class="num ${ppc(x.r)}">${pp(x.r)}</b>${x.vb != null ? ` <span class="tiny muted">BTC 대비 ${pp(x.vb)}p</span>` : ""}</div>`).join("")}</div>` : ""}
       <p class="legend">매일 그날의 바구니를 같은 비중으로 산 것으로 보고 다음 날까지의 수익률을 이어 붙였어요(수수료·펀딩비 제외). 전체 후보 = 1군+2군. <b>섹터 시총 상위 3</b>은 점수 없이 각 섹터에서 시총이 가장 큰 3개만 고른 단순 기준선이에요 — 1군이 이걸 꾸준히 앞서야 점수가 값을 하는 거예요. <b>데이터 점수 상위 3</b>은 사람 판단 없이 숫자로만 고른 바구니로, 종합 점수에 넣을지 판단하려고 따로 재고 있어요.</p></div></section>`;
   }
-  const SORTS = [["score", "종합 점수"], ["data", "데이터 점수(검증 중)"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 안 언락 큰 순"]];
-  const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"], ["nounl", "큰 언락 빼기"]];
+  const SORTS = [["score", "종합 점수"], ["data", "데이터 점수(검증 중)"], ["deep", "고점 대비 많이 빠진 순"], ["hot30", "30일 많이 오른 순"], ["hot7", "7일 많이 오른 순"], ["news", "뉴스 점수"], ["cap", "시가총액"], ["hold", "보유자 수익 많은 순"], ["cheap", "수익 대비 싼 순(시총÷연 보유자 수익)"], ["ftrend", "수수료 최근 1주 추세"], ["fund", "펀딩비 높은 순"], ["unl", "30일 안 언락 큰 순"], ["dz", "탈중앙화 점수 높은 순"]];
+  const FILTERS = [["major", "1군만"], ["nohot", "과열 빼기"], ["nodeep", "과대낙폭 빼기"], ["up", "업비트 원화만"], ["bf", "바이낸스 선물만"], ["earn", "보유자 수익 있는 코인만"], ["nounl", "큰 언락 빼기"], ["dz3", "탈중앙만"], ["nodz1", "중앙화 빼기"]];
   function loadPref() { try { return Object.assign({ view: "sec", sort: "score", f: [] }, JSON.parse(localStorage.getItem("secPref") || "{}")); } catch (e) { return { view: "sec", sort: "score", f: [] }; } }
   function savePref(p) { try { localStorage.setItem("secPref", JSON.stringify(p)); } catch (e) {} }
   async function sectorsPage() {
@@ -662,11 +692,13 @@
       <div><b>1군(3대장)</b>은 2군 1등이 1군 꼴찌보다 3점 이상 앞선 상태가 2번 연속일 때만 바뀌어요(뉴스 +10 이상이면 바로). <b>마이너리그(2군)</b>는 매번 점수순으로 바뀌어요.</div>
       <div><b>1군 후보</b>는 시총 150위 안, 24시간 거래대금이 시총의 0.1% 이상인 코인이에요. <b>마이너리그</b>에는 여기에 더해 업비트 원화마켓 코인 전부와 바이낸스(선물 포함) 상장 코인 중 시총 300위 안 코인이 들어가요 — 이 코인들은 순위 옆에 시총 순위가 붙고 1군 후보는 아니에요. 다만 150위 안 후보가 3개가 안 되는 섹터(NFT·소셜 등)는 이 중 시세·거래량이 되는 코인으로 1군 빈자리를 <b>임시</b>로 채워요. '150위까지만'을 체크하면 예전처럼 150위 안 코인만 보여요. 기준 코인(비트코인·이더리움·솔라나·BNB·XRP)과 스테이블코인·래핑·스테이킹 파생·금 토큰은 빼요.</div>
       <div><b>과열</b> = 30일 +40% 이상 또는 7일 +25% 이상. <b>과대낙폭</b> = 고점 대비 -90% 이하 또는 30일 -30% 이하. 둘 다 거르거나 그 순서로 볼 수 있어요.</div>
+      <div><b>탈중앙화</b>(0~100, 순위 점수와 따로) = ${DZP.map(([k]) => k).join(" · ")} 5항목 각 20점. <span class="dz dz3"><i></i>탈중앙</span> 60+ · <span class="dz dz2"><i></i>중간</span> 35~59 · <span class="dz dz1"><i></i>중앙화</span> 35 미만. 점선 표시는 아직 섹터 평균으로 잡은 추정치예요. 코인 이름 옆 표시에 손을 올리거나 코인을 누르면 이유가 보여요.</div>
       <div><b>섹터 생존 점수</b>(0~100) = ${SPARTS.map(([k, mx]) => `${k} ${mx}`).join(" · ")}. A 80+ 핵심 · B 65+ 성장 · C 50+ 순환 · D 50 미만 회피.</div></div></details>`;
     main().innerHTML = `<header class="head"><div class="eyebrow">섹터 순위판</div><h1>섹터별 3대장과 마이너리그</h1>
       <div class="stamp">${R.ts ? `순위 계산 ${kst(R.ts)}` : "첫 순위 계산 전이에요"}${M.cpAt ? ` · 시세 ${kst(M.cpAt)}` : ""} · 뉴스 반영 하루 3번</div>${intro}</header>
       ${core.length ? `<section class="section"><div class="sec-head"><h2>기준 코인</h2><span class="sub">순위에서 빼고 시장 기준으로만 봐요</span></div><div class="core-strip">${core.map(c => { const mk = c.mk || []; return `<a class="core-c" href="/rank/${encodeURIComponent(c.sym)}"><b>${esc(c.b.ko || c.sym)}</b><span class="num">${usd(mk[2])}</span><span class="num ${ppc(mk[6])}">7일 ${pp(mk[6])}</span><span class="num tiny muted">고점 ${pp(mk[9])}</span></a>`; }).join("")}</div></section>` : ""}
       <section class="section"><div class="sec-head"><h2>이번 순위 변동</h2><span class="sub">${R.ts ? kst(R.ts) : ""}</span></div><div class="panel mvf-list">${moveHtml}</div></section>
+      ${dzMap(M, secName)}
       ${perfSection(perfCalc(perf, M), M, secName)}
       <section class="section" id="sf-s"><div class="sec-head"><h2>섹터 흐름 — 요즘 돈이 어디로 가나</h2><span class="sub">시총 가중 섹터 지수 · 누르면 이동</span></div>
         <div class="panel">${sectorFlowNote(M, SS, secName)}<div class="fchips" id="sf-sort" role="group" aria-label="섹터 흐름 정렬">${SF_SORTS.map(([k, l]) => `<button type="button" class="fchip" data-sf="${k}">${l}</button>`).join("")}</div>
@@ -689,6 +721,8 @@
       if (f.includes("bf") && !c.ex.bf) return false;
       if (f.includes("earn") && !(c.fz && c.fz.H > 0)) return false;
       if (f.includes("nounl") && c.flags.includes("unl")) return false;
+      if (f.includes("dz3") && !(c.dz && c.dz.lv === 3)) return false;
+      if (f.includes("nodz1") && c.dz && c.dz.lv === 1) return false;
       return true; };
     const draw = () => {
       document.querySelectorAll("#sec-view button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === pref.view)));
@@ -702,7 +736,7 @@
         const mk = (c, i) => c.mk ? n(c.mk[i]) : null;
         const key = { score: c => c.score ?? -1e9, deep: c => -(mk(c, 9) ?? 0), hot30: c => mk(c, 7) ?? -1e9, hot7: c => mk(c, 6) ?? -1e9, news: c => c.N ?? 0, cap: c => mk(c, 3) ?? 0,
           hold: c => c.fz ? c.fz.H : -1, cheap: c => c.fz && c.fz.mult ? -c.fz.mult : -1e15, ftrend: c => c.fz && c.fz.trend != null ? c.fz.trend : -1e9,
-          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => unlSoon(c.unl) ?? -1, data: c => c.ds ?? -1 }[pref.sort] || (c => c.score);
+          fund: c => c.fund ? c.fund.yr : -1e9, unl: c => unlSoon(c.unl) ?? -1, data: c => c.ds ?? -1, dz: c => c.dz ? c.dz.s : -1 }[pref.sort] || (c => c.score);
         const list = Object.values(M.coins).filter(c => c.lg && ((pref.f || []).includes("major") ? c.lg === 1 : true)).filter(F).sort((a, b) => key(b) - key(a));
         box.innerHTML = `<div class="panel"><div class="rk-h"><span>${esc(SORTS.find(s => s[0] === pref.sort)[1])} · ${list.length}개</span><span>점수</span><span>가격 · 7일 · 고점 대비</span></div><div class="rk-list">${list.map((c, i) => coinRow(c, { no: i + 1, showSec: true, secName, noMove: true })).join("") || '<div class="empty small">조건에 맞는 코인이 없어요.</div>'}</div>
           <p class="legend">1군은 진한 표시예요. 30일 변동은 시세 소스에 없으면 업비트 주봉 4주 변동으로 채우고, 둘 다 없으면 비워요.</p></div>`;
@@ -843,6 +877,13 @@
       <p class="legend">1군·마이너리그 순서예요(최대 10개). 시총 ÷ 수수료는 낮을수록 버는 돈에 비해 싸고, 보유자 수익률은 1년 보유자 몫 ÷ 시총이에요. 유통 비율이 낮으면 앞으로 풀릴 물량이 많아요.</p></div></section>`;
   }
   let M_SEC = {};
+  function dzPanel(c) { const z = c.dz; if (!z) return "";
+    const pts = z.h.map(([ts, v]) => [ts, n(v), `${kst(ts)} · ${n(v)}점`]);
+    return `<section class="panel section"><div class="sec-head"><h2>탈중앙화 정도</h2><span class="sub">${z.at ? "평가 " + kst(z.at) : ""}${z.est ? " · 섹터 평균 추정치" : ""}</span></div>
+      <div class="dzp-top">${dzBadge(c, { num: true })}<span class="small">${esc(z.why)}</span></div>
+      ${DZP.map(([k, hlp], i) => `<div class="bar-row" title="${esc(hlp)}"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill dzf${dzLv((n(z.p[i]) || 0) * 5)}" style="width:${(n(z.p[i]) || 0) / 20 * 100}%"></div></div><span class="num small">${z.p[i] ?? "-"}/20</span></div>`).join("")}
+      ${pts.length > 1 ? `<div class="mini-h">점수 흐름</div>${lineChart(pts, v => Math.round(v) + "점", false, "탈중앙화 점수 흐름")}` : ""}
+      <p class="legend">${DZP.map(([k, hlp]) => `<b>${k}</b> ${hlp}`).join(" · ")}. 60점 이상 탈중앙, 35~59 중간, 35 미만 중앙화예요. 순위 점수에는 들어가지 않고, 구조가 바뀌는 뉴스가 나오면 AI가 고쳐요.${z.est ? " 지금 값은 섹터 평균으로 잡은 추정치라 곧 이 코인에 맞게 바뀌어요." : ""}</p></section>`; }
   async function rankCoinPage(sym) {
     nav("sectors");
     const [d, h, FH] = await Promise.all([get("/api/sectors"), get("/api/sector-coin/" + encodeURIComponent(sym)).catch(() => ({ hist: [], news: [] })), feeHist()]);
@@ -862,7 +903,7 @@
         <div class="tiny muted">${kst(n(nn.pub) || x.ts)} · ${esc({ short: "단기", normal: "보통", structural: "구조적" }[x.kind] || x.kind)} · 지금 영향 ${now > 0 ? "+" : ""}${now.toFixed(1)}${nn.why ? " · " + esc(nn.why) : ""}</div></div></div>`; }).join("");
     main().innerHTML = `<header class="head"><div class="eyebrow"><a href="/sectors#s-${esc(c.sec)}">${esc(s.name || c.sec)}</a> · 섹터 순위판</div>
       <h1>${esc(b.ko || sym)} <span class="muted num" style="font-size:15px">${esc(sym)}</span></h1>
-      <div class="row"><span class="chip${c.lg === 1 ? " lg1" : ""}">${esc(lgName)}</span>${exBadges(c)}${flagBadges(c)}${c.mine ? '<span class="tag mine">내 코인</span>' : ""}</div>
+      <div class="row"><span class="chip${c.lg === 1 ? " lg1" : ""}">${esc(lgName)}</span>${dzBadge(c)}${exBadges(c)}${flagBadges(c)}${c.mine ? '<span class="tag mine">내 코인</span>' : ""}</div>
       <p class="c-what">${esc(b.story || "")}</p></header>
       <section class="tiles"><div class="tile"><b>점수</b><div class="v num">${c.score != null ? c.score.toFixed(1) : "-"}</div><div class="s">${c.crank ? `시총 ${c.crank}위` : ""}</div></div>
         <div class="tile"><b>가격</b><div class="v num">${usd(mk[2])}</div><div class="s">${ppChip(mk[5], " 24h")}</div></div>
@@ -875,6 +916,7 @@
         <div class="mini-h">코인 품질 5항목 (각 20점)</div>${QN.map((k, i) => { const man = (b.q || [])[i], dv = i < 2 && c.qd ? c.qd[i] : null, used = dv != null && man != null ? Math.round((man + dv) / 2) : man;
           return `<div class="bar-row"><span class="small">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${(used || 0) / 20 * 100}%"></div></div><span class="num small">${used ?? "-"}/20</span></div>${dv != null ? `<div class="tiny muted qd">AI 판단 ${man} · 실제 수익 데이터 ${dv.toFixed(1)} → 반반 섞어 ${used}</div>` : ""}`; }).join("")}
         ${b.qnote ? `<p class="small muted">${esc(b.qnote)}</p>` : ""}</section>
+      ${dzPanel(c)}
       ${dataPanel(c)}
       ${deepPanel(h.dd || b.dd)}
       ${c.fz ? `<section class="panel section"><div class="sec-head"><h2>실제 수익</h2><span class="sub">DefiLlama${c.fz.at ? " · " + kst(c.fz.at) : ""}${c.fz.chain ? " · 체인 수수료" : ""}</span></div>
