@@ -185,12 +185,12 @@ async function doView(env, now, db) {
   }).sort((a, b) => b.sc - a.sc || (a.r || 99) - (b.r || 99)).slice(0, 40);
   // 시총 300위 안 7일 급등 + 업비트 원화 미상장 (스테이블·래핑 등 제외 목록은 뺌)
   const hotSyms = new Set(hot.map(h => h.s));
-  const gain = Object.entries(cp.m || {}).filter(([, a]) => a[0] >= 1 && a[0] <= 300 && Number(a[6]) >= 15 && Number(a[3]) >= 5e7 && Number(a[4]) >= Number(a[3]) * 0.02 && !exl.has(String(a[1]).toUpperCase()))
+  const gain = Object.entries(cp.m || {}).filter(([, a]) => a[0] >= 1 && a[0] <= 300 && Number(a[6]) >= 15 && Number(a[6]) < 1000 && Math.abs(Number(a[5]) || 0) < 1000 && Number(a[3]) >= 5e7 && Number(a[4]) >= Number(a[3]) * 0.02 && !exl.has(String(a[1]).toUpperCase()))
     .map(([key, a]) => { const sym = String(a[1]).toUpperCase(); return { key, s: sym, k: a[0], p: a[2], m: a[3], v: a[4], c24: a[5], c7: a[6], c30: a[7], ath: a[9], circ: a[11], sec: base[sym] ? base[sym].sector : null, ko: base[sym] ? base[sym].ko : null, tr: hotSyms.has(sym) ? 1 : 0, x: flags(sym, key.replace(/^[a-z]+:/, "").replace(/-/g, " ")) }; })
     .filter(g => g.x.up !== 1).sort((a, b) => b.c7 - a.c7).slice(0, 15);
   // 카테고리: 7일 변화(8시간마다 찍은 날짜별 시총, 7일 전 칸이 없으면 6·8일 전)
   const ago = n => kstDay(now - n * DAY), ccur = new Set(tr.ccur || []);
-  const trc = {}; for (const [nm, c] of Object.entries(tr.cats || {})) { const dd = d7.filter(d => (c.d || {})[d]).length; if (dd) trc[norm(nm)] = { nm, dd, now: ccur.has(nm) ? 1 : 0, c: c.c, g: c.g }; }
+  const trc = {}; for (const [nm, c] of Object.entries(tr.cats || {})) { const dd = d7.filter(d => (c.d || {})[d]).length; if (dd && !CAT_SKIP.test(c.g || nm.toLowerCase().replace(/\s+/g, "-"))) trc[norm(nm)] = { nm, dd, now: ccur.has(nm) ? 1 : 0, c: c.c, g: c.g }; }
   const cats = Object.entries(cat.cur || {}).map(([id, a]) => {
     const h = (cat.h || {})[id] || {}, old = h[ago(7)] || h[ago(6)] || h[ago(8)];
     const t = trc[norm(a[0])] || null;
