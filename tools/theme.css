@@ -680,3 +680,56 @@ table.peer tr.me td.mn a{color:var(--accent)}
 .dzm-chg{margin-top:10px}
 .dzp-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .bar-fill.dzf3{background:var(--dz3)} .bar-fill.dzf2{background:var(--dz2)} .bar-fill.dzf1{background:var(--dz1)}
+/* 내러티브 레이더 (/radar) — 단계·상태는 빨강·파랑(오름·내림 색)을 쓰지 않음 */
+.rd-x{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center}
+.xb.bn{color:#a16207;border-color:#a16207} .xb.cb{color:#1d4ed8;border-color:#bfd0f7} .xb.ok,.xb.by{color:var(--ink)}
+.xb.same{color:var(--warn);border-color:var(--warn);border-style:dashed} .xb.none{color:var(--muted);border-style:dashed}
+.rd-pick .sym,.rd-nm .sym,.rd-h .sym{font-family:var(--font-num);font-size:12px;color:var(--muted)}
+.rd-stage-w{display:flex;flex-direction:column;gap:4px;margin:4px 0 2px}
+.rd-stage{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
+.rd-stage span{display:block;min-width:0}
+.rd-stage i{display:block;height:6px;border-radius:3px;background:var(--line)}
+.rd-stage .past i{background:var(--accent);opacity:.35} .rd-stage .cur i{background:var(--accent)}
+.rd-stage-k{color:var(--accent)}
+.rd-head{font-family:var(--font-display);font-size:17px;font-weight:700;line-height:1.4;word-break:keep-all}
+.rd-sum{margin:6px 0 10px;word-break:keep-all}
+.rd-themes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.rd-theme{background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0;word-break:keep-all}
+.rd-theme-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rd-ts{font-size:11px;font-weight:700;padding:0 8px;border-radius:999px;line-height:18px;background:var(--neutral-soft);color:var(--neutral);white-space:nowrap}
+.rd-ts.t1{background:var(--accent-soft);color:var(--accent)} .rd-ts.t2{background:var(--dz3-soft);color:var(--dz3)} .rd-ts.t3{background:var(--warn-soft);color:var(--warn)}
+.rd-watch{margin:2px 0 0;padding-left:18px}
+.rd-picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rd-pick{display:flex;flex-direction:column;gap:6px;scroll-margin-top:16px;min-width:0}
+.rd-pick-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rd-pick-n{font-size:16px}
+.rd-risk{font-size:11px;color:var(--muted);white-space:nowrap}
+.rd-dots{color:var(--warn);letter-spacing:1px;font-weight:400} .rd-dots span{color:var(--line-strong)}
+.rd-why{margin:0;font-size:14px;word-break:keep-all}
+.rd-lad{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rd-checks{margin:0;padding-left:16px;font-size:13px;display:flex;flex-direction:column;gap:2px;word-break:keep-all}
+.rd-checks b{font-size:12px;color:var(--muted);margin-right:4px}
+.rd-list{display:flex;flex-direction:column;padding:4px 14px}
+.rd-row{display:grid;grid-template-columns:24px minmax(0,1.6fr) minmax(0,1fr) auto;grid-template-areas:"r n d c" "r x x x";gap:3px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.rd-row:first-child{border-top:0}
+.rd-row.picked .rd-nm>b{color:var(--accent)}
+.rd-rk{grid-area:r;font-size:13px;color:var(--muted);text-align:center;align-self:start;padding-top:2px}
+.rd-nm{grid-area:n;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
+.rd-nm>.tiny{flex-basis:100%}
+.rd-nm .tag{text-decoration:none}
+.rd-days{grid-area:d;white-space:nowrap}
+.rd-chg{grid-area:c;white-space:nowrap;text-align:right}
+.rd-row>.rd-x{grid-area:x}
+.rd-row>.rd-x:empty{display:none}
+.rd-trc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.rd-cat{cursor:default}
+.rd-cold{margin-top:12px}
+.rd-hsum{margin:0 0 8px;word-break:keep-all}
+.rd-hist{display:flex;flex-direction:column}
+.rd-h{display:grid;grid-template-columns:44px minmax(0,1fr) auto 70px auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.rd-h:first-child{border-top:0}
+.rd-links{display:flex;flex-direction:column;gap:8px;font-size:14px;word-break:keep-all}
+.rd-guard{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;word-break:keep-all}
+@media (max-width:640px){.rd-picks,.rd-themes{grid-template-columns:1fr}}
+@media (max-width:560px){.rd-row{grid-template-columns:22px minmax(0,1fr) auto;grid-template-areas:"r n n" "r d c" "r x x"}
+  .rd-h{grid-template-columns:40px minmax(0,1fr) auto}.rd-h>.num.small{display:none}.rd-h>span:last-child{grid-column:2/-1}.rd-h>span:last-child:empty{display:none}}

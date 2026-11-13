@@ -229,7 +229,7 @@
   const main = () => $("main");
   function setTitle(t, desc) { document.title = t ? `${t} · ${SITE.title || "AI 코인 리서치센터"}` : (SITE.title || "AI 코인 리서치센터"); }
   function nav(active) {
-    const items = [["latest", "/", "최신 리포트"], ["weekly", "/weekly/", "주간 요약"], ["track", "/track", "성적표"], ["coins", "/coin/", "코인별"], ["sectors", "/sectors", "섹터 순위"], ["money", "/money", "돈 버는 코인"], ["map", "/map", "생태계 지도"]];
+    const items = [["latest", "/", "최신 리포트"], ["weekly", "/weekly/", "주간 요약"], ["track", "/track", "성적표"], ["coins", "/coin/", "코인별"], ["sectors", "/sectors", "섹터 순위"], ["money", "/money", "돈 버는 코인"], ["radar", "/radar", "내러티브 레이더"], ["map", "/map", "생태계 지도"]];
     $("nav").innerHTML = items.map(([k, h, l]) => `<a href="${h}"${k === active ? ' aria-current="page"' : ""}>${l}</a>`).join("");
   }
   function openHash() { const h = decodeURIComponent(location.hash.slice(1)); if (!h) return; const el = document.getElementById(h); if (el) { if (el.tagName === "DETAILS") el.open = true; el.scrollIntoView({ block: "start" }); } }
@@ -1312,6 +1312,163 @@
     draw(); moneyTip($("m-sec")); if ($("m-map")) moneyTip($("m-map")); moneyTip($("m-yr")); openHash();
   }
 
+  // ── 내러티브 레이더 (/radar) — 해외에서 먼저 뜨는 이야기를 국내 상장 전에 ──
+  const RD_STAGES = [["창업자·펀드", "온체인 움직임·투자 발표"], ["해외 X", "크립토 트위터 트레이더·리서처"], ["관심 집계", "트렌딩·마인드셰어에 숫자로 잡힘"],
+    ["해외 상장·기사", "해외 대형 거래소 상장·영문 기사"], ["해외 유튜브", "대중에게 퍼짐"], ["국내", "한국 기사·업비트 상장"]];
+  const RD_EX = [["by", "바이비트", "해외 거래소 바이비트 현물"], ["ok", "OKX", "해외 거래소 OKX 현물"], ["bf", "바선", "바이낸스 USDⓈ-M 선물"], ["bn", "바현", "바이낸스 현물"],
+    ["cb", "코베", "코인베이스 현물"], ["bt", "빗", "빗썸 원화마켓"], ["up", "업", "업비트 원화마켓"]];
+  const RD_THEME = { "초기": "t1", "확산": "t2", "과열": "t3", "식는 중": "t4" };
+  const CAT_KO = { "artificial-intelligence": "AI", "ai-agents": "AI 에이전트", "ai-framework": "AI 프레임워크", "ai-applications": "AI 앱", "ai-meme-coins": "AI 밈",
+    "depin": "DePIN(탈중앙 인프라)", "real-world-assets-rwa": "RWA(실물자산)", "meme-token": "밈", "decentralized-finance-defi": "디파이", "layer-2": "레이어2",
+    "gaming": "게임", "privacy-coins": "프라이버시", "perpetuals": "무기한 선물", "prediction-markets": "예측시장", "decentralized-exchange": "탈중앙 거래소(DEX)",
+    "oracle": "오라클", "zero-knowledge-zk": "영지식(ZK)", "restaking": "리스테이킹", "storage": "스토리지", "tokenized-stock": "토큰화 주식", "tokenized-stocks": "토큰화 주식",
+    "payment-solutions": "결제", "infrastructure": "인프라", "non-fungible-tokens-nft": "NFT", "socialfi": "소셜파이", "launchpad": "런치패드", "lending-borrowing": "대출",
+    "modular-blockchain": "모듈러 블록체인", "data-availability": "데이터 가용성", "interoperability": "상호운용성", "sports": "스포츠", "metaverse": "메타버스",
+    "decentralized-science-desci": "디사이(탈중앙 과학)", "liquid-staking": "리퀴드 스테이킹", "yield-farming": "이자 농사", "cross-chain-communication": "크로스체인",
+    "dog-themed-coins": "강아지 밈", "cat-themed-coins": "고양이 밈", "political-meme": "정치 밈", "insurance": "보험", "identity": "신원(ID)", "education": "교육",
+    "music": "음악", "governance": "거버넌스", "analytics": "데이터 분석", "derivatives": "파생상품", "bitcoin-fork": "비트코인 포크", "rollup": "롤업", "gpu": "GPU" };
+  const rdCatName = c => CAT_KO[c.id] || c.n;
+  const rdIdName = id => String(id || "").replace(/-\d+$/, "").replace(/-/g, " ");
+  function rdStage(k) {
+    k = Math.round(n(k) || 0); if (k < 1 || k > 6) return "";
+    return `<div class="rd-stage-w"><div class="rd-stage" role="img" aria-label="정보 전파 ${k}단계(6단계 중): ${esc(RD_STAGES[k - 1][0])}">${RD_STAGES.map((s, i) =>
+      `<span class="${i + 1 < k ? "past" : i + 1 === k ? "cur" : ""}" title="${i + 1}. ${esc(s[0])} — ${esc(s[1])}"><i></i></span>`).join("")}</div>
+      <div class="tiny muted">정보 전파 <b class="rd-stage-k">${k}/6 ${esc(RD_STAGES[k - 1][0])}</b> — ${esc(RD_STAGES[k - 1][1])}${k < 6 ? ` · 국내까지 ${6 - k}칸` : ""}</div></div>`;
+  }
+  function rdEx(x) {
+    if (!x) return "";
+    const on = RD_EX.filter(([k]) => x[k] === 1);
+    const big = ["bn", "cb", "bf", "ok", "by"].some(k => x[k] === 1);
+    return `<span class="rd-x">${on.map(([k, l, t]) => `<span class="xb ${k}" title="${esc(t)}">${l}</span>`).join("")}${x.up === 2 ? '<span class="xb same" title="업비트에 같은 심볼의 다른 코인이 있어요 — 이 코인은 업비트 미상장으로 봐요">업 동명</span>' : ""}${!big && !x.up && !x.bt ? '<span class="xb none" title="해외 대형 거래소(바이낸스·코인베이스·OKX·바이비트) 현물·선물 목록에 없어요 — DEX·중소 거래소 단계">대형 미상장</span>' : ""}</span>`;
+  }
+  const rdCap = x => n(x) >= 1e12 ? capKo(x) : krUsd(x);
+  const rdKr = x => x && (x.up === 1 || x.bt === 1);
+  function rdPref() { try { return Object.assign({ kr: true, t300: false, cs: "c7" }, JSON.parse(localStorage.getItem("rdPref") || "{}")); } catch (e) { return { kr: true, t300: false, cs: "c7" }; } }
+  function rdSave(p) { try { localStorage.setItem("rdPref", JSON.stringify(p)); } catch (e) {} }
+
+  function rdPick(p, V, px, btcNow, btcThen) {
+    const sym = String(p.sym || "").toUpperCase();
+    const live = (V.hot || []).find(h => h.id === p.id || h.s === sym) || (V.gain || []).find(g => g.s === sym);
+    const now = px && p.id ? n(px[p.id]) : null, p0 = n(p.price);
+    const ret = now != null && p0 ? now / p0 - 1 : null, bret = btcNow && btcThen ? btcNow / btcThen - 1 : null;
+    const ck = p.checks || {}, risk = Math.max(0, Math.min(5, Math.round(n(p.risk) || 0)));
+    const rows = [["유통·잠김", ck.circ], ["언락 일정", ck.unlock], ["주장 검증", ck.claim], ["짝퉁·동명 토큰", ck.fake]].filter(r => r[1]);
+    return `<article class="panel rd-pick" id="p-${esc(sym)}">
+      <div class="rd-pick-h"><div><b class="rd-pick-n">${esc(p.name || sym)}</b> <span class="sym">${esc(sym)}</span>${p.theme ? ` <span class="tag">${esc(p.theme)}</span>` : ""}</div>
+        ${risk ? `<span class="rd-risk" title="AI가 본 위험도 (5가 가장 위험)">위험 <b class="rd-dots" aria-label="5점 중 ${risk}">${"●".repeat(risk)}<span>${"○".repeat(5 - risk)}</span></b></span>` : ""}</div>
+      <div class="small muted num">${p0 ? `레이더 때 ${usd(p0)}` : ""}${now != null && ret != null ? ` → 지금 ${usd(now)} <span class="chg ${ppc(ret * 100)}">${pp(ret * 100)}</span>${bret != null ? ` <span class="tiny">BTC 대비 ${pp((ret - bret) * 100)}p</span>` : ""}` : ""}${live && live.m ? ` · 시총 ${rdCap(live.m)}` : ""}</div>
+      ${rdStage(p.stage)}
+      ${p.why ? `<p class="rd-why">${esc(p.why)}</p>` : ""}
+      ${p.ladder || live ? `<div class="rd-lad small"><span class="mini-h">상장 사다리</span> ${live ? rdEx(live.x) : ""} ${p.ladder ? `<span class="muted">${esc(p.ladder)}</span>` : ""}</div>` : ""}
+      ${rows.length ? `<ul class="rd-checks">${rows.map(([k, v]) => `<li><b>${k}</b> ${esc(v)}</li>`).join("")}</ul>` : ""}
+      ${(p.src || []).filter(s => safeUrl(s.u)).length ? `<div class="tiny rd-src">근거: ${(p.src || []).filter(s => safeUrl(s.u)).slice(0, 3).map(s => `<a href="${esc(safeUrl(s.u))}" target="_blank" rel="noopener nofollow">${esc(s.t || "링크")}</a>`).join(" · ")}</div>` : ""}
+    </article>`;
+  }
+  function rdRow(c, picked, newOk) {
+    const isNew = newOk && c.f && Date.now() - c.f < 48 * 3600e3;
+    return `<div class="rd-row${picked ? " picked" : ""}">
+      <span class="rd-rk num" title="${c.now ? "지금 트렌딩 순위" : "지금은 트렌딩 밖"}">${c.now ? c.r : "·"}</span>
+      <span class="rd-nm"><b>${esc(c.n || c.ko || c.s)}</b> <span class="sym">${esc(c.s)}</span>${picked ? ' <a class="tag mine" href="#p-' + esc(c.s) + '">AI 정리</a>' : ""}${c.sec ? ` <a class="tag" href="/rank/${encodeURIComponent(c.s)}">순위판</a>` : ""}
+        <span class="tiny muted">${c.k ? `시총 ${c.k}위` : "시총 순위 없음"}${c.m ? ` · ${rdCap(c.m)}` : ""}${c.circ != null ? ` · 유통 ${Math.round(c.circ * 100)}%` : ""}</span></span>
+      <span class="rd-days small">${c.d7 != null ? `7일 중 <b>${c.d7}일</b>` : ""}${c.now ? ' <span class="age age-fresh">지금</span>' : ""}${isNew ? ' <span class="age age-recent">새로 등장</span>' : ""}${c.tr ? ' <span class="age age-recent">트렌딩</span>' : ""}</span>
+      <span class="rd-chg"><span class="tiny muted">24h</span> ${ppChip(c.c24)} <span class="tiny muted">7일</span> ${ppChip(c.c7)}</span>
+      ${rdEx(c.x)}
+    </div>`;
+  }
+  function rdCats(V, key) {
+    const list = (V.cats || []).filter(c => n(c[key]) != null && c.m >= 5e7).sort((a, b) => b[key] - a[key]);
+    if (!list.length) return `<div class="small muted">${key === "c7" ? "7일 변화는 카테고리 기록이 7일 쌓이면 보여요. 지금은 24시간 기준으로 바꿔 보세요." : "카테고리 데이터를 모으는 중이에요."}</div>`;
+    const top = list.slice(0, 12), cold = list.slice(-4).reverse().filter(c => c[key] < 0 && !top.includes(c));
+    const vmax = Math.max(5, ...top.concat(cold).map(c => Math.abs(c[key])));
+    const bar = v => { const w = Math.min(50, Math.abs(v) / vmax * 50); return `<i class="${v >= 0 ? "pos" : "neg"}" style="${v >= 0 ? "left:50%" : `left:${(50 - w).toFixed(1)}%`};width:${w.toFixed(1)}%"></i>`; };
+    const k2 = key === "c7" ? "c24" : "c7", l2 = key === "c7" ? "24시간" : "7일";
+    const row = c => `<div class="sf-r rd-cat"><span class="sf-n"><b>${esc(rdCatName(c))}</b>${c.trn ? ' <span class="age age-fresh">검색 트렌딩</span>' : c.tr ? ` <span class="age age-recent">트렌딩 ${c.tr}일</span>` : ""}</span>
+      <span class="sf-bar" aria-hidden="true"><em></em>${bar(c[key])}</span><span class="sf-v num ${ppc(c[key])}">${pp(c[key])}</span>
+      <span class="sf-m tiny muted">${l2} <b class="num ${ppc(c[k2])}">${pp(c[k2])}</b> · 시총 ${rdCap(c.m)}${c.top && c.top.length ? ` · 대표 ${c.top.map(id => esc(rdIdName(id))).join("·")}` : ""}${CAT_KO[c.id] ? ` · <span lang="en">${esc(c.n)}</span>` : ""}</span></div>`;
+    return `<div class="sf">${top.map(row).join("")}</div>${cold.length ? `<div class="mini-h rd-cold">식는 곳</div><div class="sf">${cold.map(row).join("")}</div>` : ""}`;
+  }
+  function rdHist(hist, px, hx) {
+    if (!hist.length) return "";
+    const btcNow = px && px.m ? n(px.m.bitcoin) : null;
+    const rows = hist.map(h => { const now = px && px.m && h.cg ? n(px.m[h.cg]) : null, p0 = n(h.p), b0 = n(h.btc);
+      const ret = now != null && p0 ? now / p0 - 1 : null, br = btcNow && b0 ? btcNow / b0 - 1 : null, x = (hx || {})[String(h.s || "").toUpperCase()];
+      return { ...h, now, ret, ex: ret != null && br != null ? ret - br : null, kr: rdKr(x), x }; });
+    const scored = rows.filter(r => r.ret != null), kr = rows.filter(r => r.kr);
+    const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    const aR = avg(scored.map(r => r.ret)), aE = avg(scored.filter(r => r.ex != null).map(r => r.ex));
+    return `<section class="section"><div class="sec-head"><h2>지난 레이더 기록</h2><span class="sub">최근 60일 · 가격은 12시간마다 갱신</span></div>
+      <div class="panel"><p class="small rd-hsum">레이더에 오른 코인 <b>${rows.length}개</b>${scored.length ? ` · 그 뒤 평균 <b class="num ${ppc(aR * 100)}">${pp(aR * 100)}</b>${aE != null ? ` (비트코인 대비 <b class="num ${ppc(aE * 100)}">${pp(aE * 100)}p</b>)` : ""}` : ""} · 지금 업비트·빗썸에 있는 코인 <b>${kr.length}개</b>${kr.length ? ` — ${kr.slice(0, 6).map(r => esc(r.s)).join("·")}` : ""}</p>
+      <div class="rd-hist">${rows.slice(0, 40).map(r => `<div class="rd-h"><span class="num tiny muted">${kstDate(r.ts)}</span><span><b>${esc(r.n || r.s)}</b> <span class="sym">${esc(r.s)}</span>${r.th ? ` <span class="tiny muted">${esc(r.th)}</span>` : ""}</span>
+        <span class="num small">${r.p ? usd(r.p) : "-"} → ${r.now != null ? usd(r.now) : "-"}</span><span>${r.ret != null ? `<span class="chg ${ppc(r.ret * 100)}">${pp(r.ret * 100)}</span>` : '<span class="tiny muted">가격 대기</span>'}</span>
+        <span>${r.x && r.x.up === 1 ? '<span class="xb up">업 상장</span>' : ""}${r.x && r.x.bt === 1 ? '<span class="xb bt">빗 상장</span>' : ""}</span></div>`).join("")}</div>
+      <p class="legend">수익률은 AI가 레이더에 올린 시점의 가격 대비예요(같은 코인이 여러 번 오르면 각각 계산). '업 상장'·'빗 상장'은 지금 국내 원화마켓에 있다는 뜻이에요.</p></div></section>`;
+  }
+  async function radarPage() {
+    nav("radar"); setTitle("내러티브 레이더");
+    const d = await get("/api/radar");
+    const V = d.view || { hot: [], gain: [], cats: [], trc: [] }, N = d.note && d.note.a ? d.note : null, A = N ? N.a : {};
+    const px = d.px && d.px.m ? d.px.m : null, picks = Array.isArray(A.picks) ? A.picks : [], themes = Array.isArray(A.themes) ? A.themes : [];
+    const pickSyms = new Set(picks.map(p => String(p.sym || "").toUpperCase()));
+    const pref = rdPref();
+    const stamp = [N ? `AI 정리 ${kst(N.ts)}` : "AI 정리 전", V.tr_at ? `트렌딩 ${kst(V.tr_at)}` : "", V.cat_at ? `카테고리 ${kst(V.cat_at)}` : ""].filter(Boolean).join(" · ");
+    const intro = `<details class="more rules"><summary>레이더는 이렇게 봐요</summary><div class="more-body">
+      <div>코인 이야기는 보통 <b>${RD_STAGES.map((s, i) => `${i + 1}. ${s[0]}`).join(" → ")}</b> 순서로 퍼져요. 한국 기사·유튜브·업비트만 보면 마지막 칸만 보게 돼요. 레이더는 3~4단계(해외에서 숫자로 잡히기 시작했지만 국내엔 아직 없는 때)를 찾는 게 목표예요.</div>
+      <div><b>사이트가 자동으로 모으는 것</b> — 코인게코 검색 트렌딩(2시간마다, 7일 동안 며칠 등장했는지 셈) · 코인게코 카테고리 시총 흐름(8시간마다, 7일 변화는 기록이 7일 쌓이면) · 해외 거래소 현물 목록(바이낸스·코인베이스·OKX·바이비트, 12시간마다) · 업비트·빗썸·바이낸스 선물 목록과 맞춰 보기.</div>
+      <div><b>AI가 하루 한 번(아침 7시쯤) 하는 것</b> — 국내 미상장인데 해외에서 관심이 붙은 코인을 골라 왜 뜨는지 확인하고, 이야기(내러티브)별로 묶고, 유통량·언락·주장 검증·동명 토큰을 체크해요.</div>
+      <div><b>상장 표시</b> — <span class="xb by">바이비트</span> <span class="xb ok">OKX</span> <span class="xb bf">바선</span> 바이낸스 선물 <span class="xb bn">바현</span> 바이낸스 현물 <span class="xb cb">코베</span> 코인베이스 <span class="xb bt">빗</span> 빗썸 <span class="xb up">업</span> 업비트. 거래소 목록은 심볼로 맞추기 때문에 이름이 같은 다른 코인이 섞일 수 있어요(업비트는 영문 이름까지 확인해 <span class="xb same">업 동명</span>으로 따로 표시).</div>
+      <div>트렌딩은 '검색이 많다'는 뜻이지 '좋은 코인'이라는 뜻이 아니에요. 펌핑 직후에 검색이 몰리는 경우가 많아요.</div></div></details>`;
+    const themeHtml = themes.length ? `<div class="rd-themes">${themes.map(t => `<div class="rd-theme"><div class="rd-theme-h"><b>${esc(t.name)}</b>${t.stage ? ` <span class="rd-ts ${RD_THEME[t.stage] || ""}">${esc(t.stage)}</span>` : ""}</div>
+      ${t.why ? `<div class="small">${esc(t.why)}</div>` : ""}${(t.coins || []).length ? `<div class="tiny muted">${(t.coins || []).map(s => pickSyms.has(String(s).toUpperCase()) ? `<a href="#p-${esc(String(s).toUpperCase())}">${esc(s)}</a>` : esc(s)).join(" · ")}</div>` : ""}</div>`).join("")}</div>` : "";
+    const btcThen = n(A.btc), btcNow = px ? n(px.bitcoin) : null;
+    main().innerHTML = `<header class="head"><div class="eyebrow">내러티브 레이더</div><h1>해외에서 먼저 뜨는 이야기</h1>
+      <div class="stamp">${stamp}</div>${intro}</header>
+      <section class="section"><div class="sec-head"><h2>오늘의 흐름</h2>${N ? `<span class="sub">${kst(N.ts)}</span>` : ""}</div>
+        ${N ? `<div class="panel"><div class="rd-head">${esc(A.headline || "")}</div>${A.summary ? `<p class="small rd-sum">${esc(A.summary)}</p>` : ""}${themeHtml}
+          ${(A.watch || []).length ? `<div class="mini-h">다음에 볼 것</div><ul class="small rd-watch">${A.watch.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : ""}</div>`
+          : `<div class="empty">AI 정리는 매일 아침 7시쯤 올라와요. 그 전에는 아래 자동 수집 데이터만 보여요.</div>`}</section>
+      ${picks.length ? `<section class="section"><div class="sec-head"><h2>해외 주목 · 국내 미상장</h2><span class="sub">AI가 고르고 왜 뜨는지 확인한 코인</span></div>
+        <div class="rd-picks">${picks.map(p => rdPick(p, V, px, btcNow, btcThen)).join("")}</div></section>` : ""}
+      <section class="section"><div class="sec-head"><h2>해외 검색 관심 — 최근 7일</h2><span class="sub">코인게코 트렌딩 · 표본 ${V.smp7 || 0}번 중 등장한 날 수</span></div>
+        <div class="ctl"><label class="chk"><input type="checkbox" id="rd-kr"> 국내(업비트·빗썸) 미상장만</label><label class="chk"><input type="checkbox" id="rd-t300"> 시총 300위 안만</label></div>
+        <div class="panel rd-list" id="rd-hot"></div></section>
+      <section class="section"><div class="sec-head"><h2>섹터(카테고리) 흐름</h2><span class="sub">코인게코 카테고리 시총 변화 · 시총 5천만 달러 이상</span></div>
+        <div class="panel">${(V.trc || []).length ? `<div class="small rd-trc"><span class="mini-h">검색 트렌딩 카테고리</span> ${V.trc.map(c => `<span class="tag${c.now ? " new" : ""}">${esc(CAT_KO[c.g] || c.nm)}${c.c != null ? ` <span class="num">${pp(c.c)}</span>` : ""} · ${c.dd}일</span>`).join(" ")}</div>` : ""}
+          <div class="fchips" id="rd-cs" role="group" aria-label="카테고리 정렬"><button type="button" class="fchip" data-cs="c7">7일 변화</button><button type="button" class="fchip" data-cs="c24">24시간 변화</button></div>
+          <div id="rd-cats"></div>
+          <p class="legend">카테고리 시총은 소속 코인이 바뀌면 같이 바뀌어서 가격 흐름과 다를 수 있어요. 우리 섹터 순위판 기준 흐름은 <a href="/sectors#sf-s">섹터 순위판</a>에 있어요.</p></div></section>
+      ${(V.gain || []).length ? `<section class="section"><div class="sec-head"><h2>시총 300위 안 7일 급등 · 업비트 미상장</h2><span class="sub">7일 +15% 이상 · 거래대금이 시총의 2% 이상</span></div>
+        <div class="panel rd-list">${V.gain.map(g => rdRow({ ...g, n: g.ko || g.s, d7: null }, pickSyms.has(g.s), false)).join("")}</div></section>` : ""}
+      ${rdHist(d.hist || [], d.px, V.hx)}
+      <section class="section"><div class="sec-head"><h2>직접 볼 곳</h2><span class="sub">레이더가 못 보는 2단계(해외 X)는 직접</span></div>
+        <div class="panel rd-links">
+          <div><b>X 리스트 하나</b> — 메인 피드 말고 X '리스트'에 30~50명(리서치 애널리스트·펀드 파트너·실적 있는 트레이더·관심 섹터 창업자)만 모아 하루 한 번 훑어요. 팔로워 수보다 '똑똑한 사람들이 팔로우하는 계정'을 고르고, 번역 버튼을 쓰면 돼요.</div>
+          <div><a href="https://messari.io/signals" target="_blank" rel="noopener">Messari Signals</a> — 코인·섹터별 언급 점유율(마인드셰어)과 '왜'를 한 화면에. 무료는 1개월 보기만 돼요.</div>
+          <div><a href="https://kaito.ai" target="_blank" rel="noopener">Kaito</a> — 티커·토픽·내러티브 관심도 추적. '가격은 아직인데 언급이 먼저 느는' 코인을 찾을 때.</div>
+          <div><a href="https://www.coingecko.com/en/categories" target="_blank" rel="noopener">코인게코 카테고리</a> — 7일 수익률로 정렬해 돈이 어느 섹터로 도는지 → 그 안 상위 코인.</div>
+          <div><a href="https://www.binance.com/en/support/announcement/new-cryptocurrency-listing?c=48" target="_blank" rel="noopener">바이낸스 신규 상장 공지</a> · <a href="https://upbit.com/service_center/notice" target="_blank" rel="noopener">업비트 공지</a> — 상장 사다리의 위 칸들.</div>
+        </div></section>
+      <section class="section"><div class="sec-head"><h2>들어가기 전에 거를 것</h2></div>
+        <div class="panel"><ul class="small rd-guard">
+          <li><b>유통량·언락</b> — 유통이 적으면(예: 10~20%) 나머지가 시간이 지나며 풀려요. 다음 언락 날짜와 규모부터.</li>
+          <li><b>주장 검증</b> — '무엇무엇판 비트코인' 같은 이야기가 실제 제품·매출로 이어지는지, 토큰이 그 가치를 가져오는 구조인지.</li>
+          <li><b>촉매 없는 급등</b> — 새 개발·제휴 없이 오른 거면 소수 매수에 기댄 상승일 수 있어요.</li>
+          <li><b>짝퉁·동명 토큰</b> — 이름·티커가 같은 다른 토큰이 많아요. 공식 사이트의 컨트랙트 주소로 확인.</li>
+          <li><b>국내 상장 소식</b> — 해외 초기 보유자가 물량을 넘기는 때가 되기도 해요. 상장 소식만으로 따라 사지 않기.</li></ul></div></section>
+      <p class="legend">자료: 코인게코 공개 API(트렌딩·카테고리·가격), 코인마켓캡 공개 데이터(시세·해외 거래소 목록), 업비트·빗썸 공개 API. AI 정리는 공개 자료를 바탕으로 한 참고 정보이며 투자 권유가 아니에요. 신규·소형 코인은 변동과 위험이 매우 커요.</p>`;
+    const drawHot = () => {
+      $("rd-kr").checked = !!pref.kr; $("rd-t300").checked = !!pref.t300;
+      const list = (V.hot || []).filter(c => (!pref.kr || !rdKr(c.x)) && (!pref.t300 || (c.k && c.k <= 300))).slice(0, 25);
+      $("rd-hot").innerHTML = list.length ? list.map(c => rdRow(c, pickSyms.has(c.s), (V.trackDays || 0) >= 3)).join("")
+        : `<div class="empty small">${(V.hot || []).length ? "조건에 맞는 코인이 없어요. 위 체크를 풀어 보세요." : "트렌딩 데이터를 모으는 중이에요 (2시간마다)."}</div>`;
+    };
+    const drawCats = () => { document.querySelectorAll("#rd-cs .fchip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cs === pref.cs))); $("rd-cats").innerHTML = rdCats(V, pref.cs); };
+    $("rd-kr").addEventListener("change", e => { pref.kr = e.target.checked; rdSave(pref); drawHot(); });
+    $("rd-t300").addEventListener("change", e => { pref.t300 = e.target.checked; rdSave(pref); drawHot(); });
+    document.querySelectorAll("#rd-cs .fchip").forEach(b => b.addEventListener("click", () => { pref.cs = b.dataset.cs; rdSave(pref); drawCats(); }));
+    if (pref.cs === "c7" && !(V.cats || []).some(c => n(c.c7) != null)) pref.cs = "c24";
+    drawHot(); drawCats(); openHash();
+  }
+
   async function route() {
     const p = location.pathname.replace(/\.html$/, "");
     let m;
@@ -1326,6 +1483,7 @@
       if (p === "/map") return await mapPage();
       if (p === "/sectors" || p === "/sectors/") return await sectorsPage();
       if (p === "/money" || p === "/money/") return await moneyPage();
+      if (p === "/radar" || p === "/radar/") return await radarPage();
       if ((m = p.match(/^\/rank\/([^/]+)\/?$/))) return await rankCoinPage(decodeURIComponent(m[1]).toUpperCase());
       nav(""); main().innerHTML = `<div class="empty">페이지를 찾지 못했어요. <a href="/">최신 리포트로 가기</a></div>`;
     } catch (e) {

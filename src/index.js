@@ -8,13 +8,14 @@ import { watchNews, watchPrices, watchWeeks } from "./newswatch.js";
 import { watchMarket, watchBithumb, watchBinance, maybeRanks, maybeSeed, rankNow, apiSectors, apiSectorCoin } from "./sectors.js";
 import { snapPerf, apiPerf, watchFees, watchUnlocks, watchFeeHist, apiFeeHist } from "./extra.js";
 import { watchMarketX } from "./upbitx.js";
+import { watchRadar, apiRadar } from "./radar.js";
 
 // 두 번째 cron (섹터 순위판용): 5분마다 3·8·13…분에 한 가지씩 — 첫 번째 cron과 CPU 한도를 나눠 쓰지 않는다
 const CRON2 = "3-58/5 * * * *";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" };
 const PAGES = [/^\/$/, /^\/index\.html$/, /^\/r\/[\w-]+(\.html)?$/, /^\/track(\.html)?$/, /^\/coin\/?$/, /^\/coin\/[\w-]+(\.html)?$/,
-  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/, /^\/sectors\/?$/, /^\/rank\/[^/]+\/?$/, /^\/money\/?$/];
+  /^\/weekly\/?$/, /^\/weekly\/[\w-]+(\.html)?$/, /^\/map(\.html)?$/, /^\/news\/?$/, /^\/sectors\/?$/, /^\/rank\/[^/]+\/?$/, /^\/money\/?$/, /^\/radar\/?$/];
 
 function json(body, status = 200) { return new Response(body, { status, headers: JSON_HEADERS }); }
 // 저장된 JSON 문자열을 다시 파싱하지 않고 이어 붙인다 (CPU 절약)
@@ -86,6 +87,9 @@ async function api(url, env, ctx) {
   if (p === "/api/sectors") return json(await apiSectors(db));
   if (p === "/api/perf") return json(await apiPerf(db));
   if (p === "/api/feehist") return json(await apiFeeHist(db));
+  if (p === "/api/radar") return json(await apiRadar(db));
+  // 내러티브 레이더 한 칸 실행 (cron과 같은 규칙: 할 때가 된 일만 하고, 아니면 아무것도 안 함)
+  if (p === "/api/radar-now") return new Response(JSON.stringify(await watchRadar(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   if (p === "/api/rank-now") return new Response(JSON.stringify(await rankNow(env)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
   m = p.match(/^\/api\/sector-coin\/(.+)$/);
   if (m) return json(await apiSectorCoin(db, decodeURIComponent(m[1]).toUpperCase()));
@@ -172,9 +176,11 @@ export default {
       // 23분: 바이낸스 선물 목록(6시간 지났을 때만, 실패하면 매시간 재시도) · 28·58분: 실제 수익(DefiLlama, 6시간 지난 코인 10개씩) · 38분: 성적표 스냅숏(한국 시각 9시 이후 하루 한 번) · 53분: 빗썸 목록
       const t = Math.floor(min / 5) % 12;
       // 23·38·8분 칸이 쉬면(바이낸스 목록이 신선 · 오늘 성적표를 이미 찍음 · 언락 쉬는 중) 수수료 12개월 흐름(DefiLlama 일별 차트, 코인 2개씩)
+      // 8·23·38분 칸이 쉬면 먼저 내러티브 레이더(src/radar.js — 트렌딩 2시간·카테고리 8시간·해외 거래소 목록 12시간·화면 계산), 그것도 쉬면 수수료 흐름
       const hist = done => done === false ? watchFeeHist(env) : done;
-      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env).then(done => done || watchMarketX(env)) : (t === 4) ? watchBinance(env).then(hist)
-        : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env).then(hist) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env).then(done => done || watchUnlocks(env)).then(hist);
+      const radar = done => done === false ? watchRadar(env) : done;
+      const job = (t % 3 === 0) ? watchMarket(env) : (t === 2 || t === 8) ? maybeRanks(env).then(done => done || watchMarketX(env)) : (t === 4) ? watchBinance(env).then(radar).then(hist)
+        : t === 10 ? watchBithumb(env) : t === 7 ? snapPerf(env).then(radar).then(hist) : (t === 5 || t === 11) ? watchFees(env) : maybeSeed(env).then(done => done || watchUnlocks(env)).then(radar).then(hist);
       if (job) ctx.waitUntil(job.catch(e => console.error("cron2", min, e)));
       return;
     }

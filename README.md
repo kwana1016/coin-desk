@@ -37,9 +37,17 @@ AI가 공개 뉴스와 업비트 시세를 보고 정해진 시간마다 쓰는 
 - 유의 종목: 업비트(`kv upbit_krw`의 w)·빗썸(`kv bithumb_warn`) 유의 종목은 지정 동안 뉴스 점수 -8
 - API: `/api/sectors`, `/api/sector-coin/:sym`, `/api/rank-now`, `/api/perf`
 
+## 내러티브 레이더 (`/radar`)
+- 목적: 한국 기사·업비트보다 먼저 해외에서 뜨는 이야기(내러티브)와 코인을 찾기 — 정보 전파 6단계(창업자·펀드 → 해외 X → 관심 집계 → 해외 상장·기사 → 해외 유튜브 → 국내) 중 3~4단계를 노림
+- `src/radar.js` (AI 없음): 두 번째 cron의 8·23·38분 칸이 쉴 때 한 가지씩 — 코인게코 트렌딩(2시간마다, 날짜별 등장 횟수 → `kv radar_tr`) · 코인게코 카테고리 시총(8시간, 날짜별 시총으로 7일 변화 → `kv radar_cat`) · 해외 거래소 현물 목록(코인마켓캡 공개 데이터, 바이낸스·코인베이스·OKX·바이비트 각 12시간 → `kv radar_ex`) · 레이더 코인 가격(12시간 → `kv radar_px`). 새 데이터가 생기면 다음 칸에서 화면용 JSON(`kv radar`)을 다시 계산. 상태는 `kv radar_st`
+- 코인게코는 Cloudflare 공용 IP에서 가끔 429 — Worker 비밀값 `CG_KEY`(코인게코 무료 Demo 키)를 넣으면 자동으로 씀. 실패하면 50분 뒤 다시 시도
+- 국내 상장 표시: 업비트는 영문 이름까지 맞춰 보고, 심볼만 같은 다른 코인이면 '업 동명'(up=2, 미상장으로 봄)
+- 예약 실행 '내러티브 레이더'(하루 1번, 아침 7시쯤): `kv radar`를 보고 국내 미상장 + 해외 관심 코인을 골라 왜 뜨는지 확인 → `radar_notes(id, ts, json)` = {ts, btc, headline, summary, themes[{name, stage(초기/확산/과열/식는 중), why, coins}], picks[{id(코인게코), sym, name, price, theme, stage(1~6), why, ladder, checks{circ, unlock, claim, fake}, risk(1~5), src}], watch}
+- API: `/api/radar` (view·가격·최신 정리·최근 60일 기록), `/api/radar-now` (cron과 같은 규칙으로 한 칸 실행)
+
 ## D1 표
 - `sectors(id, ord, json)`, `coin_base(sym, sector, json)`, `coin_news(id, sym, ts, impact, kind, json)`, `rankings(id, ts, json)`, `perf(day, ts, json)` — 섹터 순위판
-- `reports(id, ts, json)`, `weekly(id, ts, json)`, `alerts(id, ts, kind, json)` — kind: news(AI 판단)·auto_news(뉴스 자동 감지)·price(가격 급변)·listing/warning/delist(업비트 목록)·rejected(AI가 지운 것), `kv(k, v, ts)`
+- `reports(id, ts, json)`, `weekly(id, ts, json)`, `radar_notes(id, ts, json)`, `alerts(id, ts, kind, json)` — kind: news(AI 판단)·auto_news(뉴스 자동 감지)·price(가격 급변)·listing/warning/delist(업비트 목록)·rejected(AI가 지운 것), `kv(k, v, ts)`
 
 ## 참고 도구 (예약 실행은 안내문에 들어 있는 사본을 씀)
 - `tools/levels.py`: 주봉으로 참고 가격 레벨 계산
