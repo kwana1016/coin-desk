@@ -12,6 +12,8 @@
 // kv radar_cat = {t, cur: {id: [이름, 시총$, 24h%, 거래대금$, [상위 3 id]]}, h: {id: {날짜: 시총$}}}
 // kv radar_ex  = {bn|cb|ok|by: {t, s: [심볼]}}
 // kv radar_px  = {t, m: {코인게코 id: 가격$}}
+// kv radar_x   = 예약 실행 'X 리스트 읽기'(사용자 PC의 내장 브라우저로 비공개 X 리스트 31명을 하루 1번 읽음)가 쓴 요약
+//                {ts, since, n(읽은 글), accts(글 쓴 계정 수), headline, tickers:[{sym, name, accts:[핸들], n, gist}], themes:[{name, why, accts}], notable:[{h, id(글 id), lk, gist}]}
 
 import { kstDay } from "./extra.js";
 import { marketIndex } from "./sectors.js";
@@ -153,7 +155,7 @@ function sameName(a, b) {
 }
 async function doView(env, now, db) {
   const [kq, bq] = await Promise.all([
-    db.prepare("SELECT k, v FROM kv WHERE k IN ('radar_tr','radar_cat','radar_ex','cp','upbit_krw','bithumb_krw','bnf','sector_excluded')").all(),
+    db.prepare("SELECT k, v FROM kv WHERE k IN ('radar_tr','radar_cat','radar_ex','cp','upbit_krw','bithumb_krw','bnf','sector_excluded','radar_x')").all(),
     db.prepare("SELECT sym, sector, json_extract(json,'$.kr') AS kr, json_extract(json,'$.ko') AS ko FROM coin_base").all(),
   ]);
   const kv = Object.fromEntries((kq.results || []).map(r => [r.k, r.v]));
@@ -205,7 +207,9 @@ async function doView(env, now, db) {
     const { results } = await db.prepare("SELECT DISTINCT json_extract(j.value,'$.sym') AS s, json_extract(j.value,'$.name') AS n FROM radar_notes r, json_each(r.json,'$.picks') j WHERE r.ts > ?1").bind(now - 60 * DAY).all();
     for (const x of results || []) { const s = String(x.s || "").toUpperCase(); if (s) hx[s] = flags(s, x.n || ""); }
   } catch (e) {}
-  const view = { t: now, tr_at: tr.t || null, cat_at: cat.t || null, ex_at: Object.fromEntries(Object.keys(EX).map(k => [k, (ex[k] && ex[k].t) || null])), cp_at: cp.t || null,
+  // X 다이제스트(예약 실행 'X 리스트 읽기'가 kv radar_x에 씀)의 티커 → 상장 표시
+  const xf = {}; for (const tk of (parse(kv.radar_x, {}).tickers || [])) { const s = String(tk.sym || "").replace(/^\$/, "").toUpperCase(); if (/^[A-Z0-9]{2,12}$/.test(s)) xf[s] = flags(s, tk.name || ""); }
+  const view = { t: now, xf, tr_at: tr.t || null, cat_at: cat.t || null, ex_at: Object.fromEntries(Object.keys(EX).map(k => [k, (ex[k] && ex[k].t) || null])), cp_at: cp.t || null,
     smp7, trackDays, hot, gain, cats: [...catOut.values(), ...down.values()], trc: Object.values(trc).sort((a, b) => b.now - a.now || b.dd - a.dd).slice(0, 12), hx };
   await put(db, "radar", view, now).run();
   return { ok: true, n: hot.length };
@@ -243,7 +247,7 @@ export async function watchRadar(env, now = Date.now()) {
 
 // ── API ──
 export async function apiRadar(db, now = Date.now()) {
-  const { results } = await db.prepare("SELECT k, v FROM kv WHERE k IN ('radar', 'radar_px', 'radar_st')").all();
+  const { results } = await db.prepare("SELECT k, v FROM kv WHERE k IN ('radar', 'radar_px', 'radar_st', 'radar_x')").all();
   const kv = Object.fromEntries((results || []).map(r => [r.k, r.v]));
   let note = null, hist = [];
   try {
@@ -252,5 +256,5 @@ export async function apiRadar(db, now = Date.now()) {
         json_extract(j.value,'$.price') AS p, json_extract(j.value,'$.theme') AS th, json_extract(j.value,'$.stage') AS sg, json_extract(r.json,'$.btc') AS btc
       FROM radar_notes r, json_each(r.json,'$.picks') j WHERE r.ts > ?1 ORDER BY r.ts DESC LIMIT 300`).bind(now - 60 * DAY).all()).results || [];
   } catch (e) {}
-  return `{"view":${kv.radar || "null"},"px":${kv.radar_px || "null"},"st":${kv.radar_st || "null"},"note":${note ? `{"id":${JSON.stringify(note.id)},"ts":${Number(note.ts)},"a":${note.json}}` : "null"},"hist":${JSON.stringify(hist)}}`;
+  return `{"view":${kv.radar || "null"},"px":${kv.radar_px || "null"},"st":${kv.radar_st || "null"},"x":${kv.radar_x || "null"},"note":${note ? `{"id":${JSON.stringify(note.id)},"ts":${Number(note.ts)},"a":${note.json}}` : "null"},"hist":${JSON.stringify(hist)}}`;
 }

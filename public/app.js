@@ -1403,6 +1403,19 @@
         <span>${r.x && r.x.up === 1 ? '<span class="xb up">업 상장</span>' : ""}${r.x && r.x.bt === 1 ? '<span class="xb bt">빗 상장</span>' : ""}</span></div>`).join("")}</div>
       <p class="legend">수익률은 AI가 레이더에 올린 시점의 가격 대비예요(같은 코인이 여러 번 오르면 각각 계산). '업 상장'·'빗 상장'은 지금 국내 원화마켓에 있다는 뜻이에요.</p></div></section>`;
   }
+  function rdX(X, xf, pickSyms) {
+    if (!X || !X.ts) return `<section class="section"><div class="sec-head"><h2>X에서 많이 말하는 것</h2><span class="sub">비공개 X 리스트 31명 · 매일 밤 10시 40분쯤</span></div><div class="empty small">아직 읽은 기록이 없어요. 첫 기록은 오늘 밤에 올라와요.</div></section>`;
+    const old = Date.now() - X.ts > 36 * 3600e3;
+    const tk = (X.tickers || []).slice(0, 10), th = (X.themes || []).slice(0, 4), nb = (X.notable || []).slice(0, 8);
+    const xl = (h, id) => /^[A-Za-z0-9_]{1,20}$/.test(h || "") && /^[0-9]{5,25}$/.test(String(id || "")) ? `https://x.com/${h}/status/${id}` : null;
+    return `<section class="section"><div class="sec-head"><h2>X에서 많이 말하는 것</h2><span class="sub">${kst(X.ts)} · 최근 24시간 글 ${n(X.n) || 0}개 · 계정 ${n(X.accts) || 0}명${old ? " · 오래된 기록" : ""}</span></div>
+      <div class="panel">${X.headline ? `<div class="rd-head">${esc(X.headline)}</div>` : ""}
+        ${tk.length ? `<div class="mini-h">많이 나온 코인</div><div class="rd-xt">${tk.map(t => { const s = String(t.sym || "").replace(/^\$/, "").toUpperCase(); const ac = Array.isArray(t.accts) ? t.accts : [];
+          return `<div class="rd-xtk"><div><b>$${esc(s)}</b>${t.name ? ` <span class="tiny muted">${esc(t.name)}</span>` : ""} <span class="tag" title="${esc(ac.map(h => "@" + h).join(" "))}">${ac.length || n(t.n) || 1}명</span>${pickSyms.has(s) ? ` <a class="tag mine" href="#p-${esc(s)}">AI 정리</a>` : ""} ${rdEx((xf || {})[s])}</div>${t.gist ? `<div class="small">${esc(t.gist)}</div>` : ""}</div>`; }).join("")}</div>` : ""}
+        ${th.length ? `<div class="mini-h">이야기</div><div class="rd-themes">${th.map(t => `<div class="rd-theme"><b>${esc(t.name)}</b>${t.why ? `<div class="small">${esc(t.why)}</div>` : ""}${(t.accts || []).length ? `<div class="tiny muted">${t.accts.slice(0, 6).map(h => "@" + esc(h)).join(" ")}</div>` : ""}</div>`).join("")}</div>` : ""}
+        ${nb.length ? `<div class="mini-h">눈에 띈 글</div><ul class="small rd-xn">${nb.map(p => { const u = xl(p.h, p.id); return `<li><b>@${esc(p.h)}</b>${p.lk ? ` <span class="tiny muted">♥${n(p.lk).toLocaleString("en-US")}</span>` : ""} — ${esc(p.gist || "")}${u ? ` <a href="${u}" target="_blank" rel="noopener nofollow">원문</a>` : ""}</li>`; }).join("")}</ul>` : ""}
+        <p class="legend">사용자 PC의 Claude 앱이 비공개 X 리스트(리서처·펀드·온체인 분석·트레이더·거래소 31명)의 최근 24시간 인기·최신 글을 하루 한 번 읽고 요약해요. 유명 계정의 언급은 홍보나 포지션 정리일 수도 있어요.</p></div></section>`;
+  }
   async function radarPage() {
     nav("radar"); setTitle("내러티브 레이더");
     const d = await get("/api/radar");
@@ -1414,6 +1427,7 @@
     const intro = `<details class="more rules"><summary>레이더는 이렇게 봐요</summary><div class="more-body">
       <div>코인 이야기는 보통 <b>${RD_STAGES.map((s, i) => `${i + 1}. ${s[0]}`).join(" → ")}</b> 순서로 퍼져요. 한국 기사·유튜브·업비트만 보면 마지막 칸만 보게 돼요. 레이더는 3~4단계(해외에서 숫자로 잡히기 시작했지만 국내엔 아직 없는 때)를 찾는 게 목표예요.</div>
       <div><b>사이트가 자동으로 모으는 것</b> — 코인게코 검색 트렌딩(2시간마다, 7일 동안 며칠 등장했는지 셈) · 코인게코 카테고리 시총 흐름(8시간마다, 7일 변화는 기록이 7일 쌓이면) · 해외 거래소 현물 목록(바이낸스·코인베이스·OKX·바이비트, 12시간마다) · 업비트·빗썸·바이낸스 선물 목록과 맞춰 보기.</div>
+      <div><b>X 읽기(매일 밤 10시 40분쯤)</b> — 사용자 PC의 Claude 앱이 비공개 X 리스트 31명의 하루치 인기·최신 글을 읽고 많이 나온 코인·이야기를 요약해요(PC가 꺼져 있으면 그날은 건너뜀).</div>
       <div><b>AI가 하루 한 번(아침 7시쯤) 하는 것</b> — 국내 미상장인데 해외에서 관심이 붙은 코인을 골라 왜 뜨는지 확인하고, 이야기(내러티브)별로 묶고, 유통량·언락·주장 검증·동명 토큰을 체크해요.</div>
       <div><b>상장 표시</b> — <span class="xb by">바이비트</span> <span class="xb ok">OKX</span> <span class="xb bf">바선</span> 바이낸스 선물 <span class="xb bn">바현</span> 바이낸스 현물 <span class="xb cb">코베</span> 코인베이스 <span class="xb bt">빗</span> 빗썸 <span class="xb up">업</span> 업비트. 거래소 목록은 심볼로 맞추기 때문에 이름이 같은 다른 코인이 섞일 수 있어요(업비트는 영문 이름까지 확인해 <span class="xb same">업 동명</span>으로 따로 표시).</div>
       <div>트렌딩은 '검색이 많다'는 뜻이지 '좋은 코인'이라는 뜻이 아니에요. 펌핑 직후에 검색이 몰리는 경우가 많아요.</div></div></details>`;
@@ -1428,6 +1442,7 @@
           : `<div class="empty">AI 정리는 매일 아침 7시쯤 올라와요. 그 전에는 아래 자동 수집 데이터만 보여요.</div>`}</section>
       ${picks.length ? `<section class="section"><div class="sec-head"><h2>해외 주목 · 국내 미상장</h2><span class="sub">AI가 고르고 왜 뜨는지 확인한 코인</span></div>
         <div class="rd-picks">${picks.map(p => rdPick(p, V, px, btcNow, btcThen)).join("")}</div></section>` : ""}
+      ${rdX(d.x, V.xf, pickSyms)}
       <section class="section"><div class="sec-head"><h2>해외 검색 관심 — 최근 7일</h2><span class="sub">코인게코 트렌딩 · 표본 ${V.smp7 || 0}번 중 등장한 날 수</span></div>
         <div class="ctl"><label class="chk"><input type="checkbox" id="rd-kr"> 국내(업비트·빗썸) 미상장만</label><label class="chk"><input type="checkbox" id="rd-t300"> 시총 300위 안만</label></div>
         <div class="panel rd-list" id="rd-hot"></div></section>
@@ -1439,9 +1454,9 @@
       ${(V.gain || []).length ? `<section class="section"><div class="sec-head"><h2>시총 300위 안 7일 급등 · 업비트 미상장</h2><span class="sub">7일 +15% 이상 · 거래대금이 시총의 2% 이상</span></div>
         <div class="panel rd-list">${V.gain.map(g => rdRow({ ...g, n: g.ko || g.s, d7: null }, pickSyms.has(g.s), false)).join("")}</div></section>` : ""}
       ${rdHist(d.hist || [], d.px, V.hx)}
-      <section class="section"><div class="sec-head"><h2>직접 볼 곳</h2><span class="sub">레이더가 못 보는 2단계(해외 X)는 직접</span></div>
+      <section class="section"><div class="sec-head"><h2>직접 볼 곳</h2><span class="sub">레이더와 같이 보면 좋은 곳</span></div>
         <div class="panel rd-links">
-          <div><b>X 리스트 하나</b> — 메인 피드 말고 X '리스트'에 30~50명(리서치 애널리스트·펀드 파트너·실적 있는 트레이더·관심 섹터 창업자)만 모아 하루 한 번 훑어요. 팔로워 수보다 '똑똑한 사람들이 팔로우하는 계정'을 고르고, 번역 버튼을 쓰면 돼요.</div>
+          <div><b>X 리스트</b> — 비공개 리스트 '코인 레이더'(31명)를 Claude가 매일 밤 읽어 위 'X에서 많이 말하는 것'에 요약해요. 휴대폰 X 앱에서 리스트를 홈 탭에 고정해 두면 직접 훑어보기도 쉬워요.</div>
           <div><a href="https://messari.io/signals" target="_blank" rel="noopener">Messari Signals</a> — 코인·섹터별 언급 점유율(마인드셰어)과 '왜'를 한 화면에. 무료는 1개월 보기만 돼요.</div>
           <div><a href="https://kaito.ai" target="_blank" rel="noopener">Kaito</a> — 티커·토픽·내러티브 관심도 추적. '가격은 아직인데 언급이 먼저 느는' 코인을 찾을 때.</div>
           <div><a href="https://www.coingecko.com/en/categories" target="_blank" rel="noopener">코인게코 카테고리</a> — 7일 수익률로 정렬해 돈이 어느 섹터로 도는지 → 그 안 상위 코인.</div>

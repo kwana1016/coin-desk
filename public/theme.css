@@ -733,3 +733,8 @@ table.peer tr.me td.mn a{color:var(--accent)}
 @media (max-width:640px){.rd-picks,.rd-themes{grid-template-columns:1fr}}
 @media (max-width:560px){.rd-row{grid-template-columns:22px minmax(0,1fr) auto;grid-template-areas:"r n n" "r d c" "r x x"}
   .rd-h{grid-template-columns:40px minmax(0,1fr) auto}.rd-h>.num.small{display:none}.rd-h>span:last-child{grid-column:2/-1}.rd-h>span:last-child:empty{display:none}}
+.rd-xt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:4px 0 10px}
+.rd-xtk{display:flex;flex-direction:column;gap:2px;min-width:0;word-break:keep-all}
+.rd-xtk>div:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.rd-xn{margin:2px 0 6px;padding-left:18px;display:flex;flex-direction:column;gap:4px;word-break:keep-all}
+@media (max-width:640px){.rd-xt{grid-template-columns:1fr}}
